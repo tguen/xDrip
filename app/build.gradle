@@ -1,13 +1,15 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 buildscript {
     repositories {
         mavenCentral()
     }
-    dependencies {
-        if (getGradle().getStartParameter().getTaskRequests().toString().contains("Release]")) {
+//    dependencies {
+//        if (getGradle().getStartParameter().getTaskRequests().toString().contains("Release]")) {
            // println("Enabling New Relic")
            // classpath "com.newrelic.agent.android:agent-gradle-plugin:5.27.1"
-        }
-    }
+//        }
+//    }
 }
 apply plugin: 'com.android.application'
 //apply from: 'token-replace.gradle'
@@ -40,10 +42,10 @@ repositories {
 }
 
 android {
-    compileSdk 34 // TODO centralize
+    compileSdk = 37 // TODO centralize
 
 
-    configurations.all {
+    configurations.configureEach {
         resolutionStrategy.force 'com.google.code.findbugs:jsr305:1.3.9'
 
         resolutionStrategy.eachDependency { DependencyResolveDetails details ->
@@ -114,7 +116,7 @@ android {
     }
 
     configurations {
-        all {
+        configureEach {
             exclude group: 'commons-logging', module: 'commons-logging'
             exclude group: 'org.apache.httpcomponents'
         }
@@ -161,14 +163,14 @@ android {
                     'proguard-rules.pro'
         }
         debug {
-            minifyEnabled true
-            shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'),
-                    'proguard-rules.pro'
-            testProguardFile 'proguard-debug.pro'
-            multiDexKeepProguard file('proguard-debug.pro')
-            ext.enableCrashlytics = false
-            //      applicationIdSuffix ".debug"
+//            minifyEnabled true
+//            shrinkResources true
+//            proguardFiles getDefaultProguardFile('proguard-android.txt'),
+//                    'proguard-rules.pro'
+//            testProguardFile 'proguard-debug.pro'
+//            multiDexKeepProguard file('proguard-debug.pro')
+//            ext.enableCrashlytics = false
+            //applicationIdSuffix ".debug"
             versionNameSuffix "-debug"
             debuggable true
         }
@@ -391,13 +393,13 @@ java {
     }
 }
 
-tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-    kotlinOptions {
-        jvmTarget = "1.8"
+kotlin {
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_1_8
     }
 }
 
-tasks.withType(Test) {
+tasks.withType(Test).configureEach {
     // TranslationPlaceholderTest reads the string resources straight from the source tree, which
     // Gradle does not otherwise know about: a changed translation would leave the test UP-TO-DATE.
     inputs.files(fileTree("src/main/res") { include "values*/*.xml" })
