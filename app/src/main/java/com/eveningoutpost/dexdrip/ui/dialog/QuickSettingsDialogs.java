@@ -10,11 +10,10 @@ import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import com.eveningoutpost.dexdrip.R;
 import com.eveningoutpost.dexdrip.cgm.dex.TxIdHelper;
 import com.eveningoutpost.dexdrip.models.UserError;
-import com.eveningoutpost.dexdrip.R;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.eveningoutpost.dexdrip.watch.thinjam.BlueJayEntry;
 
 import lombok.val;
 
@@ -126,7 +125,7 @@ public class QuickSettingsDialogs {
             });
         }
 
-        if (!BlueJayEntry.isNative()) {
+//        if (!BlueJayEntry.isNative()) {
             dialog.setOnShowListener(d -> {
                 try {
                     edt.requestFocus();
@@ -141,7 +140,7 @@ public class QuickSettingsDialogs {
                     UserError.Log.e(TAG, "Error setting input method focus: " + e);
                 }
             });
-        }
+//        }
 
         try {
             dialog.show();

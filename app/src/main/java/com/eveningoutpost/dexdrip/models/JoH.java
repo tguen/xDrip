@@ -1,11 +1,5 @@
 package com.eveningoutpost.dexdrip.models;
 
-import static android.bluetooth.BluetoothDevice.PAIRING_VARIANT_PIN;
-import static android.content.Context.ALARM_SERVICE;
-import static com.eveningoutpost.dexdrip.stats.StatsActivity.SHOW_STATISTICS_PRINT_COLOR;
-import static com.eveningoutpost.dexdrip.utilitymodels.Constants.SENSORY_EXPIRY_NOTIFICATION_ID;
-import static com.eveningoutpost.dexdrip.utilitymodels.NotificationChannels.GENERAL_CHANNEL;
-
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
@@ -47,14 +41,6 @@ import android.os.SystemClock;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.provider.Settings;
-
-import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.view.ContextThemeWrapper;
-import androidx.core.app.NotificationCompat;
-import androidx.core.content.FileProvider;
-import androidx.loader.content.CursorLoader;
-
 import android.text.InputType;
 import android.text.method.DigitsKeyListener;
 import android.util.Base64;
@@ -77,8 +63,6 @@ import com.eveningoutpost.dexdrip.utilitymodels.Pref;
 import com.eveningoutpost.dexdrip.utilitymodels.XdripNotificationCompat;
 import com.eveningoutpost.dexdrip.utils.BestGZIPOutputStream;
 import com.eveningoutpost.dexdrip.utils.CipherUtils;
-import com.eveningoutpost.dexdrip.utils.Telemetry;
-import com.eveningoutpost.dexdrip.utils.framework.BuggySamsung;
 import com.eveningoutpost.dexdrip.xdrip;
 import com.google.common.primitives.Bytes;
 import com.google.common.primitives.UnsignedInts;
@@ -106,16 +90,7 @@ import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.GregorianCalendar;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.concurrent.Semaphore;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
@@ -123,8 +98,19 @@ import java.util.zip.Deflater;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.Inflater;
 
-import io.sentry.Sentry;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.view.ContextThemeWrapper;
+import androidx.core.app.NotificationCompat;
+import androidx.core.content.FileProvider;
+import androidx.loader.content.CursorLoader;
 import lombok.val;
+
+import static android.bluetooth.BluetoothDevice.PAIRING_VARIANT_PIN;
+import static android.content.Context.ALARM_SERVICE;
+import static com.eveningoutpost.dexdrip.utilitymodels.Constants.SENSORY_EXPIRY_NOTIFICATION_ID;
+import static com.eveningoutpost.dexdrip.utilitymodels.NotificationChannels.GENERAL_CHANNEL;
+
 
 /**
  * Created by jamorham on 06/01/16.
@@ -451,7 +437,7 @@ public class JoH {
     }
 
     public static boolean isSamsung() {
-        return BuggySamsung.isSamsung();
+        return false;
     }
 
     private static final String BUGGY_SAMSUNG_ENABLED = "buggy-samsung-enabled";
@@ -567,33 +553,11 @@ public class JoH {
     }
 
     public static synchronized void logException(Exception e) {
-        if (ratelimit("joh-logException", 300)) {
-            if (Telemetry.isCrashReportingEnabled()) {
-                try {
-                    Sentry.captureException(e);
-                    UserError.Log.e(TAG, "Exception logged: " + e);
-                } catch (Exception ex) {
-                    //
-                }
-            }
-        }
     }
 
 
     static volatile String lastLoggedMessage = "";
     public static synchronized void logMessage(final String message) {
-        if (message == null) return;
-        if (message.equals(lastLoggedMessage)) return;
-        if (ratelimit("joh-logMessage", 300)) {
-            if (Telemetry.isTelemetryEnabled()) {
-                try {
-                    Sentry.captureMessage(message);
-                    UserError.Log.e(TAG, "Message logged: " + message);
-                } catch (Exception ex) {
-                    //
-                }
-            }
-        }
     }
 
 
@@ -1449,13 +1413,6 @@ public class JoH {
                 height, Bitmap.Config.ARGB_8888);
 
         final Canvas canvas = new Canvas(bitmap);
-        if (Pref.getBooleanDefaultFalse(SHOW_STATISTICS_PRINT_COLOR)) {
-            Paint paint = new Paint();
-            paint.setColor(Color.WHITE);
-            paint.setStyle(Paint.Style.FILL);
-            canvas.drawRect(0, 0, width, height, paint);
-        }
-
 
         view.destroyDrawingCache();
         view.layout(0, 0, width, height);
@@ -1468,15 +1425,8 @@ public class JoH {
             final Canvas canvasf = new Canvas(bitmapf);
 
             Paint paint = new Paint();
-            if (Pref.getBooleanDefaultFalse(SHOW_STATISTICS_PRINT_COLOR)) {
-                paint.setColor(Color.WHITE);
-                paint.setStyle(Paint.Style.FILL);
-                canvasf.drawRect(0, 0, width, offset, paint);
-                paint.setColor(Color.BLACK);
-            } else {
-                paint.setColor(Color.GRAY);
-            }
-            paint.setTextSize(20);
+	        paint.setColor(Color.GRAY);
+	        paint.setTextSize(20);
             // paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_OUT));
             canvasf.drawBitmap(bitmap, 0, offset, paint);
             canvasf.drawText(annotation, 50, (offset / 2) + 5, paint);
@@ -2062,7 +2012,6 @@ public class JoH {
         crc.update(bytes);
         return crc.getValue();
     }
-
 
 
     public static byte[] bchecksum(byte[] bytes) {
