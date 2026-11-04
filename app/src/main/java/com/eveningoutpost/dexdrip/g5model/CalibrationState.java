@@ -12,10 +12,7 @@ import com.google.common.collect.ImmutableSet;
 import lombok.Getter;
 import lombok.val;
 
-import static com.eveningoutpost.dexdrip.services.G5CollectionService.TAG;
-
 public enum CalibrationState {
-
     // TODO i18n
 
     Unknown(0x00, "Unknown"),
@@ -58,6 +55,8 @@ public enum CalibrationState {
     final String text;
     @Getter
     final int stringId;
+
+    private static final String TAG = CalibrationState.class.getSimpleName();
 
     public String getText() {
         if (stringId == 0) {

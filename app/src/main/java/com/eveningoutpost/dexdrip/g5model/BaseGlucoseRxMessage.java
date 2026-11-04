@@ -5,7 +5,6 @@ import static com.eveningoutpost.dexdrip.utilitymodels.Constants.SECOND_IN_MS;
 
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.UserError;
-import com.eveningoutpost.dexdrip.services.G5CollectionService;
 
 import lombok.NoArgsConstructor;
 import lombok.val;

@@ -79,19 +79,9 @@ public class BgSparklineBuilder {
         return showLowLine(true);
     }
 
-    public BgSparklineBuilder noLowLineFill( boolean noFill) {
-        this.noLowLineFill = noFill;
-        return this;
-    }
-    public BgSparklineBuilder noLowLineFill() {return noLowLineFill(false); }
-
     public BgSparklineBuilder showAxes(boolean show) {
         this.showAxes = show;
         return this;
-    }
-
-    public BgSparklineBuilder showAxes() {
-        return showAxes(true);
     }
 
     public BgSparklineBuilder setWidth(float width) {
@@ -104,34 +94,10 @@ public class BgSparklineBuilder {
         return this;
     }
 
-    public BgSparklineBuilder setWidthPx(int width) {
-        this.width = width;
-        return this;
-    }
-
-    public BgSparklineBuilder setHeightPx(int height) {
-        this.height = height;
-        return this;
-    }
-
-    public BgSparklineBuilder setSmallDots(boolean useSmallDots) {
-        this.useSmallDots = useSmallDots;
-        return this;
-    }
-    public BgSparklineBuilder setTinyDots(boolean useTinyDots) {
-        this.useTinyDots = useTinyDots;
-        return this;
-    }
     public BgSparklineBuilder setShowFiltered(boolean showFiltered) {
         this.showFiltered = showFiltered;
         return this;
     }
-
-    public BgSparklineBuilder setSmallDots() {
-        return this.setSmallDots(true);
-    }
-
-    public BgSparklineBuilder setTinyDots() { return this.setTinyDots(true); }
 
     public BgSparklineBuilder setDotSize(int size) {
         this.useSpecificDotSize = size;

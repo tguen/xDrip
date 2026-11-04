@@ -3,24 +3,21 @@ package com.eveningoutpost.dexdrip;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
-
-import com.eveningoutpost.dexdrip.models.JoH;
-import com.eveningoutpost.dexdrip.models.Sensor;
-import com.eveningoutpost.dexdrip.models.UserError.Log;
-
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 
+import com.eveningoutpost.dexdrip.calibrations.NativeCalibrationPipe;
 import com.eveningoutpost.dexdrip.models.Calibration;
+import com.eveningoutpost.dexdrip.models.JoH;
+import com.eveningoutpost.dexdrip.models.Sensor;
+import com.eveningoutpost.dexdrip.models.UserError.Log;
 import com.eveningoutpost.dexdrip.utilitymodels.CollectionServiceStarter;
 import com.eveningoutpost.dexdrip.utilitymodels.UndoRedo;
-import com.eveningoutpost.dexdrip.utilitymodels.CalibrationSendQueue;
-import com.eveningoutpost.dexdrip.calibrations.NativeCalibrationPipe;
 import com.eveningoutpost.dexdrip.utils.ActivityWithMenu;
 
-import static com.eveningoutpost.dexdrip.Home.startWatchUpdaterService;
 import static com.eveningoutpost.dexdrip.xdrip.gs;
+
 
 public class CalibrationOverride extends ActivityWithMenu {
     Button button;
@@ -62,14 +59,13 @@ public class CalibrationOverride extends ActivityWithMenu {
                                 last_calibration.sensor_confidence = 0;
                                 last_calibration.slope_confidence = 0;
                                 last_calibration.save();
-                                CalibrationSendQueue.addToQueue(last_calibration, getApplicationContext());
                                 // TODO we need to push the nixing of this last calibration
                             }
 
                             final Calibration calibration = Calibration.create(calValue, getApplicationContext());
                             if (calibration != null) {
                                 UndoRedo.addUndoCalibration(calibration.uuid);
-                                GcmActivity.pushCalibration(string_value, "0");
+//                                GcmActivity.pushCalibration(string_value, "0");
                                // Ob1G5StateMachine.addCalibration((int)calibration.bg, calibration.timestamp);
                                 NativeCalibrationPipe.addCalibration((int)calibration.bg, calibration.timestamp);
                                 //startWatchUpdaterService(v.getContext(), WatchUpdaterService.ACTION_SYNC_CALIBRATION, TAG);

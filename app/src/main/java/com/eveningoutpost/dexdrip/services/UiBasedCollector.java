@@ -1,11 +1,5 @@
 package com.eveningoutpost.dexdrip.services;
 
-import static com.eveningoutpost.dexdrip.cgm.dex.ClassifierAction.lastReadingTimestamp;
-import static com.eveningoutpost.dexdrip.models.JoH.msSince;
-import static com.eveningoutpost.dexdrip.utils.DexCollectionType.UiBased;
-import static com.eveningoutpost.dexdrip.utils.DexCollectionType.getDexCollectionType;
-import static com.eveningoutpost.dexdrip.xdrip.gs;
-
 import android.app.Activity;
 import android.app.Notification;
 import android.content.ComponentName;
@@ -22,12 +16,8 @@ import android.view.ViewGroup;
 import android.widget.RemoteViews;
 import android.widget.TextView;
 
-import androidx.annotation.Nullable;
-import androidx.annotation.VisibleForTesting;
-
 import com.eveningoutpost.dexdrip.BestGlucose;
 import com.eveningoutpost.dexdrip.R;
-import com.eveningoutpost.dexdrip.alert.Persist;
 import com.eveningoutpost.dexdrip.cgm.dex.BlueTails;
 import com.eveningoutpost.dexdrip.models.BgReading;
 import com.eveningoutpost.dexdrip.models.JoH;
@@ -35,7 +25,6 @@ import com.eveningoutpost.dexdrip.models.Sensor;
 import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.utilitymodels.Constants;
 import com.eveningoutpost.dexdrip.utilitymodels.PersistentStore;
-import com.eveningoutpost.dexdrip.utilitymodels.PumpStatus;
 import com.eveningoutpost.dexdrip.utilitymodels.Unitized;
 import com.eveningoutpost.dexdrip.utils.DexCollectionType;
 import com.eveningoutpost.dexdrip.xdrip;
@@ -43,10 +32,18 @@ import com.eveningoutpost.dexdrip.xdrip;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 import lombok.val;
+
+import static com.eveningoutpost.dexdrip.cgm.dex.ClassifierAction.lastReadingTimestamp;
+import static com.eveningoutpost.dexdrip.models.JoH.msSince;
+import static com.eveningoutpost.dexdrip.utils.DexCollectionType.UiBased;
+import static com.eveningoutpost.dexdrip.utils.DexCollectionType.getDexCollectionType;
+import static com.eveningoutpost.dexdrip.xdrip.gs;
+
 
 /**
  * JamOrHam
@@ -192,18 +189,6 @@ public class UiBasedCollector extends NotificationListenerService {
     }
 
     private void processCompanionAppIoBNotificationTitle(final Notification notification) {
-        Double iob = null;
-        try {
-            String notificationTitle = notification.extras.getString("android.title");
-            iob = parseIoB(notificationTitle);
-
-            if (iob != null) {
-                if (debug) UserError.Log.d(TAG, "Inserting new IoB value extracted from title: " + iob);
-                PumpStatus.setBolusIoB(iob);
-            }
-        } catch (Exception e) {
-            UserError.Log.e(TAG, "exception in processCompanionAppIoBNotificationTitle: " + e);
-        }
     }
     private void processCompanionAppIoBNotificationCV(final RemoteViews cview) {
         if (cview == null) return;
@@ -212,40 +197,18 @@ public class UiBasedCollector extends NotificationListenerService {
         val texts = new ArrayList<TextView>();
         getTextViews(texts, root);
         if (debug) UserError.Log.d(TAG, "Text views: " + texts.size());
-        Double iob = null;
         try {
             for (val view : texts) {
                 val tv = (TextView) view;
                 String text = tv.getText() != null ? tv.getText().toString() : "";
                 val desc = tv.getContentDescription() != null ? tv.getContentDescription().toString() : "";
                 if (debug) UserError.Log.d(TAG, "Examining: >" + text + "< : >" + desc + "<");
-                iob = parseIoB(text);
-                if (iob != null) {
-                    break;
-                }
-            }
-
-            if (iob != null) {
-                if (debug) UserError.Log.d(TAG, "Inserting new IoB value extracted from CV: " + iob);
-                PumpStatus.setBolusIoB(iob);
             }
         } catch (Exception e) {
             UserError.Log.e(TAG, "exception in processCompanionAppIoBNotificationCV: " + e);
         }
 
         texts.clear();
-    }
-
-    Double parseIoB(final String value) {
-        for (Pattern pattern : companionAppIoBRegexes) {
-            Matcher matcher = pattern.matcher(value);
-
-            if (matcher.find()) {
-                return JoH.tolerantParseDouble(matcher.group(1));
-            }
-        }
-
-        return null;
     }
 
     @Override
@@ -431,10 +394,6 @@ public class UiBasedCollector extends NotificationListenerService {
 
     static boolean isValidMmol(final String text) {
         return text.matches("[0-9]+[.,][0-9]+");
-    }
-
-    private boolean shouldAllowTimeOffsetChange(final int mgdl) {
-        return isDifferentToLast(mgdl); // TODO do we need to rate limit this or not?
     }
 
     // note this method only checks existing stored data

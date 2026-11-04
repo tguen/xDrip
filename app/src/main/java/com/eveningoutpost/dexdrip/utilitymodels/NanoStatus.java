@@ -11,32 +11,29 @@ package com.eveningoutpost.dexdrip.utilitymodels;
  * services which have not yet been instantiated or which maintain a static singleton state
  *
  */
-
-import androidx.databinding.ObservableField;
 import android.text.SpannableString;
 import android.util.Log;
 
 import com.eveningoutpost.dexdrip.BuildConfig;
-import com.eveningoutpost.dexdrip.g5model.SensorDays;
-import com.eveningoutpost.dexdrip.GcmActivity;
 import com.eveningoutpost.dexdrip.Home;
-import com.eveningoutpost.dexdrip.models.JoH;
-import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.adapters.SpannableSerializer;
+import com.eveningoutpost.dexdrip.g5model.SensorDays;
+import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.utils.DexCollectionType;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
 
+import androidx.databinding.ObservableField;
 import lombok.Setter;
 import lombok.val;
 
 import static com.eveningoutpost.dexdrip.models.JoH.emptyString;
 
+
 public class NanoStatus {
 
     private static final String TAG = "NanoStatus";
-    private static final String LAST_COLLECTOR_STATUS_STORE = "LAST_COLLECTOR_STATUS_STORE";
     private static final String REMOTE_COLLECTOR_STATUS_STORE = "REMOTE_COLLECTOR_STATUS_STORE";
     private static final HashMap<Class<?>, Method> cache = new HashMap<>();
     private static final boolean D = false;
@@ -173,36 +170,9 @@ public class NanoStatus {
 
 
     public static void keepFollowerUpdated() {
-        keepFollowerUpdated(true);
     }
 
     public static void keepFollowerUpdated(final boolean ratelimits) {
-        keepFollowerUpdated("", 0); // legacy defaults to collector
-        keepFollowerUpdated("s-expiry", ratelimits ? 3600 : 0);
-    }
-
-    public static void keepFollowerUpdated(final String prefix, final int rateLimit) {
-        try {
-            if (Home.get_master()) {
-                UserError.Log.d(TAG, "keepfollower updated called: " + prefix + " " + rateLimit);
-                if (rateLimit == 0 || JoH.pratelimit("keep-follower-updated" + prefix, rateLimit)) {
-                    final String serialized = SpannableSerializer.serializeSpannableString(nanoStatusColor(prefix.equals("") ? "collector" : prefix));
-                    // record what was sent, not what was computed, so an update which never
-                    // went out is retried instead of being remembered as delivered
-                    if (!serialized.equals(PersistentStore.getString(LAST_COLLECTOR_STATUS_STORE + prefix))) {
-                        Inevitable.task("update-follower-to-nanostatus" + prefix, 500, () -> {
-                            if (GcmActivity.sendNanoStatusUpdate(prefix, serialized)) {
-                                PersistentStore.setString(LAST_COLLECTOR_STATUS_STORE + prefix, serialized);
-                            }
-                        });
-                    }
-                } else {
-                    UserError.Log.d(TAG, "Ratelimiting keepFollowerUpdated check on " + prefix + " @ " + rateLimit);
-                }
-            }
-        } catch (Exception e) {
-            UserError.Log.wtf(TAG, "Got exception serializing: " + e);
-        }
     }
 
     public static void setRemote(final String json) {

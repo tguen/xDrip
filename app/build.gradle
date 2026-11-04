@@ -37,7 +37,7 @@ repositories {
         url "https://jitpack.io"
     }
     flatDir {
-        dirs  project(':app').file('libs'), project(':wear').file('libs')
+        dirs  project(':app').file('libs')
     }
 }
 

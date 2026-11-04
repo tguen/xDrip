@@ -28,7 +28,6 @@ import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.Profile;
 import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.R;
-import com.eveningoutpost.dexdrip.utilitymodels.JamorhamShowcaseDrawer;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
 import com.eveningoutpost.dexdrip.utilitymodels.ShotStateStore;
 import com.eveningoutpost.dexdrip.utils.Preferences;
@@ -584,4 +583,3 @@ public class ProfileEditor extends BaseAppCompatActivity {
 
 
 }
-

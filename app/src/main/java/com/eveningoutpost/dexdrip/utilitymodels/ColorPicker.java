@@ -9,7 +9,6 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.eveningoutpost.dexdrip.Home;
-import com.eveningoutpost.dexdrip.WidgetUpdateService;
 import com.eveningoutpost.dexdrip.xdrip;
 import com.rarepebble.colorpicker.ColorPreference;
 

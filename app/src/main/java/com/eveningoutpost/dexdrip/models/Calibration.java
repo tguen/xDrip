@@ -2,9 +2,7 @@ package com.eveningoutpost.dexdrip.models;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import androidx.preference.PreferenceManager;
 import android.provider.BaseColumns;
-import androidx.annotation.NonNull;
 import android.widget.Toast;
 
 import com.activeandroid.ActiveAndroid;
@@ -13,24 +11,20 @@ import com.activeandroid.annotation.Column;
 import com.activeandroid.annotation.Table;
 import com.activeandroid.query.Delete;
 import com.activeandroid.query.Select;
-import com.eveningoutpost.dexdrip.GcmActivity;
 import com.eveningoutpost.dexdrip.Home;
 import com.eveningoutpost.dexdrip.R;
+import com.eveningoutpost.dexdrip.calibrations.CalibrationAbstract;
+import com.eveningoutpost.dexdrip.calibrations.NativeCalibrationPipe;
+import com.eveningoutpost.dexdrip.calibrations.PluggableCalibration;
 import com.eveningoutpost.dexdrip.importedlibraries.dexcom.records.CalRecord;
 import com.eveningoutpost.dexdrip.importedlibraries.dexcom.records.CalSubrecord;
 import com.eveningoutpost.dexdrip.models.UserError.Log;
 import com.eveningoutpost.dexdrip.services.Ob1G5CollectionService;
-import com.eveningoutpost.dexdrip.utilitymodels.BgSendQueue;
-import com.eveningoutpost.dexdrip.utilitymodels.CalibrationSendQueue;
 import com.eveningoutpost.dexdrip.utilitymodels.CollectionServiceStarter;
 import com.eveningoutpost.dexdrip.utilitymodels.Constants;
 import com.eveningoutpost.dexdrip.utilitymodels.Notifications;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.eveningoutpost.dexdrip.calibrations.CalibrationAbstract;
-import com.eveningoutpost.dexdrip.calibrations.NativeCalibrationPipe;
-import com.eveningoutpost.dexdrip.calibrations.PluggableCalibration;
 import com.eveningoutpost.dexdrip.utils.DexCollectionType;
-import com.eveningoutpost.dexdrip.xdrip;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.Expose;
@@ -41,8 +35,11 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
-import static com.eveningoutpost.dexdrip.models.BgReading.isDataSuitableForDoubleCalibration;
+import androidx.annotation.NonNull;
+import androidx.preference.PreferenceManager;
+
 import static com.eveningoutpost.dexdrip.calibrations.PluggableCalibration.newFingerStickData;
+import static com.eveningoutpost.dexdrip.models.BgReading.isDataSuitableForDoubleCalibration;
 import static com.eveningoutpost.dexdrip.utils.DexCollectionType.getBestCollectorHardwareName;
 
 
@@ -404,7 +401,6 @@ public class Calibration extends Model {
             JoH.clearCache();
             calculate_w_l_s();
             newFingerStickData();
-            CalibrationSendQueue.addToQueue(calibration, context);
         }
         JoH.clearCache();
         if (!Ob1G5CollectionService.usingNativeMode()) {
@@ -474,7 +470,6 @@ public class Calibration extends Model {
                     calibration.second_intercept = secondCalRecord.getIntercept();
 
                     calibration.save();
-                    CalibrationSendQueue.addToQueue(calibration, context);
                     Calibration.requestCalibrationIfRangeTooNarrow();
                     newFingerStickData();
                 }
@@ -628,10 +623,8 @@ public class Calibration extends Model {
                     }
 
                     if ((!DexCollectionType.isAlwaysNativeCal()) && (!note_only)) {
-                        BgSendQueue.handleNewBgReading(bgReading, "update", context);
                         // TODO probably should add a more fine grained prefs option in future
                         calculate_w_l_s(prefs.getBoolean("infrequent_calibration", false));
-                        CalibrationSendQueue.addToQueue(calibration, context);
                         BgReading.pushBgReadingSyncToWatch(bgReading, false);
                         if (!Ob1G5CollectionService.usingNativeMode()) {
                             adjustRecentBgReadings(adjustPast ? 30 : 2);
@@ -965,7 +958,6 @@ public class Calibration extends Model {
         estimate_raw_at_time_of_calibration = rawValue;
         save();
         calculate_w_l_s();
-        CalibrationSendQueue.addToQueue(this, context);
     }
 
     public static void requestCalibrationIfRangeTooNarrow() {
@@ -1003,24 +995,9 @@ public class Calibration extends Model {
         Calibration calibration = Calibration.last();
         if (calibration != null) {
             calibration.invalidate();
-            CalibrationSendQueue.addToQueue(calibration, xdrip.getAppContext());
             newFingerStickData();
         }
     }
-
-    public static void clearCalibrationByUUID(String uuid) {
-        final Calibration calibration = Calibration.byuuid(uuid);
-        if (calibration != null) {
-            CalibrationRequest.clearAll();
-            Log.d(TAG, "Trying to clear last calibration: " + uuid);
-            calibration.invalidate();
-            CalibrationSendQueue.addToQueue(calibration, xdrip.getAppContext());
-            newFingerStickData();
-        } else {
-            Log.d(TAG,"Could not find calibration to clear: "+uuid);
-        }
-    }
-
 
 
     public String toS() {
@@ -1053,64 +1030,7 @@ public class Calibration extends Model {
         Calibration calibration = byuuid(uuid);
         if (calibration != null) {
             calibration.invalidate();
-            CalibrationSendQueue.addToQueue(calibration, xdrip.getAppContext());
             newFingerStickData();
-            if (from_interactive) {
-                GcmActivity.clearLastCalibration(uuid);
-            }
-        }
-    }
-
-    public static void upsertFromMaster(Calibration jsonCalibration) {
-
-        if (jsonCalibration == null) {
-            Log.wtf(TAG,"Got null calibration from json");
-            return;
-        }
-        try {
-            Sensor sensor = Sensor.getByUuid(jsonCalibration.sensor_uuid);
-            if (sensor == null) {
-                Log.e(TAG, "No sensor found, ignoring cailbration " + jsonCalibration.sensor_uuid);
-                return;
-            }
-            Calibration existingCalibration = byuuid(jsonCalibration.uuid);
-            if (existingCalibration == null) {
-                Log.d(TAG, "saving new calibration record. sensor uuid =" + jsonCalibration.sensor_uuid + " calibration uuid = " + jsonCalibration.uuid);
-                jsonCalibration.sensor = sensor;
-                jsonCalibration.save();
-            } else {
-                Log.d(TAG, "updating existing calibration record: " + jsonCalibration.uuid);
-                existingCalibration.sensor = sensor;
-                existingCalibration.timestamp = jsonCalibration.timestamp;
-                existingCalibration.sensor_age_at_time_of_estimation = jsonCalibration.sensor_age_at_time_of_estimation;
-                existingCalibration.bg = jsonCalibration.bg;
-                existingCalibration.raw_value = jsonCalibration.raw_value;
-                existingCalibration.adjusted_raw_value = jsonCalibration.adjusted_raw_value;
-                existingCalibration.sensor_confidence = jsonCalibration.sensor_confidence;
-                existingCalibration.slope_confidence = jsonCalibration.slope_confidence;
-                existingCalibration.raw_timestamp = jsonCalibration.raw_timestamp;
-                existingCalibration.slope = jsonCalibration.slope;
-                existingCalibration.intercept = jsonCalibration.intercept;
-                existingCalibration.distance_from_estimate = jsonCalibration.distance_from_estimate;
-                existingCalibration.estimate_raw_at_time_of_calibration = jsonCalibration.estimate_raw_at_time_of_calibration;
-                existingCalibration.estimate_bg_at_time_of_calibration = jsonCalibration.estimate_bg_at_time_of_calibration;
-                existingCalibration.uuid = jsonCalibration.uuid;
-                existingCalibration.sensor_uuid = jsonCalibration.sensor_uuid;
-                existingCalibration.possible_bad = jsonCalibration.possible_bad;
-                existingCalibration.check_in = jsonCalibration.check_in;
-                existingCalibration.first_decay = jsonCalibration.first_decay;
-                existingCalibration.second_decay = jsonCalibration.second_decay;
-                existingCalibration.first_slope = jsonCalibration.first_slope;
-                existingCalibration.second_slope = jsonCalibration.second_slope;
-                existingCalibration.first_intercept = jsonCalibration.first_intercept;
-                existingCalibration.second_intercept = jsonCalibration.second_intercept;
-                existingCalibration.first_scale = jsonCalibration.first_scale;
-                existingCalibration.second_scale = jsonCalibration.second_scale;
-
-                existingCalibration.save();
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Could not save Calibration: " + e.toString());
         }
     }
 

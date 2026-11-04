@@ -40,31 +40,23 @@ import android.preference.PreferenceManager;
 
 import com.eveningoutpost.dexdrip.GcmActivity;
 import com.eveningoutpost.dexdrip.Home;
+import com.eveningoutpost.dexdrip.R;
 import com.eveningoutpost.dexdrip.cgm.nsfollow.utils.Anticipate;
 import com.eveningoutpost.dexdrip.importedlibraries.usbserial.util.HexDump;
 import com.eveningoutpost.dexdrip.models.ActiveBluetoothDevice;
-import com.eveningoutpost.dexdrip.models.Atom;
 import com.eveningoutpost.dexdrip.models.BgReading;
-import com.eveningoutpost.dexdrip.models.Bubble;
 import com.eveningoutpost.dexdrip.models.JoH;
-import com.eveningoutpost.dexdrip.models.LibreBluetooth;
 import com.eveningoutpost.dexdrip.models.Sensor;
-import com.eveningoutpost.dexdrip.models.Tomato;
 import com.eveningoutpost.dexdrip.models.TransmitterData;
 import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.models.UserError.Log;
-import com.eveningoutpost.dexdrip.models.blueReader;
-import com.eveningoutpost.dexdrip.R;
-import com.eveningoutpost.dexdrip.utilitymodels.Blukon;
 import com.eveningoutpost.dexdrip.utilitymodels.BridgeResponse;
 import com.eveningoutpost.dexdrip.utilitymodels.CollectionServiceStarter;
 import com.eveningoutpost.dexdrip.utilitymodels.Constants;
 import com.eveningoutpost.dexdrip.utilitymodels.ForegroundServiceStarter;
 import com.eveningoutpost.dexdrip.utilitymodels.HM10Attributes;
 import com.eveningoutpost.dexdrip.utilitymodels.Inevitable;
-import com.eveningoutpost.dexdrip.utilitymodels.PersistentStore;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.eveningoutpost.dexdrip.utilitymodels.StatusItem;
 import com.eveningoutpost.dexdrip.utilitymodels.XbridgePlus;
 import com.eveningoutpost.dexdrip.utils.BtCallBack;
 import com.eveningoutpost.dexdrip.utils.CheckBridgeBattery;
@@ -73,17 +65,21 @@ import com.eveningoutpost.dexdrip.utils.DisconnectReceiver;
 import com.eveningoutpost.dexdrip.utils.bt.ScanMeister;
 import com.eveningoutpost.dexdrip.utils.framework.WakeLockTrampoline;
 import com.eveningoutpost.dexdrip.xdrip;
-import com.google.android.gms.wearable.DataMap;
 import com.rits.cloning.Cloner;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.AbstractList;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import lombok.val;
+import no.nordicsemi.android.ble.BleManager;
+import no.nordicsemi.android.ble.data.Data;
+import no.nordicsemi.android.ble.observer.ConnectionObserver;
 
 import static android.bluetooth.BluetoothDevice.TRANSPORT_LE;
 import static android.bluetooth.BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT;
@@ -96,14 +92,6 @@ import static com.eveningoutpost.dexdrip.utilitymodels.HM10Attributes.LIBRE2_LOG
 import static com.eveningoutpost.dexdrip.utils.bt.Helper.getStatusName;
 import static com.eveningoutpost.dexdrip.xdrip.gs;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-
-import lombok.val;
-import no.nordicsemi.android.ble.BleManager;
-import no.nordicsemi.android.ble.data.Data;
-import no.nordicsemi.android.ble.observer.ConnectionObserver;
-
 
 @TargetApi(Build.VERSION_CODES.KITKAT)
 public class DexCollectionService extends Service implements BtCallBack {
@@ -115,7 +103,6 @@ public class DexCollectionService extends Service implements BtCallBack {
     private static final int STATE_DISCONNECTING = BluetoothProfile.STATE_DISCONNECTING;
     private static final int STATE_CONNECTING = BluetoothProfile.STATE_CONNECTING;
     private static final int STATE_CONNECTED = BluetoothProfile.STATE_CONNECTED;
-    private static final String PREF_DEX_COLLECTION_BONDING = "pref_dex_collection_bonding";
     private static final String PREF_DEX_COLLECTION_POLLING = "pref_dex_collection_polling";
     private static final long POLLING_PERIOD = (Constants.MINUTE_IN_MS * 5) - Constants.SECOND_IN_MS;
     // TODO different pre-connect timeout windows for different hardware
@@ -127,12 +114,10 @@ public class DexCollectionService extends Service implements BtCallBack {
     public static String lastError = null;
     public static TransmitterData last_transmitter_Data;
     //WATCH:
-    public static String lastStateWatch = "Not running";
     private static PendingIntent serviceIntent;
     private static PendingIntent serviceFailoverIntent;
     private static volatile BluetoothGatt mBluetoothGatt;
     private volatile static int mStaticState = BluetoothProfile.STATE_DISCONNECTING;
-    private static int mStaticStateWatch = 0; // default unknown
     private static byte[] immediateSend;
     private static String bondedState;
     private static int bondingTries = 0;
@@ -152,17 +137,10 @@ public class DexCollectionService extends Service implements BtCallBack {
     private static boolean static_use_rfduino_bluetooth = false;
     private static boolean static_use_polling = false;
     private static boolean static_use_blukon = false;
-    private static boolean static_use_nrf = false;
     private static String static_last_hexdump;
     private static String static_last_sent_hexdump;
-    private static TransmitterData last_transmitter_DataWatch;
-    private static int last_battery_level_watch = -1;
     private static int error133 = 0;
     private static long last_poll_sent = 0;
-    private static long retry_time_watch = 0;
-    private static long failover_time_watch = 0;
-    private static String static_last_hexdump_watch;
-    private static String static_last_sent_hexdump_watch;
     public static int MAX_BT_WDG = 20; // Bluetooth watchdog timer default (max)
     private static final UUID CCCD = UUID.fromString(HM10Attributes.CLIENT_CHARACTERISTIC_CONFIG);
     public final UUID nrfDataService = UUID.fromString(HM10Attributes.NRF_UART_SERVICE);
@@ -179,7 +157,6 @@ public class DexCollectionService extends Service implements BtCallBack {
     // Experimental support for rfduino from Tomasz Stachowicz
     private final UUID xDripDataCharacteristicSend = use_rfduino_bluetooth ? UUID.fromString(HM10Attributes.HM_TX) : UUID.fromString(HM10Attributes.HM_RX_TX);
     private final String DEFAULT_BT_PIN = getDefaultPin();
-    private final UUID blukonDataService = UUID.fromString(HM10Attributes.BLUKON_SERVICE);
     private final UUID Libre2ServiceUUID = UUID.fromString(HM10Attributes.LIBRE2_SERVICE_ID);
     public DexCollectionService dexCollectionService;
     static long lastPacketTime;
@@ -396,7 +373,7 @@ public class DexCollectionService extends Service implements BtCallBack {
                             if (status == 133) {
                                 Log.i(TAG, "Treating as disconnected due to error 133 count: " + error133);
                                 if (error133 > 3) {
-                                    Blukon.unBondIfBlukonAtInit();
+//                                    Blukon.unBondIfBlukonAtInit();
                                 }
 
                                 handleDisconnectedStateChange();
@@ -428,26 +405,9 @@ public class DexCollectionService extends Service implements BtCallBack {
             final PowerManager.WakeLock wl = JoH.getWakeLock("bluetooth-onservices", 60000);
             Log.d(TAG, "onServicesDiscovered received status: " + status);
 
-          /*  if (prefs.getBoolean(PREF_DEX_COLLECTION_BONDING, false)) {
-                if ((mDeviceAddress != null) && (device != null) && (!areWeBonded(mDeviceAddress))) {
-                    if (JoH.ratelimit("dexcollect-create-bond", 20)) {
-                        Log.d(TAG, "Attempting to create bond to: " + mDeviceAddress + " try " + bondingTries);
-                        bondingTries++;
-                        if (bondingTries > 5) {
-                            Log.w(TAG, "Bonding failing so disabling bonding feature");
-                            Home.toaststaticnext("Bonding failing so disabling bonding feature");
-                            Pref.setBoolean(PREF_DEX_COLLECTION_BONDING, false);
-                        } else {
-                            device.setPin(convertPinToBytes(DEFAULT_BT_PIN));
-                            device.createBond();
-                        }
-                    }
-                }
-            }*/
-
             final BluetoothGattService gattService = mBluetoothGatt.getService(xDripDataService);
             if (gattService == null) {
-                if (!(static_use_blukon || blueReader.isblueReader() || Tomato.isTomato()||Bubble.isBubble()||Atom.isAtom() || LibreBluetooth.isLibreBluettoh())) {
+                {
                     Log.w(TAG, "onServicesDiscovered: xdrip service " + xDripDataService + " not found"); //TODO the selection of nrf is not active at the beginning,so this error will be trown one time unneeded, mey to be optimized.
                     // TODO this should be reworked to be an efficient selector
                     listAvailableServices(mBluetoothGatt);
@@ -467,7 +427,7 @@ public class DexCollectionService extends Service implements BtCallBack {
                 if ((charaProp & BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0) {
                     mBluetoothGatt.setCharacteristicNotification(gattCharacteristic, true);
 
-                    if (!static_use_blukon) {
+//                    if (!static_use_blukon) {
                         try {
                             // TODO use CCCD?
                             final BluetoothGattDescriptor bdescriptor = gattCharacteristic.getDescriptor(UUID.fromString(HM10Attributes.CLIENT_CHARACTERISTIC_CONFIG));
@@ -478,29 +438,8 @@ public class DexCollectionService extends Service implements BtCallBack {
                         } catch (Exception e) {
                             Log.e(TAG, "Error setting notification value descriptor: " + e);
                         }
-                    }
-
-                    // Experimental support for "Transmiter PL" from Marek Macner @FPV-UAV
-                    //if (use_transmiter_pl_bluetooth) {
-                    // BluetoothGattDescriptor descriptor = gattCharacteristic.getDescriptor(UUID.fromString(HM10Attributes.CLIENT_CHARACTERISTIC_CONFIG));
-                    //   Log.i(TAG, "Transmiter Descriptor found: " + descriptor.getUuid());
-                    //   descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-                    //   mBluetoothGatt.writeDescriptor(descriptor);
-                    //}
-
-                    // Experimental support for rfduino from Tomasz Stachowicz
-                    if (use_rfduino_bluetooth) {
-                        //  BluetoothGattDescriptor descriptor = gattCharacteristic.getDescriptor(UUID.fromString(HM10Attributes.CLIENT_CHARACTERISTIC_CONFIG));
-                        //  Log.i(TAG, "Transmiter Descriptor found use_rfduino_bluetooth: " + descriptor.getUuid());
-                        //  descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-                        //  mBluetoothGatt.writeDescriptor(descriptor);
-                        Log.w(TAG, "onServicesDiscovered: use_rfduino_bluetooth send characteristic " + xDripDataCharacteristicSend + " found");
-                        mCharacteristicSend = gattService.getCharacteristic(xDripDataCharacteristicSend);
-                    } else {
-                        mCharacteristicSend = mCharacteristic;
-                    }
-
-
+//                    }
+	                mCharacteristicSend = mCharacteristic;
                 } else {
                     Log.w(TAG, "onServicesDiscovered: characteristic " + xDripDataCharacteristic + " not found");
                 }
@@ -517,7 +456,7 @@ public class DexCollectionService extends Service implements BtCallBack {
                     Log.d(TAG, "onServicesDiscovered: returning due to null nrf characteristic");
                     return;
                 } else {
-                    static_use_nrf = true;
+//                    static_use_nrf = true;
                     mCharacteristic = nrfGattCharacteristic;
                     final int charaProp = nrfGattCharacteristic.getProperties();
                     if ((charaProp | BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0) {
@@ -540,147 +479,7 @@ public class DexCollectionService extends Service implements BtCallBack {
                         JoH.releaseWakeLock(wl);
                         return;
                     }
-                    if (blueReader.isblueReader()) {
-                        status("Enabled blueReader");
-                        Log.d(TAG, "blueReader initialized and Version requested");
-                        sendBtMessage(blueReader.initialize());
-                    } else if (Tomato.isTomato()) {
-                        status("Enabled tomato");
-                        Log.d(TAG, "Queueing Tomato initialization..");
-                        Inevitable.task("initialize-tomato", 4000, new Runnable() {
-                            @Override
-                            public void run() {
-                                final List<ByteBuffer> buffers = Tomato.initialize();
-                                for (ByteBuffer buffer : buffers) {
-                                    sendBtMessage(buffer);
-                                    JoH.threadSleep(150);
-                                }
-                                Log.d(TAG, "tomato initialized and data requested");
-                            }
-                        });
-
-                        servicesDiscovered = DISCOVERED.NULL; // reset this state
-                    }else if (Bubble.isBubble()) {
-                        status("Enabled bubble");
-                        Log.d(TAG, "Queueing bubble initialization..");
-                        Inevitable.task("initialize-bubble", 4000, new Runnable() {
-                            @Override
-                            public void run() {
-                                final List<ByteBuffer> buffers = Bubble.initialize();
-                                for (ByteBuffer buffer : buffers) {
-                                    sendBtMessage(buffer);
-                                    JoH.threadSleep(150);
-                                }
-                                Log.d(TAG, "bubble initialized and data requested");
-                            }
-                        });
-
-                        servicesDiscovered = DISCOVERED.NULL; // reset this state
-                    }else if (Atom.isAtom()) {
-                        status("Enabled atom");
-                        Log.d(TAG, "Queueing atom initialization..");
-                        Inevitable.task("initialize-atom", 4000, new Runnable() {
-                            @Override
-                            public void run() {
-                                final List<ByteBuffer> buffers = Atom.initialize();
-                                for (ByteBuffer buffer : buffers) {
-                                    sendBtMessage(buffer);
-                                    JoH.threadSleep(150);
-                                }
-                                Log.d(TAG, "atom initialized and data requested");
-                            }
-                        });
-
-                        servicesDiscovered = DISCOVERED.NULL; // reset this state
-                    }
                 }
-            }
-
-            // TODO make these detection sections a generic method where only one can match
-
-            // BLUKON
-            final BluetoothGattService blukonService = mBluetoothGatt.getService(blukonDataService);
-            if (blukonService != null) {
-                Log.i(TAG, "Found " + getString(R.string.blukon) + " device");
-                mCharacteristic = blukonService.getCharacteristic(UUID.fromString(HM10Attributes.BLUKON_UART_RX));
-                if (mCharacteristic == null) {
-                    Log.w(TAG, "onServicesDiscovered: blukon characteristic " + mCharacteristic + " not found");
-                    // WHAT TO DO HERE?
-                    JoH.releaseWakeLock(wl);
-                    return;
-                }
-
-                try {
-                    final int charaProp = mCharacteristic.getProperties();
-                    if ((charaProp & BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0) {
-                        UserError.Log.d(TAG, "Setting notification on characteristic: " + mCharacteristic.getUuid() + " charaprop: " + charaProp);
-                        final boolean result = mBluetoothGatt.setCharacteristicNotification(mCharacteristic, true);
-                        if (!result)
-                            UserError.Log.d(TAG, "Failed setting notification on blukon characteristic! " + mCharacteristic.getUuid());
-                    } else {
-                        Log.e(TAG, "Blukon characteristic doesn't seem to allow notify - this is very unusual");
-                    }
-                } catch (Exception e) {
-                    Log.e(TAG, " Exception during notification preparation " + e);
-                }
-
-             /*   // TODO move this to a function for generic use
-                try {
-                    final BluetoothGattDescriptor bdescriptor = mCharacteristic.getDescriptor(UUID.fromString(HM10Attributes.CLIENT_CHARACTERISTIC_CONFIG));
-                    Log.i(TAG, "Blukon Bluetooth Notification Descriptor found: " + bdescriptor.getUuid());
-                    descriptor_time = JoH.tsl();
-                    bdescriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-                    mBluetoothGatt.writeDescriptor(bdescriptor);
-                } catch (Exception e) {
-                    Log.e(TAG, "Error creating notification value descriptor: " + e);
-                }
-*/
-                mCharacteristicSend = blukonService.getCharacteristic(UUID.fromString(HM10Attributes.BLUKON_UART_TX));
-                if (mCharacteristicSend == null) {
-                    Log.w(TAG, "onServicesDiscovered: blukon send characteristic " + mCharacteristicSend + " not found");
-                    JoH.releaseWakeLock(wl);
-                    return;
-                }
-                status("Enabled " + getString(R.string.blukon));
-                static_use_blukon = true; // doesn't ever get unset
-                Blukon.initialize();
-
-            }
-
-            // libre2 device
-            Log.i(TAG, "Looking for libre2 device");
-            final BluetoothGattService Libre2Service = mBluetoothGatt.getService(Libre2ServiceUUID);
-            if (Libre2Service != null) {
-                Log.i(TAG, "Found libre2 device");
-                mCharacteristic = Libre2Service.getCharacteristic(UUID.fromString(LIBRE2_DATA_CHARACTERISTIC));
-                if (mCharacteristic == null) {
-                    Log.w(TAG, "onServicesDiscovered: libre2 characteristic  not found");
-                    JoH.releaseWakeLock(wl);
-                    return;
-                }
-
-                try {
-                    final int charaProp = mCharacteristic.getProperties();
-                    if ((charaProp & BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0) {
-                        UserError.Log.d(TAG, "Setting notification on characteristic: " + mCharacteristic.getUuid() + " charaprop: " + charaProp);
-                        final boolean result = mBluetoothGatt.setCharacteristicNotification(mCharacteristic, true);
-                        if (!result)
-                            UserError.Log.d(TAG, "Failed setting notification on libre2 characteristic! " + mCharacteristic.getUuid());
-                    } else {
-                        Log.e(TAG, "Libre2 characteristic doesn't seem to allow notify - this is very unusual");
-                    }
-                } catch (Exception e) {
-                    Log.e(TAG, "Libre2 Exception during notification preparation " + e);
-                }
-
-
-                mCharacteristicSend = Libre2Service.getCharacteristic(UUID.fromString(LIBRE2_LOGIN_CHARACTERISTIC));
-                if (mCharacteristicSend == null) {
-                    Log.w(TAG, "onServicesDiscovered: Libre2 login characteristic not found");
-                    JoH.releaseWakeLock(wl);
-                    return;
-                }
-                libreFirstSend();
             }
 
             // TODO is this duplicated in some situations?
@@ -694,7 +493,7 @@ public class DexCollectionService extends Service implements BtCallBack {
                         descriptor_time = tsl();
                         if (!mBluetoothGatt.writeDescriptor(descriptor)) {
                             Log.d(TAG, "Failed to write descriptor!");
-                            unBondBlucon();
+//                            unBondBlucon();
                         } else {
                             Inevitable.task("dex_check_descriptor_write", 2000, new Runnable() {
                                 @Override
@@ -714,9 +513,9 @@ public class DexCollectionService extends Service implements BtCallBack {
                                             }
 
                                         } else {
-                                            if (unBondBlucon()) {
-                                                descriptor_callback_failures = 0;
-                                            }
+//                                            if (unBondBlucon()) {
+//                                                descriptor_callback_failures = 0;
+//                                            }
                                         }
                                     }
 
@@ -726,13 +525,6 @@ public class DexCollectionService extends Service implements BtCallBack {
                     }
                 } catch (NullPointerException e) {
                     Log.e(TAG, "Got null pointer trying to set CCCD descriptor");
-                    if (static_use_blukon || Blukon.expectingBlukonDevice()) {
-                        // TODO applicable for other devices?
-                        if (JoH.ratelimit("null-ccd-retry", 300)) {
-                            Log.d(TAG, "Refresh result state close: " + JoH.refreshDeviceCache(TAG, mBluetoothGatt));
-                            setRetryTimer();
-                        }
-                    }
                 }
             });
 
@@ -848,19 +640,8 @@ public class DexCollectionService extends Service implements BtCallBack {
         }
     };
 
-    private void libreFirstSend() {
-        status("Enabled " + getString(R.string.libre)); //??? change to libre2
-        byte[] reply = LibreBluetooth.initialize();
-        if (reply != null) {
-            sendBtMessage(reply);
-        } else {
-            Log.e(TAG, "Not sending, No bluetooth enable buffer.");
-        }
-    }
-
     private static String getDefaultPin() {
-        final String bk_pin = Blukon.getPin();
-        return bk_pin != null ? bk_pin : HM10Attributes.HM_DEFAULT_BT_PIN;
+        return HM10Attributes.HM_DEFAULT_BT_PIN;
     }
 
     @SuppressLint("ObsoleteSdkInt")
@@ -868,16 +649,13 @@ public class DexCollectionService extends Service implements BtCallBack {
         if (android.os.Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR2) return false;
         final boolean result = (DexCollectionType.hasXbridgeWixel() || DexCollectionType.hasBtWixel())
                 && ((!Home.get_forced_wear() && !JoH.areWeRunningOnAndroidWear())
-                || PersistentStore.getBoolean(CollectionServiceStarter.pref_run_wear_collector));
+        );
         if (d) Log.d(TAG, "shouldServiceRun() returning: " + result);
         return result;
     }
 
     // remember needs proguard exclusion due to access by reflection
     public static boolean isCollecting() {
-        if (static_use_blukon) {
-            return Blukon.isCollecting();
-        }
         return msSince(lastPacketTime) < (Constants.MINUTE_IN_MS * 5);
     }
 
@@ -930,256 +708,8 @@ public class DexCollectionService extends Service implements BtCallBack {
         return lastState.equals("Not Running") || lastState.startsWith("Stopping", 0) ? false : true;
     }
 
-    public static DataMap getWatchStatus() {
-        DataMap dataMap = new DataMap();
-        dataMap.putString("lastState", lastState);
-        if (last_transmitter_Data != null)
-            dataMap.putLong("timestamp", last_transmitter_Data.timestamp);
-        dataMap.putInt("mStaticState", mStaticState);
-        dataMap.putInt("last_battery_level", last_battery_level);
-        dataMap.putLong("retry_time", retry_time);
-        dataMap.putLong("failover_time", failover_time);
-        dataMap.putString("static_last_hexdump", static_last_hexdump);
-        dataMap.putString("static_last_sent_hexdump", static_last_sent_hexdump);
-        return dataMap;
-    }
-
-    public static void setWatchStatus(DataMap dataMap) {
-        lastStateWatch = dataMap.getString("lastState", "");
-        last_transmitter_DataWatch = new TransmitterData();
-        last_transmitter_DataWatch.timestamp = dataMap.getLong("timestamp", 0);
-        mStaticStateWatch = dataMap.getInt("mStaticState", 0);
-        last_battery_level_watch = dataMap.getInt("last_battery_level", -1);
-        retry_time_watch = dataMap.getLong("retry_time", 0);
-        failover_time_watch = dataMap.getLong("failover_time", 0);
-        static_last_hexdump_watch = dataMap.getString("static_last_hexdump", "");
-        static_last_sent_hexdump_watch = dataMap.getString("static_last_sent_hexdump", "");
-    }
-
     public static String getBestLimitterHardwareName() {
-        if (static_use_nrf && blueReader.isblueReader()) {
-            return "BlueReader";
-        } else if (static_use_nrf && Tomato.isTomato()) {
-            return xdrip.getAppContext().getString(R.string.tomato);
-        } else if (static_use_nrf && Bubble.isBubble()) {
-            return xdrip.getAppContext().getString(R.string.bubble);
-        }else if (static_use_nrf && Atom.isAtom()) {
-            return xdrip.getAppContext().getString(R.string.atom);
-        } else if (static_use_blukon) {
-            return xdrip.getAppContext().getString(R.string.blukon);
-        } else if (static_use_transmiter_pl_bluetooth) {
-            return "Transmiter PL";
-        } else if (static_use_rfduino_bluetooth) {
-            return "Rfduino";
-        } else return LIMITTER_NAME;
-    }
-
-    // data for MegaStatus
-    public static List<StatusItem> megaStatus() {
-        final List<StatusItem> l = new ArrayList<>();
-
-        final boolean forced_wear = Home.get_forced_wear();
-
-        l.add(new StatusItem("Phone Service State", lastState + (forced_wear ? " (Watch Forced)" : "")));
-
-        if (lastError != null) {
-            l.add(new StatusItem("Last Error", lastError, StatusItem.Highlight.NOTICE, "long-press", () -> lastError = null));
-        }
-
-        l.add(new StatusItem("Bluetooth Device", JoH.ucFirst(getStateStr(mStaticState))));
-
-        if (device != null) {
-            l.add(new StatusItem("Device Mac Address", device.getAddress()));
-        }
-
-        if (Home.get_engineering_mode()) {
-            l.add(new StatusItem("Active device connected", String.valueOf(ActiveBluetoothDevice.is_connected())));
-            l.add(new StatusItem("Bluetooth GATT", String.valueOf(mBluetoothGatt)));
-
-            String hint = "";
-            if (mStatus == 133) {
-                hint = " (restart device?)";
-            }
-
-            l.add(new StatusItem("Last status", String.valueOf(mStatus) + hint));
-
-            BluetoothManager myBluetoothManager = (BluetoothManager) xdrip.getAppContext().getSystemService(Context.BLUETOOTH_SERVICE);
-
-            if (myBluetoothManager != null) {
-                for (BluetoothDevice bluetoothDevice : myBluetoothManager.getConnectedDevices(BluetoothProfile.GATT)) {
-                    l.add(new StatusItem("GATT device connected", bluetoothDevice.getAddress()));
-                }
-            }
-        }
-
-        if (mStaticState == STATE_CONNECTING) {
-            final long connecting_ms = msSince(last_connect_request);
-            l.add(new StatusItem("Connecting for", JoH.niceTimeScalar(connecting_ms)));
-        }
-
-        if (static_use_polling) {
-            l.add(new StatusItem("Polling mode", ((last_poll_sent > 0) ? "Last poll: " + JoH.niceTimeSince(last_poll_sent) + " ago" : "Enabled")));
-        }
-
-        if (static_use_transmiter_pl_bluetooth) {
-            l.add(new StatusItem("Hardware", "Transmiter PL"));
-        }
-
-        if (static_use_rfduino_bluetooth) {
-            l.add(new StatusItem("Hardware", "Rfduino"));
-        }
-
-        if (static_use_blukon) {
-            l.add(new StatusItem("Hardware", xdrip.getAppContext().getString(R.string.blukon)));
-        }
-
-        if (static_use_nrf && blueReader.isblueReader()) {
-            l.add(new StatusItem("Hardware", "BlueReader"));
-        }
-
-        if (static_use_nrf && Tomato.isTomato()) {
-            l.add(new StatusItem("Hardware", xdrip.getAppContext().getString(R.string.tomato)));
-        }
-
-        // TODO add LimiTTer info
-
-        if (last_transmitter_Data != null) {
-            l.add(new StatusItem("Glucose data from", JoH.niceTimeSince(last_transmitter_Data.timestamp) + " ago"));
-        }
-        if (last_battery_level > -1) {
-            l.add(new StatusItem("Battery level", last_battery_level));
-        }
-
-        if (Pref.getBooleanDefaultFalse(PREF_DEX_COLLECTION_BONDING)) {
-            if (bondedState != null) {
-                l.add(new StatusItem("Bluetooth Pairing", (bondedState.length() > 0) ? "Bonded" : "Not bonded" + (bondingTries > 1 ? " (" + bondingTries + ")" : ""), (bondedState.length() > 0) ? StatusItem.Highlight.GOOD : StatusItem.Highlight.NOTICE, "long-press",
-                        new Runnable() {
-                            @Override
-                            public void run() {
-                                Pref.setBoolean(PREF_DEX_COLLECTION_BONDING, false);
-                                if (bondedState.length() > 0) {
-                                    JoH.static_toast_long("If you want to unbond use Android bluetooth system settings to Forget device");
-                                    bondedState = null;
-                                }
-                                new Thread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        CollectionServiceStarter.restartCollectionService(xdrip.getAppContext());
-                                    }
-                                }
-                                ).start();
-                            }
-                        }));
-            }
-        } else {
-            l.add(new StatusItem("Bluetooth Pairing", "Disabled, tap to enable", StatusItem.Highlight.NORMAL, "long-press",
-                    new Runnable() {
-                        @Override
-                        public void run() {
-                            Pref.setBoolean(PREF_DEX_COLLECTION_BONDING, true);
-                            JoH.static_toast_long("This probably only works on HM10/HM11 and blucon devices at the moment and takes a minute");
-                            new Thread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    CollectionServiceStarter.restartCollectionService(xdrip.getAppContext());
-                                }
-                            }
-                            ).start();
-                        }
-                    }));
-        }
-        if (max_wakeup_jitter > 2000) {
-            l.add(new StatusItem("Slowest wake up", JoH.niceTimeScalar(max_wakeup_jitter) + " late", max_wakeup_jitter > 61000 ? StatusItem.Highlight.CRITICAL : StatusItem.Highlight.NORMAL));
-        }
-        if (JoH.buggy_samsung) {
-            l.add(new StatusItem("Buggy handset", "Using workaround", max_wakeup_jitter < TOLERABLE_JITTER ? StatusItem.Highlight.GOOD : StatusItem.Highlight.BAD));
-        }
-        if (retry_time > 0)
-            l.add(new StatusItem("Next Retry", JoH.niceTimeTill(retry_time), JoH.msTill(retry_time) < -2 ? StatusItem.Highlight.CRITICAL : StatusItem.Highlight.NORMAL));
-        if (failover_time > 0)
-            l.add(new StatusItem("Next Wake up", JoH.niceTimeTill(failover_time), JoH.msTill(failover_time) < -2 ? StatusItem.Highlight.CRITICAL : StatusItem.Highlight.NORMAL));
-
-        if (Home.get_engineering_mode() && DexCollectionType.hasLibre()) {
-            l.add(new StatusItem("Request Data", "Test for xBridgePlus protocol", immediateSend == null ? StatusItem.Highlight.NORMAL : StatusItem.Highlight.NOTICE, "long-press", new Runnable() {
-                @Override
-                public void run() {
-                    immediateSend = XbridgePlus.sendDataRequestPacket();
-                    CollectionServiceStarter.restartCollectionService(xdrip.getAppContext()); // TODO quicker/cleaner restart
-                }
-            }));
-        }
-
-        if (Home.get_engineering_mode() && (static_last_hexdump != null)) {
-            l.add(new StatusItem("Received Data", filterHexdump(static_last_hexdump)));
-        }
-        if (Home.get_engineering_mode() && (static_last_sent_hexdump != null)) {
-            l.add(new StatusItem("Sent Data", filterHexdump(static_last_sent_hexdump)));
-        }
-
-        //WATCH
-        if (forced_wear) {
-            l.add(new StatusItem());
-            l.add(new StatusItem("Watch Service State", lastStateWatch));
-            l.add(new StatusItem("Bridge Device", JoH.ucFirst(getStateStr(mStaticStateWatch))));
-
-            // TODO add LimiTTer info
-
-            if ((last_transmitter_DataWatch != null) && (last_transmitter_DataWatch.timestamp > 0)) {
-                l.add(new StatusItem("Watch Glucose data", JoH.niceTimeSince(last_transmitter_DataWatch.timestamp) + " ago"));
-            }
-            if (last_battery_level_watch > -1) {
-                l.add(new StatusItem("Bridge Battery level", last_battery_level_watch));
-            }
-
-            if (retry_time_watch > 0)
-                l.add(new StatusItem("Watch Next Retry", JoH.niceTimeTill(retry_time_watch)));
-            if (failover_time_watch > 0)
-                l.add(new StatusItem("Watch Wake up", JoH.niceTimeTill(failover_time_watch)));
-
-            if (Home.get_engineering_mode() && (static_last_hexdump_watch != null) && (static_last_hexdump_watch.length() > 0)) {
-                l.add(new StatusItem("Watch Received Data", filterHexdump(static_last_hexdump_watch)));
-            }
-            if (Home.get_engineering_mode() && (static_last_sent_hexdump_watch != null) && (static_last_sent_hexdump_watch.length() > 0)) {
-                l.add(new StatusItem("Watch Sent Data", filterHexdump(static_last_sent_hexdump_watch)));
-            }
-        }
-
-        // blueReader
-        if (blueReader.isblueReader()) {
-            l.add(new StatusItem("blueReader Battery", Pref.getInt("bridge_battery", 0) + "%"));
-            l.add(new StatusItem("blueReader rest days", PersistentStore.getString("bridge_battery_days")));
-            l.add(new StatusItem("blueReader Firmware", PersistentStore.getString("blueReaderFirmware")));
-        }
-
-        if (Tomato.isTomato()) {
-            l.add(new StatusItem("Tomato Battery", PersistentStore.getString("Tomatobattery")));
-            l.add(new StatusItem("Tomato Hardware", PersistentStore.getString("TomatoHArdware")));
-            l.add(new StatusItem("Tomato Firmware", PersistentStore.getString("TomatoFirmware")));
-            l.add(new StatusItem("Libre SN", PersistentStore.getString("LibreSN")));
-        }
-        if (Bubble.isBubble()) {
-            l.add(new StatusItem("Bubble Battery", PersistentStore.getString("Bubblebattery")));
-            l.add(new StatusItem("Bubble Hardware", PersistentStore.getString("BubbleHArdware")));
-            l.add(new StatusItem("Bubble Firmware", PersistentStore.getString("BubbleFirmware")));
-            l.add(new StatusItem("Libre SN", PersistentStore.getString("LibreSN")));
-        }
-        if (Atom.isAtom()) {
-            l.add(new StatusItem("Atom Battery", PersistentStore.getString("Atombattery")));
-            l.add(new StatusItem("Atom Hardware", PersistentStore.getString("AtomHArdware")));
-            l.add(new StatusItem("Atom Firmware", PersistentStore.getString("AtomFirmware")));
-            l.add(new StatusItem("Libre SN", PersistentStore.getString("LibreSN")));
-        }
-        if (static_use_blukon) {
-            l.add(new StatusItem("Battery", Pref.getInt("bridge_battery", 0) + "%"));
-            l.add(new StatusItem("Sensor age", JoH.qs(((double) Pref.getInt("nfc_sensor_age", 0)) / 1440, 1) + "d"));
-            l.add(new StatusItem("Libre SN", PersistentStore.getString("LibreSN")));
-        }
-
-        return l;
-    }
-
-    private static String filterHexdump(String hex) {
-        return hex.replaceAll("[ ]+", " ").replaceAll("\n0x0000[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f] ", "\n").replaceFirst("^\n", "");
+        return LIMITTER_NAME;
     }
 
     @Override
@@ -1945,13 +1475,7 @@ public class DexCollectionService extends Service implements BtCallBack {
     }
 
     private boolean unBondBlucon() {
-        if (static_use_blukon && Pref.getBooleanDefaultFalse("blukon_unbonding")) {
-            Log.d(TAG, "Attempting to unbond blukon");
-            JoH.unBond(mDeviceAddress);
-            return true;
-        } else {
-            return false;
-        }
+	    return false;
     }
 
     private synchronized void processNewTransmitterData(TransmitterData transmitterData, long timestamp) {
@@ -2143,7 +1667,7 @@ public class DexCollectionService extends Service implements BtCallBack {
         @Override
         public void onDeviceReady(@NonNull BluetoothDevice device) {
             Log.d(TAG, "onDeviceReady: " + device.getAddress());
-            libreFirstSend();
+//            libreFirstSend();
         }
 
         @Override

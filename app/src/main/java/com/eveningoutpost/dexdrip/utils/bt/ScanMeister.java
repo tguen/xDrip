@@ -68,15 +68,6 @@ public class ScanMeister {
 
     // TODO Log errors when location disabled etc
 
-    public ScanMeister(String address) {
-        this.address = address;
-    }
-
-    public ScanMeister setScanSeconds(int seconds) {
-        this.scanSeconds = seconds;
-        return this;
-    }
-
     {
         RxJavaPlugins.setErrorHandler(e -> UserError.Log.d(TAG, "RxJavaError: " + e.getMessage()));
     }
@@ -104,16 +95,6 @@ public class ScanMeister {
         return this;
     }
 
-    public ScanMeister unlimitedMatches() {
-        this.stopOnFirstMatch = false;
-        return this;
-    }
-
-    public ScanMeister allowWide() {
-        this.wideSearch = true;
-        return this;
-    }
-
     public ScanMeister legacyNoFilterWorkaround() {
         this.legacyNoFilterWorkaround = true;
         return this;
@@ -122,12 +103,6 @@ public class ScanMeister {
     // Callback boiler plate v1 callbacks
     public ScanMeister addCallBack(BtCallBack callback, String name) {
         callbacks.put(name, callback);
-        return this;
-    }
-
-    // Callback boiler plate v2 callbacks
-    public ScanMeister addCallBack2(BtCallBack2 callback, String name) {
-        callbacks2.put(name, callback);
         return this;
     }
 

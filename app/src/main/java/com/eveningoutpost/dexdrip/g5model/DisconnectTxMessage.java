@@ -2,7 +2,6 @@ package com.eveningoutpost.dexdrip.g5model;
 
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.UserError;
-import com.eveningoutpost.dexdrip.services.G5CollectionService;
 
 import java.nio.ByteBuffer;
 
@@ -20,4 +19,3 @@ public class DisconnectTxMessage extends BaseMessage {
         UserError.Log.d(TAG,"DisconnectTX: "+ JoH.bytesToHex(byteSequence));
     }
 }
-

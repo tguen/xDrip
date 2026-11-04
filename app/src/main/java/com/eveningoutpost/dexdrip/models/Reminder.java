@@ -11,7 +11,6 @@ import com.activeandroid.util.SQLiteUtils;
 import com.eveningoutpost.dexdrip.Reminders;
 import com.eveningoutpost.dexdrip.utilitymodels.Constants;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.eveningoutpost.dexdrip.utils.HomeWifi;
 import com.google.gson.annotations.Expose;
 
 import java.util.Calendar;

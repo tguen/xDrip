@@ -1,19 +1,13 @@
 package com.eveningoutpost.dexdrip.models;
 
-import static com.eveningoutpost.dexdrip.models.JoH.tsl;
-
 import android.provider.BaseColumns;
 
 import com.activeandroid.Model;
 import com.activeandroid.annotation.Column;
 import com.activeandroid.annotation.Table;
-import com.activeandroid.query.Delete;
 import com.activeandroid.query.Select;
-import com.eveningoutpost.dexdrip.GcmActivity;
-import com.eveningoutpost.dexdrip.Home;
 import com.eveningoutpost.dexdrip.models.UserError.Log;
 import com.eveningoutpost.dexdrip.utilitymodels.Constants;
-import com.eveningoutpost.dexdrip.utilitymodels.SensorSendQueue;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.Expose;
@@ -23,12 +17,14 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.Date;
-import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
 import lombok.Setter;
 import lombok.val;
+
+import static com.eveningoutpost.dexdrip.models.JoH.tsl;
+
 
 /**
  * Created by Emma Black on 10/29/14.
@@ -79,7 +75,7 @@ public class Sensor extends Model {
         }
         sensor.uuid = uuid;
         sensor.save();
-        SensorSendQueue.addToQueue(sensor);
+//        SensorSendQueue.addToQueue(sensor);
         Log.d("SENSOR MODEL:", sensor.toString());
         return sensor;
     }
@@ -121,7 +117,7 @@ public class Sensor extends Model {
         if (currentSensor() != null) {
             UserError.Log.wtf(TAG, "Failed to update sensor stop in database");
         }
-        SensorSendQueue.addToQueue(sensor);
+//        SensorSendQueue.addToQueue(sensor);
         JoH.clearCache();
 
     }
@@ -173,30 +169,6 @@ public class Sensor extends Model {
         return currentSensor() != null;
     }
 
-    public static Sensor getByTimestamp(long started_at) {
-        return new Select()
-                .from(Sensor.class)
-                .where("started_at = ?", started_at)
-                .executeSingle();
-    }
-
-    public static Sensor restartSensor(String sensorUuid) {
-        Sensor sensor = getByUuid(sensorUuid);
-
-        sensor.stopped_at = 0;
-        UserError.Log.ueh("SENSOR", "Sensor restarted");
-        sensor.save();
-
-        Sensor currentSensor = currentSensor();
-        if (currentSensor != null) {
-            UserError.Log.wtf(TAG, "Failed to update sensor restart in database");
-        }
-        SensorSendQueue.addToQueue(currentSensor);
-        JoH.clearCache();
-
-        return currentSensor;
-    }
-
     public static Sensor getByUuid(String xDrip_sensor_uuid) {
         if(xDrip_sensor_uuid == null) {
             Log.e("SENSOR", "xDrip_sensor_uuid is null");
@@ -208,16 +180,6 @@ public class Sensor extends Model {
                 .from(Sensor.class)
                 .where("uuid = ?", xDrip_sensor_uuid)
                 .executeSingle();
-    }
-
-    public static void updateBatteryLevel(int sensorBatteryLevel, boolean from_sync) {
-        Sensor sensor = Sensor.currentSensor();
-        if (sensor == null)
-        {
-            Log.d("Sensor","Cant sync battery level from master as sensor data is null");
-            return;
-        }
-        updateBatteryLevel(sensor, sensorBatteryLevel, from_sync);
     }
 
     public static void updateBatteryLevel(Sensor sensor, int sensorBatteryLevel) {
@@ -242,10 +204,6 @@ public class Sensor extends Model {
             return;
         }
         sensor.save();
-        SensorSendQueue.addToQueue(sensor);
-        if ((!from_sync) && (Home.get_master())) {
-            GcmActivity.sendSensorBattery(sensor.latest_battery_level);
-        }
     }
 
     public static void updateSensorLocation(String sensor_location) {
@@ -256,37 +214,6 @@ public class Sensor extends Model {
         }
         sensor.sensor_location = sensor_location;
         sensor.save();
-    }
-    
-    public static void upsertFromMaster(Sensor jsonSensor) {
-        if (jsonSensor == null) {
-            Log.wtf(TAG,"Got null sensor from json");
-            return;
-        }
-        try {
-            Sensor existingSensor = getByUuid(jsonSensor.uuid);
-            if (existingSensor == null) {
-                Log.d(TAG, "saving new sensor record.");
-                jsonSensor.save();
-            } else {
-                Log.d(TAG, "updating existing sensor record.");
-                existingSensor.started_at = jsonSensor.started_at;
-                existingSensor.stopped_at = jsonSensor.stopped_at;
-                existingSensor.latest_battery_level = jsonSensor.latest_battery_level;
-                existingSensor.sensor_location = jsonSensor.sensor_location;
-                existingSensor.save();
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Could not save Sensor: " + e.toString());
-        }
-    }
-
-    public static void deleteAll() {
-        // will fail if bg readings not deleted first
-            SensorSendQueue.deleteAll();
-            new Delete()
-                    .from(Sensor.class)
-                    .execute();
     }
 
     public String toJSON() {
@@ -332,29 +259,4 @@ public class Sensor extends Model {
         return Objects.hash(started_at, stopped_at, latest_battery_level, uuid, sensor_location);
     }
     
-    public static Sensor fromJSON(String json) {
-        if (json.length()==0) {
-            Log.d(TAG,"Empty json received in Sensor fromJson");
-            return null;
-        }
-        try {
-            Log.d(TAG, "Processing incoming json: " + json);
-           return new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create().fromJson(json,Sensor.class);
-        } catch (Exception e) {
-            Log.d(TAG, "Got exception parsing Sensor json: " + e.toString());
-            Home.toaststaticnext("Error on Sensor sync.");
-            return null;
-        }
-    }
-
-
-    public static void shutdownAllSensors() {
-        final List<Sensor> l = new Select().from(Sensor.class).execute();
-        for (final Sensor s : l) {
-            s.stopped_at = s.started_at;
-            s.save();
-            System.out.println(s.toJSON());
-        }
-    }
 }
-

@@ -9,7 +9,6 @@ import com.eveningoutpost.dexdrip.importedlibraries.dexcom.records.MeterRecord;
 import com.eveningoutpost.dexdrip.importedlibraries.dexcom.records.PageHeader;
 import com.eveningoutpost.dexdrip.importedlibraries.dexcom.records.SensorRecord;
 import com.eveningoutpost.dexdrip.services.DexShareCollectionService;
-import com.eveningoutpost.dexdrip.ShareTest;
 
 import org.w3c.dom.Element;
 

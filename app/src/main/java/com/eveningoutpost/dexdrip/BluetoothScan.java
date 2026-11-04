@@ -35,30 +35,24 @@ import com.eveningoutpost.dexdrip.models.ActiveBluetoothDevice;
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.models.UserError.Log;
-import com.eveningoutpost.dexdrip.utilitymodels.Blukon;
 import com.eveningoutpost.dexdrip.utilitymodels.CollectionServiceStarter;
 import com.eveningoutpost.dexdrip.utilitymodels.Inevitable;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.eveningoutpost.dexdrip.cgm.medtrum.Medtrum;
 import com.eveningoutpost.dexdrip.utils.AndroidBarcode;
 import com.eveningoutpost.dexdrip.utils.ListActivityWithMenu;
 import com.eveningoutpost.dexdrip.utils.LocationHelper;
-import com.eveningoutpost.dexdrip.wearintegration.WatchUpdaterService;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
-import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import lecho.lib.hellocharts.util.ChartUtils;
 
-import static com.eveningoutpost.dexdrip.Home.startWatchUpdaterService;
-import static com.eveningoutpost.dexdrip.cgm.medtrum.Medtrum.getDeviceInfoStringFromLegacy;
 import static com.eveningoutpost.dexdrip.xdrip.gs;
+
 
 @TargetApi(android.os.Build.VERSION_CODES.JELLY_BEAN_MR2)
 public class BluetoothScan extends ListActivityWithMenu {
@@ -360,7 +354,6 @@ public class BluetoothScan extends ListActivityWithMenu {
                     .executeSingle();
 
             prefs.edit().putString("last_connected_device_address", device.getAddress()).apply();
-            Blukon.clearPin();
             if (btDevice == null) {
                 ActiveBluetoothDevice newBtDevice = new ActiveBluetoothDevice();
                 newBtDevice.name = device.getName();
@@ -371,114 +364,8 @@ public class BluetoothScan extends ListActivityWithMenu {
                 btDevice.address = device.getAddress();
                 btDevice.save();
             }
-
-            startWatchUpdaterService(this, WatchUpdaterService.ACTION_SYNC_ACTIVEBTDEVICE, TAG);
         }
-
-        // automatically set or unset the option for "Transmiter" device
-        boolean using_transmiter = false;
-        // Experimental support for rfduino from Tomasz Stachowicz
-        // automatically set or unset the option for "RFDuino" device
-        boolean using_rfduino = false;
-
-        try {
-            if (device.getName().toLowerCase().contains("limitter")
-                    && (adverts.containsKey(device.getAddress())
-                    && ((new String(adverts.get(device.getAddress()), "UTF-8").contains("eLeR"))
-                    || (new String(adverts.get(device.getAddress()), "UTF-8").contains("data"))))||
-                    device.getName().toLowerCase().contains("limitterd")) {
-                String msg = "Auto-detected transmiter_pl device!";
-                Log.e(TAG, msg);
-                JoH.static_toast_long(msg);
-                using_transmiter = true;
-            }
-
-            prefs.edit().putBoolean("use_transmiter_pl_bluetooth", using_transmiter).apply();
-
-            // Experimental support for rfduino from Tomasz Stachowicz
-            if (device.getName().toLowerCase().contains("xbridge")
-                    && (adverts.containsKey(device.getAddress()) && (new String(adverts.get(device.getAddress()), "UTF-8").contains("rfduino")))) {
-                String msg = "Auto-detected rfduino device!";
-                Log.e(TAG, msg);
-                JoH.static_toast_long(msg);
-                using_rfduino = true;
-            }
-            prefs.edit().putBoolean("use_rfduino_bluetooth", using_rfduino).apply();
-
-
-            if (device.getName().toLowerCase().contains("dexcom")) {
-                if (!CollectionServiceStarter.isBTShare(getApplicationContext())) {
-                    prefs.edit().putString("dex_collection_method", "DexcomShare").apply();
-                    prefs.edit().putBoolean("calibration_notifications", false).apply();
-                }
-                if (prefs.getString("share_key", "SM00000000").compareTo("SM00000000") == 0 || prefs.getString("share_key", "SM00000000").length() < 10) {
-                    requestSerialNumber(prefs);
-                } else returnToHome();
-
-            } else if (device.getName().toLowerCase().contains("bridge")) {
-                if (!CollectionServiceStarter.isDexBridgeOrWifiandDexBridge())
-                    prefs.edit().putString("dex_collection_method", "DexbridgeWixel").apply();
-                if (prefs.getString("dex_txid", "00000").compareTo("00000") == 0 || prefs.getString("dex_txid", "00000").length() < 5) {
-                    requestTransmitterId(prefs);
-                } else returnToHome();
-
-            } else if (device.getName().toLowerCase().contains("drip")) {
-                if (!
-                        (CollectionServiceStarter.isBTWixelOrLimiTTer(getApplicationContext())
-                                || CollectionServiceStarter.isWifiandBTWixel(getApplicationContext())
-                        ) || CollectionServiceStarter.isLimitter()) {
-                    prefs.edit().putString("dex_collection_method", "BluetoothWixel").apply();
-                }
-                returnToHome();
-            } else if (device.getName().toLowerCase().contains("limitter")) {
-                if (!CollectionServiceStarter.isLimitter()) {
-                    prefs.edit().putString("dex_collection_method", "LimiTTer").apply();
-                }
-                returnToHome();
-            } else if (device.getName().toLowerCase().contains("bluereader")) {
-                if (!CollectionServiceStarter.isLimitter()) {
-                    prefs.edit().putString("dex_collection_method", "LimiTTer").apply();
-                }
-                returnToHome();
-            } else if ((device.getName().toLowerCase().contains("miaomiao"))
-                    || (device.getName().toLowerCase().startsWith("watlaa"))) {
-                if (!(CollectionServiceStarter.isLimitter() || CollectionServiceStarter.isWifiandBTLibre())) {
-                    prefs.edit().putString("dex_collection_method", "LimiTTer").apply();
-                }
-                returnToHome();
-            } else if (device.getName().toLowerCase().contains("sweetreader")) {
-                if (!CollectionServiceStarter.isLimitter()) {
-                    prefs.edit().putString("dex_collection_method", "LimiTTer").apply();
-                }
-                returnToHome();
-            } else if (device.getName().matches("^BLU[0-9][0-9][0-9][0-9][0-9].*$")) {
-
-                Blukon.doPinDialog(this,
-                        new Runnable() {
-                            @Override
-                            public void run() {
-                                if (!CollectionServiceStarter.isLimitter()) {
-                                    prefs.edit().putString("dex_collection_method", "LimiTTer").apply();
-                                }
-                                returnToHome();
-                            }
-                        });
-
-            } else if (device.getName().matches("MT")) {
-                if (Medtrum.saveSerialFromLegacy(adverts.get(device.getAddress()))) {
-                    JoH.static_toast_long("Set Medtrum serial number");
-                    CollectionServiceStarter.restartCollectionServiceBackground();
-                    returnToHome();
-                } else {
-                    JoH.static_toast_long("Failed to find Medtrum serial number");
-                }
-            } else {
-                returnToHome();
-            }
-
-        } catch (UnsupportedEncodingException | NullPointerException e) {
-            Log.d(TAG, "Got exception in listitemclick: " + Arrays.toString(e.getStackTrace()));
-        }
+        returnToHome();
     }
 
     public void returnToHome() {
@@ -634,21 +521,6 @@ public class BluetoothScan extends ListActivityWithMenu {
                 }
                 viewHolder.deviceName.setText(deviceName);
                 viewHolder.deviceAddress.setText(device.getAddress());
-                if (adverts.containsKey(device.getAddress())) {
-                    if (deviceName.equals("MT")) {
-                        final String medtrum = getDeviceInfoStringFromLegacy(adverts.get(device.getAddress()));
-                        if (medtrum != null) {
-                            viewHolder.deviceName.setText(medtrum);
-                        }
-                    }
-                    try {
-                        if (Pref.getBooleanDefaultFalse("engineering_mode")) {
-                            viewHolder.deviceAddress.append("   " + new String(adverts.get(device.getAddress()), "UTF-8"));
-                        }
-                    } catch (UnsupportedEncodingException e) {
-                        //
-                    }
-                }
             }
             return view;
         }

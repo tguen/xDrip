@@ -3,10 +3,10 @@ package com.eveningoutpost.dexdrip.g5model;
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
-import android.os.Build;
 import android.os.PowerManager;
 
 import com.eveningoutpost.dexdrip.Home;
+import com.eveningoutpost.dexdrip.R;
 import com.eveningoutpost.dexdrip.importedlibraries.usbserial.util.HexDump;
 import com.eveningoutpost.dexdrip.models.BgReading;
 import com.eveningoutpost.dexdrip.models.JoH;
@@ -14,24 +14,10 @@ import com.eveningoutpost.dexdrip.models.Prediction;
 import com.eveningoutpost.dexdrip.models.Sensor;
 import com.eveningoutpost.dexdrip.models.SensorSanity;
 import com.eveningoutpost.dexdrip.models.TransmitterData;
-import com.eveningoutpost.dexdrip.models.Treatments;
 import com.eveningoutpost.dexdrip.models.UserError;
-import com.eveningoutpost.dexdrip.R;
 import com.eveningoutpost.dexdrip.services.Ob1G5CollectionService;
-import com.eveningoutpost.dexdrip.utilitymodels.BgGraphBuilder;
-import com.eveningoutpost.dexdrip.utilitymodels.BroadcastGlucose;
-import com.eveningoutpost.dexdrip.utilitymodels.CollectionServiceStarter;
-import com.eveningoutpost.dexdrip.utilitymodels.Constants;
-import com.eveningoutpost.dexdrip.utilitymodels.Inevitable;
-import com.eveningoutpost.dexdrip.utilitymodels.NotificationChannels;
-import com.eveningoutpost.dexdrip.utilitymodels.Notifications;
-import com.eveningoutpost.dexdrip.utilitymodels.PersistentStore;
-import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.eveningoutpost.dexdrip.utilitymodels.WholeHouse;
+import com.eveningoutpost.dexdrip.utilitymodels.*;
 import com.eveningoutpost.dexdrip.utils.DexCollectionType;
-import com.eveningoutpost.dexdrip.utils.PowerStateReceiver;
-import com.eveningoutpost.dexdrip.utils.bt.Mimeograph;
-import com.eveningoutpost.dexdrip.wearintegration.WatchUpdaterService;
 import com.eveningoutpost.dexdrip.xdrip;
 import com.google.gson.reflect.TypeToken;
 import com.polidea.rxandroidble2.RxBleConnection;
@@ -71,12 +57,12 @@ import static com.eveningoutpost.dexdrip.models.JoH.bytesToHex;
 import static com.eveningoutpost.dexdrip.models.JoH.msSince;
 import static com.eveningoutpost.dexdrip.models.JoH.pratelimit;
 import static com.eveningoutpost.dexdrip.models.JoH.tsl;
+import static com.eveningoutpost.dexdrip.services.G5BaseService.ALT_LOW_BATTERY_WARNING_DEFAULT;
 import static com.eveningoutpost.dexdrip.services.G5BaseService.G5_BATTERY_FROM_MARKER;
 import static com.eveningoutpost.dexdrip.services.G5BaseService.G5_BATTERY_LEVEL_MARKER;
 import static com.eveningoutpost.dexdrip.services.G5BaseService.G5_BATTERY_MARKER;
 import static com.eveningoutpost.dexdrip.services.G5BaseService.G5_BATTERY_WEARABLE_SEND;
 import static com.eveningoutpost.dexdrip.services.G5BaseService.G5_FIRMWARE_MARKER;
-import static com.eveningoutpost.dexdrip.services.G5BaseService.ALT_LOW_BATTERY_WARNING_DEFAULT;
 import static com.eveningoutpost.dexdrip.services.G5BaseService.setG6Defaults;
 import static com.eveningoutpost.dexdrip.services.G5BaseService.unBondAndStop;
 import static com.eveningoutpost.dexdrip.services.Ob1G5CollectionService.STATE.GET_DATA;
@@ -1157,9 +1143,6 @@ public class Ob1G5StateMachine {
     }
 
     private static void streamCheck(Ob1Work item) {
-        if (item.streamable()) {
-            Inevitable.task("check wear stream", 5000, WatchUpdaterService::checkOb1Queue);
-        }
     }
 
     private static void backupCheck(Ob1Work item) {

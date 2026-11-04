@@ -129,12 +129,6 @@ public class JoH {
 
     public static boolean buggy_samsung = false; // flag set when we detect samsung devices which do not perform to android specifications
 
-    // quick string conversion with leading zero
-    public static String qs0(double x, int digits) {
-        final String qs = qs(x, digits);
-        return qs.startsWith(".") ? "0" + qs : qs;
-    }
-
     // qs = quick string conversion of double for printing
     public static String qs(double x) {
         return qs(x, 2);
@@ -207,10 +201,6 @@ public class JoH {
         return (when - tsl());
     }
 
-    public static long absMsSince(long when) {
-        return Math.abs(tsl() - when);
-    }
-
     public static String bytesToHex(byte[] bytes) {
         if (bytes == null) return "<empty>";
         final char[] hexChars = new char[bytes.length * 2];
@@ -220,30 +210,6 @@ public class JoH {
             hexChars[j * 2 + 1] = hexArray[v & 0x0F];
         }
         return new String(hexChars);
-    }
-
-    // Convert a stream of bytes to a mac format (i.e: 12:34:AB:BC:DE:FC)
-    public static String bytesToHexMacFormat(final byte[] bytes) {
-        if (bytes == null || bytes.length == 0) {
-            return "NoMac";
-        }
-        final String str = bytesToHex(bytes);
-        final StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < str.length(); i += 2) {
-            if (sb.length() > 0) {
-                sb.append(":");
-            }
-            sb.append(str.substring(i, i + 2));
-        }
-        return sb.toString();
-    }
-
-    public static byte[] reverseBytes(byte[] source) {
-        byte[] dest = new byte[source.length];
-        for (int i = 0; i < source.length; i++) {
-            dest[(source.length - i) - 1] = source[i];
-        }
-        return dest;
     }
 
     public static byte[] tolerantHexStringToByteArray(String str) {
@@ -266,42 +232,6 @@ public class JoH {
         }
     }
 
-    public static String macFormat(final String unformatted) {
-        if (unformatted == null) return null;
-        try {
-            return unformatted.replaceAll("[^a-fA-F0-9]", "").replaceAll("(.{2})", "$1:").substring(0, 17);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    public static <K, V extends Comparable<? super V>> SortedSet<Map.Entry<K, V>> mapSortedByValue(Map<K, V> map, boolean descending) {
-        final SortedSet<Map.Entry<K, V>> sortedSet = new TreeSet<>((value1, value2) -> {
-            int result = descending ? value2.getValue().compareTo(value1.getValue())
-                    : value1.getValue().compareTo(value2.getValue());
-            return result != 0 ? result : 1;
-        });
-        sortedSet.addAll(map.entrySet());
-        return sortedSet;
-    }
-
-
-    public static String compressString(String source) {
-        try {
-
-            Deflater deflater = new Deflater();
-            deflater.setInput(source.getBytes(Charset.forName("UTF-8")));
-            deflater.finish();
-
-            byte[] buf = new byte[source.length() + 256];
-            int count = deflater.deflate(buf);
-            // check count
-            deflater.end();
-            return Base64.encodeToString(buf, 0, count, Base64.NO_WRAP);
-        } catch (Exception e) {
-            return null;
-        }
-    }
 
     public static byte[] compressStringToBytes(String string) {
         try {
@@ -316,10 +246,6 @@ public class JoH {
             Log.e(TAG, "Exception in compress: " + e.toString());
             return new byte[0];
         }
-    }
-
-    public static byte[] compressBytesforPayload(byte[] bytes) {
-        return compressBytesToBytes(Bytes.concat(bytes, bchecksum(bytes)));
     }
 
     public static byte[] compressBytesToBytes(byte[] bytes) {
@@ -377,24 +303,6 @@ public class JoH {
         }
     }
 
-    public static String base64encode(String input) {
-        try {
-            return new String(Base64.encode(input.getBytes("UTF-8"), Base64.NO_WRAP), "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            Log.e(TAG, "Got unsupported encoding: " + e);
-            return "encode-error";
-        }
-    }
-
-    public static String base64decode(String input) {
-        try {
-            return new String(Base64.decode(input.getBytes("UTF-8"), Base64.NO_WRAP), "UTF-8");
-        } catch (UnsupportedEncodingException | IllegalArgumentException e) {
-            Log.e(TAG, "Got unsupported encoding: " + e);
-            return "decode-error";
-        }
-    }
-
 
     public static String base64encodeBytes(byte[] input) {
         try {
@@ -417,23 +325,6 @@ public class JoH {
 
     public static String ucFirst(String input) {
         return input.substring(0, 1).toUpperCase() + input.substring(1).toLowerCase();
-    }
-
-    public static String readLine(final InputStream stream) {
-        try {
-            val buffer = new byte[512];
-            for (int i = 0; i < buffer.length; i++) {
-                val b = stream.read();
-                if (b == -1) return null;
-                if (b == '\n') {
-                    return new String(buffer, 0, i, StandardCharsets.UTF_8);
-                }
-                buffer[i] = (byte) b;
-            }
-        } catch (IOException e) {
-            UserError.Log.e(TAG, "Error reading line: " + e);
-        }
-        return null; // too big
     }
 
     public static boolean isSamsung() {
@@ -473,22 +364,6 @@ public class JoH {
         }
     }
 
-
-    public static class DecimalKeyListener extends DigitsKeyListener {
-        private final char[] acceptedCharacters =
-                new char[]{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-                        new DecimalFormat().getDecimalFormatSymbols().getDecimalSeparator()};
-
-        @Override
-        protected char[] getAcceptedChars() {
-            return acceptedCharacters;
-        }
-
-        public int getInputType() {
-            return InputType.TYPE_CLASS_NUMBER;
-        }
-
-    }
 
     public static String backTrace() {
         return backTrace(1);
@@ -556,21 +431,9 @@ public class JoH {
     }
 
 
-    static volatile String lastLoggedMessage = "";
     public static synchronized void logMessage(final String message) {
     }
 
-
-
-    // compare stored byte array hashes
-    public static synchronized boolean differentBytes(String name, byte[] bytes) {
-        final String id = "differentBytes-" + name;
-        final String last_hash = PersistentStore.getString(id);
-        final String this_hash = CipherUtils.getSHA256(bytes);
-        if (this_hash.equals(last_hash)) return false;
-        PersistentStore.setString(id, this_hash);
-        return true;
-    }
 
     public static synchronized void clearRatelimit(final String name) {
         if (PersistentStore.getLong(name) > 0) {
@@ -629,18 +492,6 @@ public class JoH {
         return true;
     }
 
-    // return true if below rate limit
-    public static synchronized boolean ratelimitmilli(String name, int milliseconds) {
-        // check if over limit
-        if ((rateLimits.containsKey(name)) && (JoH.tsl() - rateLimits.get(name) < (milliseconds))) {
-            //Log.d(TAG, name + " rate limited: " + milliseconds + " milliseconds");
-            return false;
-        }
-        // not over limit
-        rateLimits.put(name, JoH.tsl());
-        return true;
-    }
-
     public static String getDeviceDetails() {
         final String manufacturer = Build.MANUFACTURER.replace(" ", "_");
         final String model = Build.MODEL.replace(" ", "_");
@@ -656,47 +507,6 @@ public class JoH {
         }
     }
 
-    public static boolean isOldVersion(Context context) {
-        try {
-            final Signature[] pinfo = context.getPackageManager().getPackageInfo(context.getPackageName(), PackageManager.GET_SIGNATURES).signatures;
-            if (pinfo.length == 1) {
-                final Checksum s = new CRC32();
-                final byte[] ba = pinfo[0].toByteArray();
-                s.update(ba, 0, ba.length);
-                if (s.getValue() == 2009579833) return true;
-            }
-        } catch (Exception e) {
-            Log.d(TAG, "exception: " + e);
-        }
-        return false;
-    }
-
-    public static boolean getWifiSleepPolicyNever() {
-        try {
-            int policy = Settings.Global.getInt(xdrip.getAppContext().getContentResolver(), android.provider.Settings.Global.WIFI_SLEEP_POLICY);
-            Log.d(TAG, "Current WifiPolicy: " + ((policy == Settings.Global.WIFI_SLEEP_POLICY_NEVER) ? "Never" : Integer.toString(policy)) + " " + Settings.Global.WIFI_SLEEP_POLICY_DEFAULT + " " + Settings.Global.WIFI_SLEEP_POLICY_NEVER_WHILE_PLUGGED);
-            return (policy == Settings.Global.WIFI_SLEEP_POLICY_NEVER);
-        } catch (Exception e) {
-            Log.e(TAG, "Exception during global settings policy");
-            return true; // we don't know anything
-        }
-    }
-
-    public static void benchmark_method_start() {
-        benchmarks.put(backTrace(0), ts());
-    }
-
-    public static void benchmark_method_end() {
-        String name = backTrace(0);
-        try {
-
-            double timing = ts() - benchmarks.get(name);
-            Log.i(TAG, "Benchmark: " + name + " " + timing + "ms");
-        } catch (Exception e) {
-            Log.e(TAG, "Benchmark: " + name + " no benchmark set!");
-        }
-    }
-
     public static void fixActionBar(AppCompatActivity context) {
         try {
             context.getSupportActionBar().setDisplayShowHomeEnabled(true);
@@ -705,16 +515,6 @@ public class JoH {
             Log.e(TAG, "Got exception with supportactionbar: " + e.toString());
 
         }
-    }
-
-    public static HashMap<String, Object> JsonStringtoMap(String json) {
-        return new Gson().fromJson(json, new TypeToken<HashMap<String, Object>>() {
-        }.getType());
-    }
-
-    public static List<Float> JsonStringToFloatList(String json) {
-        return new Gson().fromJson(json, new TypeToken<ArrayList<Float>>() {
-        }.getType());
     }
 
     private static Gson gson_instance;
@@ -746,10 +546,6 @@ public class JoH {
 
     public static String dateText(long timestamp) {
         return android.text.format.DateFormat.format("yyyy-MM-dd", timestamp).toString();
-    }
-
-    public static long getTimeZoneOffsetMs() {
-        return new GregorianCalendar().getTimeZone().getRawOffset();
     }
 
     public static String niceTimeSince(long t) {
@@ -837,49 +633,6 @@ public class JoH {
         return niceTimeScalar(t).replaceFirst("^1 ", "");
     }
 
-    public static String niceTimeScalarShort(long t) {
-        return niceTimeScalar(t).replaceFirst("([A-z]).*$", "$1");
-    }
-
-    public static String niceTimeScalarShortWithDecimalHours(long t) {
-        if (t > Constants.HOUR_IN_MS) {
-            return niceTimeScalar(t,1).replaceFirst("([A-z]).*$", "$1");
-        } else {
-            return niceTimeScalar(t).replaceFirst("([A-z]).*$", "$1");
-        }
-    }
-
-    public static Uri safeParseSoundUri(final String input) {
-        if (input == null || input.trim().isEmpty()) {
-            return null;
-        }
-
-        // Already safe URIs
-        if (input.startsWith("content://") ||
-                input.startsWith("android.resource://")) {
-            return Uri.parse(input);
-        }
-
-        // Handle file:// or raw file paths
-        File file;
-        if (input.startsWith("file://")) {
-            file = new File(Uri.parse(input).getPath());
-        } else {
-            file = new File(input);
-        }
-
-        // If file doesn't exist, fallback to parsing
-        if (!file.exists()) {
-            UserError.Log.wtf(TAG, "File does not exist: " + file.getAbsolutePath()+ " using fallback sound");
-            return Uri.parse("default");
-        }
-        val context = xdrip.getAppContext();
-        return FileProvider.getUriForFile(
-                context,
-                context.getPackageName() + ".provider",
-                file
-        );
-    }
 
     public static String normalizeNumber(final String str) {
         val normalized = new StringBuilder();
@@ -922,20 +675,6 @@ public class JoH {
         }
     }
 
-    public static long tolerantParseLong(final String str, final long def) {
-        if (str == null) return def;
-        try {
-            return Long.parseLong(str);
-        } catch (NumberFormatException e) {
-            return def;
-        }
-    }
-
-
-    public static String getRFC822String(long timestamp) {
-        final SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
-        return dateFormat.format(new Date(timestamp));
-    }
 
     public static PowerManager.WakeLock getWakeLock(final String name, int millis) {
         final PowerManager pm = (PowerManager) xdrip.getAppContext().getSystemService(Context.POWER_SERVICE);
@@ -994,23 +733,6 @@ public class JoH {
                 || (activeNetwork.getType() == ConnectivityManager.TYPE_BLUETOOTH));
     }
 
-    public static boolean isMobileDataOrEthernetConnected() {
-        final ConnectivityManager cm =
-                (ConnectivityManager) xdrip.getAppContext().getSystemService(Context.CONNECTIVITY_SERVICE);
-        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-        final boolean isConnected = activeNetwork != null &&
-                activeNetwork.isConnected();
-        return isConnected && ((activeNetwork.getType() == ConnectivityManager.TYPE_MOBILE) || (activeNetwork.getType() == ConnectivityManager.TYPE_ETHERNET));
-    }
-
-    public static boolean isAnyNetworkConnected() {
-        final ConnectivityManager cm =
-                (ConnectivityManager) xdrip.getAppContext().getSystemService(Context.CONNECTIVITY_SERVICE);
-        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-        return activeNetwork != null &&
-                activeNetwork.isConnected();
-    }
-
     public static boolean isScreenOn() {
         final PowerManager pm = (PowerManager) xdrip.getAppContext().getSystemService(Context.POWER_SERVICE);
 
@@ -1056,27 +778,6 @@ public class JoH {
         return null;
     }
 
-    public static boolean getWifiFuzzyMatch(String local, String remote) {
-        if ((local == null) || (remote == null) || (local.length() == 0) || (remote.length() == 0))
-            return false;
-        final int slen = Math.min(local.length(), remote.length());
-        final int llen = Math.max(local.length(), remote.length());
-        int matched = 0;
-        for (int i = 0; i < slen; i++) {
-            if (local.charAt(i) == (remote.charAt(i))) matched++;
-        }
-        boolean result = false;
-        if (matched == slen) result = true; // shorter string is substring
-        final double quota = (double) matched / (double) llen;
-        final int dmatch = llen - matched;
-        if (slen > 2) {
-            if (dmatch < 3) result = true;
-            if (quota > 0.80) result = true;
-        }
-        //Log.d(TAG, "l:" + local + " r:" + remote + " slen:" + slen + " llen:" + llen + " matched:" + matched + "  q:" + JoH.qs(quota, 2) + "  dm:" + dmatch + " RESULT: " + result);
-        return result;
-    }
-
     public static boolean runOnUiThread(Runnable theRunnable) {
         final Handler mainHandler = new Handler(xdrip.getAppContext().getMainLooper());
         return mainHandler.post(theRunnable);
@@ -1085,19 +786,6 @@ public class JoH {
     public static boolean runOnUiThreadDelayed(Runnable theRunnable, long delay) {
         final Handler mainHandler = new Handler(xdrip.getAppContext().getMainLooper());
         return mainHandler.postDelayed(theRunnable, delay);
-    }
-
-    public static void removeUiThreadRunnable(Runnable theRunnable) {
-        final Handler mainHandler = new Handler(xdrip.getAppContext().getMainLooper());
-        mainHandler.removeCallbacks(theRunnable);
-    }
-
-    public static void hardReset() {
-        try {
-            android.os.Process.killProcess(android.os.Process.myPid());
-        } catch (Exception e) {
-            // not much to do
-        }
     }
 
     public static void static_toast(final Context context, final String msg, final int length) {
@@ -1295,18 +983,6 @@ public class JoH {
         stopReleaseAndNullPlayer();
     }
 
-    public static boolean validateMacAddress(final String mac) {
-        return mac != null && mac.length() == 17 && mac.matches("([\\da-fA-F]{1,2}(?:\\:|$)){6}");
-    }
-
-    public static String urlEncode(String source) {
-        try {
-            return URLEncoder.encode(source, "UTF-8");
-        } catch (Exception e) {
-            return "encoding-exception";
-        }
-    }
-
     public static Object cloneObject(Object obj) {
         try {
             Object clone = obj.getClass().newInstance();
@@ -1321,10 +997,6 @@ public class JoH {
             System.out.println(e.getMessage());
             return null;
         }
-    }
-
-    public static void stopService(Class c) {
-        xdrip.getAppContext().stopService(new Intent(xdrip.getAppContext(), c));
     }
 
     public static void startService(Class c) {
@@ -1375,31 +1047,6 @@ public class JoH {
     }
 
 
-    public static void goFullScreen(boolean fullScreen, View decorView) {
-
-        if (fullScreen) {
-            if (Build.VERSION.SDK_INT >= 19) {
-                decorView.setSystemUiVisibility(
-                        View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                                | View.SYSTEM_UI_FLAG_FULLSCREEN
-                                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
-            } else {
-                decorView.setSystemUiVisibility(
-                        View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                                | View.SYSTEM_UI_FLAG_FULLSCREEN);
-            }
-        } else {
-            decorView.setSystemUiVisibility(0); // TODO will this need revisiting in later android vers?
-        }
-    }
-
-
     public static Bitmap screenShot(View view, String annotation) {
 
         if (view == null) {
@@ -1434,29 +1081,6 @@ public class JoH {
             return bitmapf;
         }
 
-        return bitmap;
-    }
-
-    public static Bitmap screenShot2(View view) {
-        Log.d(TAG, "Screenshot2 called: " + view.getWidth() + "," + view.getHeight());
-        view.setDrawingCacheEnabled(true);
-        view.buildDrawingCache(true);
-        final Bitmap bitmap = view.getDrawingCache(true);
-        return bitmap;
-    }
-
-    public static Bitmap getBitmapFromView(final View root, final int width, final int height) {
-        val params = new ViewGroup.LayoutParams(width, height);
-        root.setLayoutParams(params);
-        val measuredWidth = View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY);
-        val measuredHeight = View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY);
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-        val canvas = new Canvas(bitmap);
-        canvas.drawColor(Color.WHITE);
-        root.destroyDrawingCache();
-        root.measure(measuredWidth, measuredHeight);
-        root.layout(0, 0, root.getMeasuredWidth(), root.getMeasuredHeight());
-        root.draw(canvas);
         return bitmap;
     }
 
@@ -1531,13 +1155,6 @@ public class JoH {
             Log.e(TAG, "wakeUpIntent - pending intent was null!");
         }
         return wakeTime;
-    }
-
-    public static void scheduleNotification(Context context, String title, String body, int delaySeconds, int notification_id) {
-        final Intent notificationIntent = new Intent(context, Home.class).putExtra(Home.SHOW_NOTIFICATION, title).putExtra("notification_body", body).putExtra("notification_id", notification_id);
-        final PendingIntent pendingIntent = PendingIntent.getActivity(context, notification_id, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-        Log.d(TAG, "Scheduling notification: " + title + " / " + body);
-        wakeUpIntent(context, delaySeconds * 1000, pendingIntent);
     }
 
     public static void cancelNotification(int notificationId) {
@@ -1653,60 +1270,8 @@ public class JoH {
     }
 
 
-    public static void releaseOrientation(Activity activity) {
-        activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
-    }
-
-    @SuppressWarnings("deprecation")
-    @SuppressLint("NewApi")
-    public static void lockOrientation(Activity activity) {
-        Display display = activity.getWindowManager().getDefaultDisplay();
-        int rotation = display.getRotation();
-        int height;
-        int width;
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB_MR2) {
-            height = display.getHeight();
-            width = display.getWidth();
-        } else {
-            Point size = new Point();
-            display.getSize(size);
-            height = size.y;
-            width = size.x;
-        }
-        switch (rotation) {
-            case Surface.ROTATION_90:
-                if (width > height)
-                    activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-                else
-                    activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT);
-                break;
-            case Surface.ROTATION_180:
-                if (height > width)
-                    activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT);
-                else
-                    activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE);
-                break;
-            case Surface.ROTATION_270:
-                if (width > height)
-                    activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE);
-                else
-                    activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-                break;
-            default:
-                if (height > width)
-                    activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-                else
-                    activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-        }
-    }
-
     public static boolean areWeRunningOnAndroidWear() {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH
-                && xdrip.getAppContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_WATCH);
-    }
-
-    public static boolean isAirplaneModeEnabled(Context context) {
-        return Settings.Global.getInt(context.getContentResolver(), Settings.Global.AIRPLANE_MODE_ON, 0) != 0;
+        return false;
     }
 
 
@@ -1801,34 +1366,6 @@ public class JoH {
         }
         catch (Exception e) {
             Log.e(thisTAG, "An exception occured while refreshing gatt device cache: "+e);
-        }
-        return false;
-    }
-
-    public static boolean createSpecialBond(final String thisTAG, final BluetoothDevice device){
-        try {
-            Log.e(thisTAG,"Attempting special bond");
-            Class[] argTypes = new Class[] { int.class };
-            final Method method = device.getClass().getMethod("createBond", argTypes);
-            if (method != null) {
-                return (Boolean) method.invoke(device, 2);
-            } else {
-                Log.e(thisTAG,"CANNOT FIND SPECIAL BOND METHOD!!");
-            }
-        }
-        catch (Exception e) {
-            Log.e(thisTAG, "An exception occured while creating special bond: "+e);
-        }
-        return false;
-    }
-
-    public static boolean isBluetoothEnabled(final Context context) {
-        try {
-            final BluetoothManager bluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
-            final BluetoothAdapter mBluetoothAdapter = bluetoothManager.getAdapter(); // local scope only
-            return mBluetoothAdapter.isEnabled();
-        } catch (Exception e) {
-            UserError.Log.d(TAG, "isBluetoothEnabled() exception: " + e);
         }
         return false;
     }
@@ -1948,31 +1485,6 @@ public class JoH {
         UserError.Log.d(TAG, "unBond() finished");
     }
 
-    public static Field getField(final Class clazz, final String fieldName)
-            throws NoSuchFieldException {
-        try {
-            return clazz.getDeclaredField(fieldName);
-        } catch (NoSuchFieldException e) {
-            Class superClass = clazz.getSuperclass();
-            if (superClass == null) {
-                throw e;
-            } else {
-                return getField(superClass, fieldName);
-            }
-        }
-    }
-
-
-    public static Map<String, String> bundleToMap(Bundle bundle) {
-        final HashMap<String, String> map = new HashMap<>();
-        for (String key : bundle.keySet()) {
-            Object value = bundle.get(key);
-            if (value != null) {
-                map.put(key, value.toString());
-            }
-        }
-        return map;
-    }
 
     public static void threadSleep(long millis) {
         try {
@@ -1986,12 +1498,6 @@ public class JoH {
         final ByteBuffer bb = ByteBuffer.allocate(bytes.length);
         bb.put(bytes);
         return bb;
-    }
-
-    public static byte[] splitBytes(final byte[] source, final int start, final int length) {
-        final byte[] newBytes = new byte[length];
-        System.arraycopy(source, start, newBytes, 0, length);
-        return newBytes;
     }
 
     public static byte[] joinBytes(final byte[] first, final byte[] second) {
@@ -2014,21 +1520,6 @@ public class JoH {
     }
 
 
-    public static byte[] bchecksum(byte[] bytes) {
-        final long c = checksum(bytes);
-        final byte[] buf = new byte[4];
-        ByteBuffer.wrap(buf).order(ByteOrder.LITTLE_ENDIAN).putInt((int) c);
-        return buf;
-    }
-
-    public static boolean checkChecksum(byte[] bytes) {
-        if ((bytes == null) || (bytes.length < 4)) return false;
-        final CRC32 crc = new CRC32();
-        crc.update(bytes, 0, bytes.length - 4);
-        final long buffer_crc = UnsignedInts.toLong(ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).getInt(bytes.length - 4));
-        return buffer_crc == crc.getValue();
-    }
-
     public static int parseIntWithDefault(String number, int radix, int defaultVal) {
         try {
             return Integer.parseInt(number, radix);
@@ -2043,13 +1534,6 @@ public class JoH {
         BigDecimal bd = new BigDecimal(value);
         bd = bd.setScale(places, RoundingMode.HALF_UP);
         return bd.doubleValue();
-    }
-
-    public static float roundFloat(final float value, int places) {
-        if (places < 0) throw new IllegalArgumentException("Invalid decimal places");
-        BigDecimal bd = new BigDecimal(value);
-        bd = bd.setScale(places, RoundingMode.HALF_UP);
-        return bd.floatValue();
     }
 
     public static boolean isServiceRunningInForeground(Class<?> serviceClass) {
@@ -2069,6 +1553,5 @@ public class JoH {
     public static boolean emptyString(final String str) {
         return str == null || str.length() == 0;
     }
-
 
 }

@@ -6,23 +6,18 @@ import android.util.Log;
 import com.activeandroid.Model;
 import com.activeandroid.annotation.Column;
 import com.activeandroid.annotation.Table;
-import com.activeandroid.query.Delete;
 import com.activeandroid.query.Select;
 import com.activeandroid.util.SQLiteUtils;
 import com.eveningoutpost.dexdrip.AddCalibration;
-import com.eveningoutpost.dexdrip.glucosemeter.GlucoseReadingRx;
 import com.eveningoutpost.dexdrip.Home;
-import com.eveningoutpost.dexdrip.services.SyncService;
-import com.eveningoutpost.dexdrip.utilitymodels.BgGraphBuilder;
-import com.eveningoutpost.dexdrip.utilitymodels.Constants;
-import com.eveningoutpost.dexdrip.utilitymodels.PersistentStore;
-import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.eveningoutpost.dexdrip.utilitymodels.UploaderQueue;
 import com.eveningoutpost.dexdrip.calibrations.CalibrationAbstract;
 import com.eveningoutpost.dexdrip.calibrations.NativeCalibrationPipe;
 import com.eveningoutpost.dexdrip.calibrations.PluggableCalibration;
 import com.eveningoutpost.dexdrip.messages.BloodTestMessage;
-import com.eveningoutpost.dexdrip.messages.BloodTestMultiMessage;
+import com.eveningoutpost.dexdrip.utilitymodels.BgGraphBuilder;
+import com.eveningoutpost.dexdrip.utilitymodels.Constants;
+import com.eveningoutpost.dexdrip.utilitymodels.PersistentStore;
+import com.eveningoutpost.dexdrip.utilitymodels.Pref;
 import com.eveningoutpost.dexdrip.xdrip;
 import com.google.common.math.DoubleMath;
 import com.google.gson.Gson;
@@ -30,11 +25,11 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.Expose;
 import com.squareup.wire.Wire;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+
 
 /**
  * Created by jamorham on 11/12/2016.
@@ -45,9 +40,6 @@ public class BloodTest extends Model {
 
     public static final long STATE_VALID = 1 << 0;
     public static final long STATE_CALIBRATION = 1 << 1;
-    public static final long STATE_NOTE = 1 << 2;
-    public static final long STATE_UNDONE = 1 << 3;
-    public static final long STATE_OVERWRITTEN = 1 << 4;
 
     private static long highest_timestamp = 0;
     private static boolean patched = false;
@@ -80,8 +72,6 @@ public class BloodTest extends Model {
     public String uuid;
 
 
-    public GlucoseReadingRx glucoseReadingRx;
-
     // patches and saves
     public Long saveit() {
         fixUpTable();
@@ -103,23 +93,6 @@ public class BloodTest extends Model {
                 .excludeFieldsWithoutExposeAnnotation()
                 .create();
         return gson.toJson(this);
-    }
-
-    private BloodTestMessage toMessageNative() {
-        return new BloodTestMessage.Builder()
-                .timestamp(timestamp)
-                .mgdl(mgdl)
-                .created_timestamp(created_timestamp)
-                .state(state)
-                .source(source)
-                .uuid(uuid)
-                .build();
-    }
-
-    public byte[] toMessage() {
-        final List<BloodTest> btl = new ArrayList<>();
-        btl.add(this);
-        return toMultiMessage(btl);
     }
 
 
@@ -161,9 +134,6 @@ public class BloodTest extends Model {
             bt.state = STATE_VALID;
             bt.source = source;
             bt.saveit();
-            if (UploaderQueue.newEntry("insert", bt) != null) {
-                SyncService.startSyncService(3000); // sync in 3 seconds
-            }
 
             if (Pref.getBooleanDefaultFalse("bluetooth_meter_for_calibrations_auto")) {
                 if ((JoH.msSince(bt.timestamp) < Constants.MINUTE_IN_MS * 5) && (JoH.msSince(bt.timestamp) > 0)) {
@@ -200,15 +170,6 @@ public class BloodTest extends Model {
         return create((long) (new Date().getTime() - timeoffset), bg, source, suggested_uuid);
     }
 
-    public static void pushBloodTestSyncToWatch(BloodTest bt, boolean is_new) {
-        Log.d(TAG, "pushTreatmentSyncToWatch Add treatment to UploaderQueue.");
-        if (Pref.getBooleanDefaultFalse("wear_sync")) {
-            if (UploaderQueue.newEntryForWatch(is_new ? "insert" : "update", bt) != null) {
-                SyncService.startSyncService(3000); // sync in 3 seconds
-            }
-        }
-    }
-
     public static BloodTest last() {
         final List<BloodTest> btl = last(1);
         if ((btl != null) && (btl.size() > 0)) {
@@ -222,20 +183,6 @@ public class BloodTest extends Model {
         try {
             return new Select()
                     .from(BloodTest.class)
-                    .orderBy("timestamp desc")
-                    .limit(num)
-                    .execute();
-        } catch (android.database.sqlite.SQLiteException e) {
-            fixUpTable();
-            return null;
-        }
-    }
-
-    public static List<BloodTest> lastMatching(int num, String match) {
-        try {
-            return new Select()
-                    .from(BloodTest.class)
-                    .where("source like ?", match)
                     .orderBy("timestamp desc")
                     .limit(num)
                     .execute();
@@ -282,27 +229,6 @@ public class BloodTest extends Model {
         }
     }
 
-    public static BloodTest byid(long id) {
-        try {
-            return new Select()
-                    .from(BloodTest.class)
-                    .where("_ID = ?", id)
-                    .executeSingle();
-        } catch (android.database.sqlite.SQLiteException e) {
-            fixUpTable();
-            return null;
-        }
-    }
-
-    public static byte[] toMultiMessage(List<BloodTest> btl) {
-        if (btl == null) return null;
-        final List<BloodTestMessage> BloodTestMessageList = new ArrayList<>();
-        for (BloodTest bt : btl) {
-            BloodTestMessageList.add(bt.toMessageNative());
-        }
-        return BloodTestMultiMessage.ADAPTER.encode(new BloodTestMultiMessage(BloodTestMessageList));
-    }
-
     private static void processFromMessage(BloodTestMessage btm) {
         if ((btm != null) && (btm.uuid != null) && (btm.uuid.length() == 36)) {
             boolean is_new = false;
@@ -314,10 +240,8 @@ public class BloodTest extends Model {
                     return;
                 }
                 bt = new BloodTest();
-                is_new = true;
             } else {
                 if (bt.state != Wire.get(btm.state, BloodTestMessage.DEFAULT_STATE)) {
-                    is_new = true;
                 }
             }
             bt.timestamp = Wire.get(btm.timestamp, BloodTestMessage.DEFAULT_TIMESTAMP);
@@ -327,44 +251,8 @@ public class BloodTest extends Model {
             bt.source = Wire.get(btm.source, BloodTestMessage.DEFAULT_SOURCE);
             bt.uuid = btm.uuid;
             bt.saveit(); // de-dupe by uuid
-            if (is_new) { // cannot handle updates yet
-                if (UploaderQueue.newEntry(is_new ? "insert" : "update", bt) != null) {
-                    if (JoH.quietratelimit("start-sync-service", 5)) {
-                        SyncService.startSyncService(3000); // sync in 3 seconds
-                    }
-                }
-            }
         } else {
             UserError.Log.wtf(TAG, "processFromMessage uuid is null or invalid");
-        }
-    }
-
-    public static void processFromMultiMessage(byte[] payload) {
-        try {
-            final BloodTestMultiMessage btmm = BloodTestMultiMessage.ADAPTER.decode(payload);
-            if ((btmm != null) && (btmm.bloodtest_message != null)) {
-                for (BloodTestMessage btm : btmm.bloodtest_message) {
-                    processFromMessage(btm);
-                }
-                Home.staticRefreshBGCharts();
-            }
-        } catch (IOException | NullPointerException | IllegalStateException e) {
-            UserError.Log.e(TAG, "exception processFromMessage: " + e);
-        }
-    }
-
-    public static BloodTest fromJSON(String json) {
-        if ((json == null) || (json.length() == 0)) {
-            UserError.Log.d(TAG, "Empty json received in bloodtest fromJson");
-            return null;
-        }
-        try {
-            UserError.Log.d(TAG, "Processing incoming json: " + json);
-            return new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create().fromJson(json, BloodTest.class);
-        } catch (Exception e) {
-            UserError.Log.d(TAG, "Got exception parsing bloodtest json: " + e.toString());
-            Home.toaststaticnext("Error on Bloodtest sync, probably decryption key mismatch");
-            return null;
         }
     }
 
@@ -379,14 +267,6 @@ public class BloodTest extends Model {
             return bloodTest;
         }
         return null;
-    }
-
-    public static List<BloodTest> latestForGraph(int number, double startTime) {
-        return latestForGraph(number, (long) startTime, Long.MAX_VALUE);
-    }
-
-    public static List<BloodTest> latestForGraph(int number, long startTime) {
-        return latestForGraph(number, startTime, Long.MAX_VALUE);
     }
 
     public static List<BloodTest> latestForGraph(int number, long startTime, long endTime) {
@@ -540,13 +420,6 @@ public class BloodTest extends Model {
         return "\u00B1" + (!domgdl ? JoH.qs(avg * Constants.MGDL_TO_MMOLL, 2) + " mmol" : JoH.qs(avg, 1) + " mgdl");
     }
 
-    public static List<BloodTest> cleanup(int retention_days) {
-        return new Delete()
-                .from(BloodTest.class)
-                .where("timestamp < ?", JoH.tsl() - (retention_days * Constants.DAY_IN_MS))
-                .execute();
-    }
-
     // create the table ourselves without worrying about model versioning and downgrading
     private static void fixUpTable() {
         if (patched) return;
@@ -574,4 +447,3 @@ public class BloodTest extends Model {
         patched = true;
     }
 }
-

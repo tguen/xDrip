@@ -2,7 +2,6 @@ package com.eveningoutpost.dexdrip.g5model;
 
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.UserError;
-import com.eveningoutpost.dexdrip.utilitymodels.CompatibleApps;
 
 import static com.eveningoutpost.dexdrip.utilitymodels.CompatibleApps.createActionIntent;
 import static com.eveningoutpost.dexdrip.utilitymodels.CompatibleApps.createChoiceIntent;

@@ -4,26 +4,22 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
-import androidx.preference.PreferenceManager;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.ListView;
 import android.widget.Switch;
-import android.widget.Toast;
 
-import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.utilitymodels.PersistentStore;
-import com.eveningoutpost.dexdrip.utilitymodels.SendFeedBack;
 import com.eveningoutpost.dexdrip.utils.ActivityWithMenu;
-import com.eveningoutpost.dexdrip.wearintegration.WatchUpdaterService;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.eveningoutpost.dexdrip.Home.startWatchUpdaterService;
+import androidx.preference.PreferenceManager;
+
 
 /**
  * Created by Emma Black on 8/3/15.
@@ -53,9 +49,6 @@ public class ErrorsActivity extends ActivityWithMenu {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mPrefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        if (mPrefs.getBoolean("wear_sync", false) && mPrefs.getBoolean("sync_wear_logs", false)) {
-            startWatchUpdaterService(this, WatchUpdaterService.ACTION_SYNC_LOGS, TAG);
-        }
         setContentView(R.layout.activity_errors);
 
         highCheckboxView = (CheckBox) findViewById(R.id.highSeverityCheckbox);
@@ -119,32 +112,17 @@ public class ErrorsActivity extends ActivityWithMenu {
     };
 
     public void uploadLogs(View v) {
-        StringBuilder tmp = new StringBuilder(20000);
-        tmp.append("The following logs will be sent to the developers: \n\nPlease also include your email address or we will not know who they are from!\n\n");
-        for (UserError item : errors) {
-            tmp.append(item.toString());
-            tmp.append("\n");
-            if (tmp.length() > 200000) {
-                JoH.static_toast(this, "Could not package up all logs, using most recent", Toast.LENGTH_LONG);
-                break;
-            }
-        }
-        startActivity(new Intent(getApplicationContext(), SendFeedBack.class).putExtra("generic_text", tmp.toString()));
     }
 
 
     private CheckBox.OnCheckedChangeListener switchChangeListener = new CompoundButton.OnCheckedChangeListener() {
         @Override
-        public void onCheckedChanged(CompoundButton buttonView,
-                                     boolean isChecked) {
+        public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
             if (isChecked && !autoRefresh) handler.postDelayed(runnable, 1000); // start timer
             autoRefresh = isChecked;
 
             if (autoRefresh) {
                 getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-                if (mPrefs.getBoolean("wear_sync", false) && mPrefs.getBoolean("sync_wear_logs", false)) {
-                    startWatchUpdaterService(getApplicationContext(), WatchUpdaterService.ACTION_SYNC_LOGS, TAG);
-                }
             } else {
                 getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             }

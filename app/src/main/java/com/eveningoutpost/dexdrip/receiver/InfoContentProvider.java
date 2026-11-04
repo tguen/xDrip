@@ -1,39 +1,35 @@
 package com.eveningoutpost.dexdrip.receiver;
 
-import static com.eveningoutpost.dexdrip.utilitymodels.ColorCache.getCol;
-import static com.eveningoutpost.dexdrip.utilitymodels.NanoStatus.nanoStatus;
-import static com.eveningoutpost.dexdrip.utilitymodels.Pref.getBooleanDefaultFalse;
-import static com.eveningoutpost.dexdrip.watch.thinjam.BlueJayEntry.isNative;
-
 import android.content.ContentProvider;
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.graphics.Bitmap;
-
 import android.net.Uri;
 import android.os.Looper;
 import android.util.Log;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-
 import com.eveningoutpost.dexdrip.BestGlucose;
 import com.eveningoutpost.dexdrip.BuildConfig;
-import com.eveningoutpost.dexdrip.eassist.EmergencyAssist;
 import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.utilitymodels.AlertPlayer;
 import com.eveningoutpost.dexdrip.utilitymodels.BgGraphBuilder;
 import com.eveningoutpost.dexdrip.utilitymodels.BgSparklineBuilder;
-
 import com.eveningoutpost.dexdrip.utilitymodels.CollectionServiceStarter;
 import com.eveningoutpost.dexdrip.utilitymodels.ColorCache;
-import com.eveningoutpost.dexdrip.utilitymodels.Constants;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
 import com.eveningoutpost.dexdrip.utils.BlobCache;
 import com.eveningoutpost.dexdrip.xdrip;
 
 import java.io.ByteArrayOutputStream;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import static com.eveningoutpost.dexdrip.utilitymodels.ColorCache.getCol;
+import static com.eveningoutpost.dexdrip.utilitymodels.NanoStatus.nanoStatus;
+import static com.eveningoutpost.dexdrip.utilitymodels.Pref.getBooleanDefaultFalse;
+
 
 /**
  * xDrip content provider
@@ -74,13 +70,6 @@ public class InfoContentProvider extends ContentProvider {
                     if (selectionArgs.length > 0 && selectionArgs[0].equals("snooze")) {
                         AlertPlayer.getPlayer().OpportunisticSnooze();
                         Log.d(TAG, "Opportunistic snooze");
-                    }
-                    break;
-
-                case "eassist":
-                    if (enabledWrite()) {
-                        EmergencyAssist.test(EmergencyAssist.Reason.REQUESTED_ASSISTANCE, Constants.MINUTE_IN_MS);
-                        UserError.Log.ueh(TAG, "Emergency assist triggered remotely");
                     }
                     break;
 
@@ -285,11 +274,11 @@ public class InfoContentProvider extends ContentProvider {
     }
 
     private static boolean enabled() {
-        return isNative() || xdrip.getAppContext() != null && getBooleanDefaultFalse("host_content_provider");
+        return xdrip.getAppContext() != null && getBooleanDefaultFalse("host_content_provider");
     }
 
     private static boolean enabledWrite() {
-        return enabled() && (isNative() || getBooleanDefaultFalse("content_provider_write"));
+        return enabled() && getBooleanDefaultFalse("content_provider_write");
     }
 
     public static void ping(String channel) {

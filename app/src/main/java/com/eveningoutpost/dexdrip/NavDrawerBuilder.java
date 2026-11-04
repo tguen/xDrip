@@ -3,28 +3,28 @@ package com.eveningoutpost.dexdrip;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import androidx.preference.PreferenceManager;
 
 import com.eveningoutpost.dexdrip.g5model.FirmwareCapability;
 import com.eveningoutpost.dexdrip.models.BgReading;
 import com.eveningoutpost.dexdrip.models.Calibration;
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.Sensor;
-import com.eveningoutpost.dexdrip.models.Treatments;
 import com.eveningoutpost.dexdrip.services.Ob1G5CollectionService;
 import com.eveningoutpost.dexdrip.tables.BgReadingTable;
 import com.eveningoutpost.dexdrip.tables.CalibrationDataTable;
 import com.eveningoutpost.dexdrip.utilitymodels.CollectionServiceStarter;
 import com.eveningoutpost.dexdrip.utilitymodels.Experience;
-import com.eveningoutpost.dexdrip.stats.StatsActivity;
 import com.eveningoutpost.dexdrip.utils.DexCollectionType;
 import com.eveningoutpost.dexdrip.utils.Preferences;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import androidx.preference.PreferenceManager;
+
 import static com.eveningoutpost.dexdrip.services.Ob1G5CollectionService.getTransmitterID;
 import static com.eveningoutpost.dexdrip.utils.DexCollectionType.getBestCollectorHardwareName;
+
 
 /**
  * Created by Emma Black on 11/5/14.
@@ -118,11 +118,6 @@ public class NavDrawerBuilder {
             this.nav_drawer_intents.add(new Intent(context, BluetoothScan.class));
         }
 
-        //if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN_MR2) {
-        this.nav_drawer_options.add(context.getString(R.string.system_status));
-        this.nav_drawer_intents.add(new Intent(context, MegaStatus.class));
-        //}
-
         boolean bg_alerts = prefs.getBoolean("bg_alerts_from_main_menu", false);
         if (bg_alerts) {
             this.nav_drawer_options.add(context.getString(R.string.level_alerts));
@@ -134,16 +129,7 @@ public class NavDrawerBuilder {
             this.nav_drawer_intents.add(new Intent(context, SnoozeActivity.class));
         }
 
-        if (use_note_search || (Treatments.last() != null)) {
-            this.nav_drawer_options.add(context.getString(R.string.note_search));
-            this.nav_drawer_intents.add(new Intent(context, NoteSearch.class));
-            use_note_search = true; // cache
-        }
-
         if (Experience.gotData()) {
-            this.nav_drawer_options.add(context.getString(R.string.statistics));
-            this.nav_drawer_intents.add(new Intent(context, StatsActivity.class));
-
             this.nav_drawer_options.add(context.getString(R.string.history));
             this.nav_drawer_intents.add(new Intent(context, BGHistory.class));
         }

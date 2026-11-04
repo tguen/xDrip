@@ -1,11 +1,5 @@
 package com.eveningoutpost.dexdrip.utilitymodels;
 
-import static com.eveningoutpost.dexdrip.Home.startWatchUpdaterService;
-import static com.eveningoutpost.dexdrip.models.JoH.delayedMediaPlayerRelease;
-import static com.eveningoutpost.dexdrip.models.JoH.setMediaDataSource;
-import static com.eveningoutpost.dexdrip.models.JoH.stopAndReleasePlayer;
-import static com.eveningoutpost.dexdrip.receiver.InfoContentProvider.ping;
-
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -19,37 +13,29 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.PowerManager;
 import android.preference.PreferenceManager;
-import androidx.core.app.NotificationCompat;
 
-import com.eveningoutpost.dexdrip.GcmActivity;
 import com.eveningoutpost.dexdrip.Home;
+import com.eveningoutpost.dexdrip.R;
+import com.eveningoutpost.dexdrip.SnoozeActivity;
 import com.eveningoutpost.dexdrip.models.ActiveBgAlert;
 import com.eveningoutpost.dexdrip.models.AlertType;
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.models.UserError.Log;
-import com.eveningoutpost.dexdrip.R;
 import com.eveningoutpost.dexdrip.services.SnoozeOnNotificationDismissService;
-import com.eveningoutpost.dexdrip.SnoozeActivity;
-import com.eveningoutpost.dexdrip.utilitymodels.pebble.PebbleWatchSync;
-import com.eveningoutpost.dexdrip.eassist.AlertTracker;
-import com.eveningoutpost.dexdrip.ui.FlashLight;
-import com.eveningoutpost.dexdrip.ui.helpers.AudioFocusType;
-import com.eveningoutpost.dexdrip.utils.PowerStateReceiver;
-import com.eveningoutpost.dexdrip.watch.lefun.LeFun;
-import com.eveningoutpost.dexdrip.watch.lefun.LeFunEntry;
-import com.eveningoutpost.dexdrip.watch.miband.MiBand;
-import com.eveningoutpost.dexdrip.watch.miband.MiBandEntry;
-import com.eveningoutpost.dexdrip.watch.thinjam.BlueJayEntry;
-import com.eveningoutpost.dexdrip.wearintegration.Amazfitservice;
 import com.eveningoutpost.dexdrip.services.broadcastservice.BroadcastEntry;
-import com.eveningoutpost.dexdrip.wearintegration.WatchUpdaterService;
 import com.eveningoutpost.dexdrip.services.broadcastservice.Const;
+import com.eveningoutpost.dexdrip.ui.helpers.AudioFocusType;
 import com.eveningoutpost.dexdrip.xdrip;
 
 import java.util.Date;
 
-import lombok.Getter;
+import androidx.core.app.NotificationCompat;
+
+import static com.eveningoutpost.dexdrip.models.JoH.delayedMediaPlayerRelease;
+import static com.eveningoutpost.dexdrip.models.JoH.setMediaDataSource;
+import static com.eveningoutpost.dexdrip.models.JoH.stopAndReleasePlayer;
+import static com.eveningoutpost.dexdrip.receiver.InfoContentProvider.ping;
 
 
 // A helper class to create the mediaplayer on the UI thread.
@@ -189,7 +175,7 @@ public class AlertPlayer {
         ActiveBgAlert.Create(newAlert.uuid, start_snoozed, nextAlertTime);
         if (!start_snoozed) VibrateNotifyMakeNoise(ctx, newAlert, bgValue, 0);
         ping("alarm");
-        AlertTracker.evaluate();
+//        AlertTracker.evaluate();
     }
 
     public synchronized void stopAlert(Context ctx, boolean ClearData, boolean clearIfSnoozeFinished) {
@@ -238,16 +224,6 @@ public class AlertPlayer {
     public synchronized void Snooze(Context ctx, int repeatTime) {
         Snooze(ctx, repeatTime, true);
 
-        BlueJayEntry.cancelNotifyIfEnabled();
-
-        if (Pref.getBooleanDefaultFalse("bg_notifications_watch") ) {
-            startWatchUpdaterService(ctx, WatchUpdaterService.ACTION_SNOOZE_ALERT, TAG, "repeatTime", "" + repeatTime);
-        }
-        if (Pref.getBooleanDefaultFalse("pref_amazfit_enable_key")
-                && Pref.getBooleanDefaultFalse("pref_amazfit_BG_alert_enable_key")) {
-            Amazfitservice.start("xDrip_AlarmCancel");
-        }
-
         BroadcastEntry.cancelAlert();
         ping("alarm");
     }
@@ -258,14 +234,12 @@ public class AlertPlayer {
         ActiveBgAlert activeBgAlert = ActiveBgAlert.getOnly();
         if (activeBgAlert == null) {
             Log.e(TAG, "Error, snooze was called but no alert is active.");
-            if (from_interactive) GcmActivity.sendSnoozeToRemote();
             return;
         }
         if (repeatTime == -1) {
             repeatTime = GuessDefaultSnoozeTime();
         }
         activeBgAlert.snooze(repeatTime);
-        if (from_interactive) GcmActivity.sendSnoozeToRemote();
     }
 
     public synchronized int GuessDefaultSnoozeTime() {
@@ -322,7 +296,7 @@ public class AlertPlayer {
             activeBgAlert.updateNextAlertAt(nextAlertTime);
 
             VibrateNotifyMakeNoise(ctx, alert, bgValue, minutesFromStartPlaying);
-            AlertTracker.evaluate();
+//            AlertTracker.evaluate();
         }
 
     }
@@ -657,43 +631,8 @@ public class AlertPlayer {
         //mNotifyMgr.cancel(Notifications.exportAlertNotificationId); // this appears to confuse android wear version 2.0.0.141773014.gms even though it shouldn't - can we survive without this?
         mNotifyMgr.notify(Notifications.exportAlertNotificationId, XdripNotificationCompat.build(builder));
 
-        // send to bluejay
-        BlueJayEntry.sendAlertIfEnabled((alert.above ? "High" : "Low") + " Alert " + bgValue + " " + alert.name); // string text is used to determine alert type
-
-        // send alert to pebble
-        if (Pref.getBooleanDefaultFalse("broadcast_to_pebble") && (Pref.getBooleanDefaultFalse("pebble_vibe_alerts"))) {
-            if (JoH.ratelimit("pebble_vibe_start", 59)) {
-                JoH.startService(PebbleWatchSync.class);
-            }
-        }
-
-        //send alert to amazfit
-        if (Pref.getBooleanDefaultFalse("pref_amazfit_enable_key")
-                && Pref.getBooleanDefaultFalse("pref_amazfit_BG_alert_enable_key")) {
-            Amazfitservice.start("xDrip_Alarm", alert.name, alert.default_snooze);
-        }
-
-        if (LeFunEntry.areAlertsEnabled() && ActiveBgAlert.currentlyAlerting()) {
-            LeFun.sendAlert(highlow, bgValue);
-        }
-
-        if (MiBandEntry.areAlertsEnabled() && ActiveBgAlert.currentlyAlerting()) {
-            MiBand.sendAlert(alert.name, highlow + " " + bgValue, alert.default_snooze);
-        }
-
         if (ActiveBgAlert.currentlyAlerting()) {
             BroadcastEntry.sendAlert(Const.BG_ALERT_TYPE, highlow + " " + bgValue);
-        }
-
-        // speak alert
-        if (Pref.getBooleanDefaultFalse("speak_alerts")) {
-            SpeechUtil.say(highlow + ", " + bgValue, 3000);
-        }
-
-        if (Pref.getBooleanDefaultFalse("flash_torch_alerts_charging")) {
-            if (PowerStateReceiver.is_power_connected()) {
-                FlashLight.torchPulse();
-            }
         }
     }
 

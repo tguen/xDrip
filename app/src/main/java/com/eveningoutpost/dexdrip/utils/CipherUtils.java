@@ -7,7 +7,6 @@ package com.eveningoutpost.dexdrip.utils;
 import android.util.Base64;
 import android.util.Log;
 
-import com.eveningoutpost.dexdrip.GoogleDriveInterface;
 import com.eveningoutpost.dexdrip.models.JoH;
 
 import java.io.UnsupportedEncodingException;
@@ -221,4 +220,3 @@ public class CipherUtils {
         return bytesToHex(getRandomKey());
     }
 }
-

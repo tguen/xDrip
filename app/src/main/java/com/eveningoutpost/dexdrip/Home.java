@@ -1,5 +1,104 @@
 package com.eveningoutpost.dexdrip;
 
+import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.app.PendingIntent;
+import android.content.ActivityNotFoundException;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Typeface;
+import android.media.AudioManager;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.PowerManager;
+import android.preference.PreferenceManager;
+import android.provider.Settings;
+import android.speech.RecognizerIntent;
+import android.text.InputType;
+import android.util.DisplayMetrics;
+import android.util.Log;
+import android.view.*;
+import android.widget.AdapterView;
+import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.eveningoutpost.dexdrip.calibrations.NativeCalibrationPipe;
+import com.eveningoutpost.dexdrip.calibrations.PluggableCalibration;
+import com.eveningoutpost.dexdrip.dagger.Injectors;
+import com.eveningoutpost.dexdrip.databinding.ActivityHomeBinding;
+import com.eveningoutpost.dexdrip.databinding.ActivityHomeShelfSettingsBinding;
+import com.eveningoutpost.dexdrip.databinding.PopupInitialStatusHelperBinding;
+import com.eveningoutpost.dexdrip.g5model.DexSyncKeeper;
+import com.eveningoutpost.dexdrip.g5model.DexTimeKeeper;
+import com.eveningoutpost.dexdrip.g5model.Ob1G5StateMachine;
+import com.eveningoutpost.dexdrip.g5model.SensorDays;
+import com.eveningoutpost.dexdrip.models.ActiveBgAlert;
+import com.eveningoutpost.dexdrip.models.ActiveBluetoothDevice;
+import com.eveningoutpost.dexdrip.models.BgReading;
+import com.eveningoutpost.dexdrip.models.BloodTest;
+import com.eveningoutpost.dexdrip.models.Calibration;
+import com.eveningoutpost.dexdrip.models.JoH;
+import com.eveningoutpost.dexdrip.models.ProcessInitialDataQuality;
+import com.eveningoutpost.dexdrip.models.Sensor;
+import com.eveningoutpost.dexdrip.models.UserError;
+import com.eveningoutpost.dexdrip.services.Ob1G5CollectionService;
+import com.eveningoutpost.dexdrip.ui.BaseShelf;
+import com.eveningoutpost.dexdrip.ui.MicroStatus;
+import com.eveningoutpost.dexdrip.ui.MicroStatusImpl;
+import com.eveningoutpost.dexdrip.ui.NumberGraphic;
+import com.eveningoutpost.dexdrip.ui.UiPing;
+import com.eveningoutpost.dexdrip.ui.dialog.DidYouCancelAlarm;
+import com.eveningoutpost.dexdrip.ui.dialog.QuickSettingsDialogs;
+import com.eveningoutpost.dexdrip.ui.graphic.ITrendArrow;
+import com.eveningoutpost.dexdrip.ui.graphic.TrendArrowFactory;
+import com.eveningoutpost.dexdrip.utilitymodels.*;
+import com.eveningoutpost.dexdrip.utils.ActivityWithMenu;
+import com.eveningoutpost.dexdrip.utils.DexCollectionType;
+import com.eveningoutpost.dexdrip.utils.Preferences;
+import com.eveningoutpost.dexdrip.utils.SdcardImportExport;
+import com.google.android.material.snackbar.Snackbar;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.text.DecimalFormat;
+import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+import java.util.Timer;
+import java.util.TimerTask;
+
+import javax.inject.Inject;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.ActivityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import lecho.lib.hellocharts.gesture.ChartTouchHandler;
+import lecho.lib.hellocharts.gesture.ZoomType;
+import lecho.lib.hellocharts.listener.ViewportChangeListener;
+import lecho.lib.hellocharts.model.Viewport;
+import lecho.lib.hellocharts.view.LineChartView;
+import lecho.lib.hellocharts.view.PreviewLineChartView;
+import lombok.Getter;
+import lombok.val;
+
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 import static com.eveningoutpost.dexdrip.g5model.Ob1G5StateMachine.shortTxId;
 import static com.eveningoutpost.dexdrip.models.JoH.msSince;
@@ -13,209 +112,26 @@ import static com.eveningoutpost.dexdrip.utilitymodels.Constants.DAY_IN_MS;
 import static com.eveningoutpost.dexdrip.utilitymodels.Constants.HOUR_IN_MS;
 import static com.eveningoutpost.dexdrip.utilitymodels.Constants.MINUTE_IN_MS;
 import static com.eveningoutpost.dexdrip.utilitymodels.Constants.SECOND_IN_MS;
+import static com.eveningoutpost.dexdrip.utils.DexCollectionType.DexcomG5;
 import static com.eveningoutpost.dexdrip.utils.DexCollectionType.GluPro;
 import static com.eveningoutpost.dexdrip.utils.DexCollectionType.LibreAlarm;
 import static com.eveningoutpost.dexdrip.utils.DexCollectionType.Medtrum;
 import static com.eveningoutpost.dexdrip.xdrip.gs;
 
-import android.Manifest;
-import android.annotation.SuppressLint;
-import android.annotation.TargetApi;
-import android.app.Activity;
-import android.app.AlertDialog;
-import android.app.Dialog;
-import android.app.PendingIntent;
-import android.content.ActivityNotFoundException;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.pm.PackageManager;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.Point;
-import android.graphics.Typeface;
-import android.media.AudioManager;
-import android.net.Uri;
-import android.os.AsyncTask;
-import android.os.Build;
-import android.os.Bundle;
-import android.os.PowerManager;
-import android.preference.PreferenceManager;
-import android.provider.Settings;
-import android.speech.RecognizerIntent;
-import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
-
-import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import androidx.drawerlayout.widget.DrawerLayout;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-
-import android.text.InputType;
-import android.util.DisplayMetrics;
-import android.util.Log;
-import android.view.GestureDetector;
-import android.view.KeyEvent;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.MotionEvent;
-import android.view.View;
-import android.view.ViewGroup;
-import android.view.Window;
-import android.view.WindowManager;
-import android.widget.AdapterView;
-import android.widget.Button;
-import android.widget.CheckBox;
-import android.widget.EditText;
-import android.widget.ImageButton;
-import android.widget.TextView;
-import android.widget.Toast;
-
-import com.eveningoutpost.dexdrip.g5model.DexSyncKeeper;
-import com.eveningoutpost.dexdrip.g5model.DexTimeKeeper;
-import com.eveningoutpost.dexdrip.g5model.Ob1G5StateMachine;
-import com.eveningoutpost.dexdrip.g5model.SensorDays;
-import com.eveningoutpost.dexdrip.importedlibraries.usbserial.util.HexDump;
-import com.eveningoutpost.dexdrip.models.ActiveBgAlert;
-import com.eveningoutpost.dexdrip.models.ActiveBluetoothDevice;
-import com.eveningoutpost.dexdrip.models.BgReading;
-import com.eveningoutpost.dexdrip.models.BloodTest;
-import com.eveningoutpost.dexdrip.models.Calibration;
-import com.eveningoutpost.dexdrip.models.HeartRate;
-import com.eveningoutpost.dexdrip.models.InsulinInjection;
-import com.eveningoutpost.dexdrip.models.JoH;
-import com.eveningoutpost.dexdrip.models.LibreBlock;
-import com.eveningoutpost.dexdrip.models.ProcessInitialDataQuality;
-import com.eveningoutpost.dexdrip.models.Sensor;
-import com.eveningoutpost.dexdrip.models.StepCounter;
-import com.eveningoutpost.dexdrip.models.Treatments;
-import com.eveningoutpost.dexdrip.models.UserError;
-import com.eveningoutpost.dexdrip.services.ActivityRecognizedService;
-import com.eveningoutpost.dexdrip.services.DexCollectionService;
-import com.eveningoutpost.dexdrip.services.Ob1G5CollectionService;
-import com.eveningoutpost.dexdrip.services.PlusSyncService;
-import com.eveningoutpost.dexdrip.services.WixelReader;
-import com.eveningoutpost.dexdrip.utilitymodels.AlertPlayer;
-import com.eveningoutpost.dexdrip.utilitymodels.BgGraphBuilder;
-import com.eveningoutpost.dexdrip.utilitymodels.CollectionServiceStarter;
-import com.eveningoutpost.dexdrip.utilitymodels.ColorCache;
-import com.eveningoutpost.dexdrip.utilitymodels.CompatibleApps;
-import com.eveningoutpost.dexdrip.utilitymodels.Constants;
-import com.eveningoutpost.dexdrip.utilitymodels.Experience;
-import com.eveningoutpost.dexdrip.utilitymodels.Inevitable;
-import com.eveningoutpost.dexdrip.utilitymodels.Intents;
-import com.eveningoutpost.dexdrip.utilitymodels.JamorhamShowcaseDrawer;
-import com.eveningoutpost.dexdrip.utilitymodels.MockDataSource;
-import com.eveningoutpost.dexdrip.utilitymodels.NanoStatus;
-import com.eveningoutpost.dexdrip.utilitymodels.NightscoutUploader;
-import com.eveningoutpost.dexdrip.utilitymodels.Notifications;
-import com.eveningoutpost.dexdrip.utilitymodels.PersistentStore;
-import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.eveningoutpost.dexdrip.utilitymodels.PrefsViewImpl;
-import com.eveningoutpost.dexdrip.utilitymodels.SendFeedBack;
-import com.eveningoutpost.dexdrip.utilitymodels.ShotStateStore;
-import com.eveningoutpost.dexdrip.utilitymodels.SourceWizard;
-import com.eveningoutpost.dexdrip.utilitymodels.StatusLine;
-import com.eveningoutpost.dexdrip.utilitymodels.UndoRedo;
-import com.eveningoutpost.dexdrip.utilitymodels.UpdateActivity;
-import com.eveningoutpost.dexdrip.utilitymodels.VoiceCommands;
-import com.eveningoutpost.dexdrip.calibrations.NativeCalibrationPipe;
-import com.eveningoutpost.dexdrip.calibrations.PluggableCalibration;
-import com.eveningoutpost.dexdrip.cloud.backup.BackupActivity;
-import com.eveningoutpost.dexdrip.dagger.Injectors;
-import com.eveningoutpost.dexdrip.databinding.ActivityHomeBinding;
-import com.eveningoutpost.dexdrip.databinding.ActivityHomeShelfSettingsBinding;
-import com.eveningoutpost.dexdrip.databinding.PopupInitialStatusHelperBinding;
-import com.eveningoutpost.dexdrip.eassist.EmergencyAssistActivity;
-import com.eveningoutpost.dexdrip.insulin.Insulin;
-import com.eveningoutpost.dexdrip.insulin.InsulinManager;
-import com.eveningoutpost.dexdrip.insulin.MultipleInsulins;
-import com.eveningoutpost.dexdrip.insulin.inpen.InPenEntry;
-import com.eveningoutpost.dexdrip.insulin.pendiq.Pendiq;
-import com.eveningoutpost.dexdrip.nfc.NFControl;
-import com.eveningoutpost.dexdrip.profileeditor.DatePickerFragment;
-import com.eveningoutpost.dexdrip.profileeditor.ProfileAdapter;
-import com.eveningoutpost.dexdrip.ui.BaseShelf;
-import com.eveningoutpost.dexdrip.ui.MicroStatus;
-import com.eveningoutpost.dexdrip.ui.MicroStatusImpl;
-import com.eveningoutpost.dexdrip.ui.NumberGraphic;
-import com.eveningoutpost.dexdrip.ui.UiPing;
-import com.eveningoutpost.dexdrip.ui.dialog.ChooseInsulinPenDialog;
-import com.eveningoutpost.dexdrip.ui.dialog.DidYouCancelAlarm;
-import com.eveningoutpost.dexdrip.ui.dialog.HeyFamUpdateOptInDialog;
-import com.eveningoutpost.dexdrip.ui.dialog.QuickSettingsDialogs;
-import com.eveningoutpost.dexdrip.ui.graphic.ITrendArrow;
-import com.eveningoutpost.dexdrip.ui.graphic.TrendArrowFactory;
-import com.eveningoutpost.dexdrip.utils.ActivityWithMenu;
-import com.eveningoutpost.dexdrip.utils.BgToSpeech;
-import com.eveningoutpost.dexdrip.utils.DatabaseUtil;
-import com.eveningoutpost.dexdrip.utils.DexCollectionType;
-import com.eveningoutpost.dexdrip.utils.DisplayQRCode;
-import com.eveningoutpost.dexdrip.utils.LibreTrendGraph;
-import com.eveningoutpost.dexdrip.utils.Preferences;
-import com.eveningoutpost.dexdrip.utils.SdcardImportExport;
-import com.eveningoutpost.dexdrip.utils.TestFeature;
-import com.eveningoutpost.dexdrip.wearintegration.Amazfitservice;
-import com.eveningoutpost.dexdrip.wearintegration.WatchUpdaterService;
-import com.github.amlcurran.showcaseview.ShowcaseView;
-import com.github.amlcurran.showcaseview.targets.Target;
-import com.github.amlcurran.showcaseview.targets.ViewTarget;
-import com.google.android.material.snackbar.Snackbar;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.internal.bind.DateTypeAdapter;
-import static com.eveningoutpost.dexdrip.utils.DexCollectionType.DexcomG5;
-
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.text.DecimalFormat;
-import java.text.MessageFormat;
-import java.text.NumberFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.GregorianCalendar;
-import java.util.List;
-import java.util.Locale;
-import java.util.Timer;
-import java.util.TimerTask;
-
-import javax.inject.Inject;
-
-import lecho.lib.hellocharts.gesture.ChartTouchHandler;
-import lecho.lib.hellocharts.gesture.ZoomType;
-import lecho.lib.hellocharts.listener.ViewportChangeListener;
-import lecho.lib.hellocharts.model.Viewport;
-import lecho.lib.hellocharts.view.LineChartView;
-import lecho.lib.hellocharts.view.PreviewLineChartView;
-import lombok.Getter;
-import lombok.val;
 
 public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPermissionsResultCallback {
     private final static String TAG = "jamorham " + Home.class.getSimpleName();
     private final static boolean d = false;
     private static final int MAX_INSULIN_PROFILES = 3;
-    public final int maxInsulinProfiles = MultipleInsulins.isEnabled() ? MAX_INSULIN_PROFILES : 0;
+    public final int maxInsulinProfiles = 0;
     public final static String START_SPEECH_RECOGNITION = "START_APP_SPEECH_RECOGNITION";
     public final static String START_TEXT_RECOGNITION = "START_APP_TEXT_RECOGNITION";
     public final static String CREATE_TREATMENT_NOTE = "CREATE_TREATMENT_NOTE";
     public final static String BLOOD_TEST_ACTION = "BLOOD_TEST_ACTION";
     public final static String HOME_FULL_WAKEUP = "HOME_FULL_WAKEUP";
-    public final static String GCM_RESOLUTION_ACTIVITY = "GCM_RESOLUTION_ACTIVITY";
-    public final static String SNOOZE_CONFIRM_DIALOG = "SNOOZE_CONFIRM_DIALOG";
     public final static String SHOW_NOTIFICATION = "SHOW_NOTIFICATION";
     public final static String BLUETOOTH_METER_CALIBRATION = "BLUETOOTH_METER_CALIBRATION";
     public final static String ACTIVITY_SHOWCASE_INFO = "ACTIVITY_SHOWCASE_INFO";
-    public final static String ENABLE_STREAMING_DIALOG = "ENABLE_STREAMING_DIALOG";
-    public final static String CHOOSE_INSULIN_PEN = "CHOOSE_INSULIN_PEN";
     public final static int SENSOR_READY_ID = 4912;
     private final UiPing ui = new UiPing();
     public static boolean activityVisible = false;
@@ -264,11 +180,7 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     private static final int SHOWCASE_REDO = 5;
     private static final int SHOWCASE_NOTE_LONG = 6;
     private static final int SHOWCASE_VARIANT = 7;
-    public static final int SHOWCASE_STATISTICS = 8;
-    private static final int SHOWCASE_G5FIRMWARE = 9;
-    static final int SHOWCASE_MEGASTATUS = 10;
     public static final int SHOWCASE_MOTION_DETECTION = 11;
-    public static final int SHOWCASE_MDNS = 12;
     public static final int SHOWCASE_REMINDER1 = 14;
     public static final int SHOWCASE_REMINDER2 = 15;
     public static final int SHOWCASE_REMINDER3 = 16;
@@ -298,8 +210,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     double thiscarbsnumber = 0;
     double thisInsulinSumNumber = 0;
     double[] thisinsulinnumber = new double[MAX_INSULIN_PROFILES];
-    Insulin[] thisinsulinprofile = new Insulin[MAX_INSULIN_PROFILES];
-    ArrayList<Insulin> insulins = null;
     double thistimeoffset = 0;
     String thisword = "";
     String thisuuid = "";
@@ -320,8 +230,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     private ActivityHomeBinding binding;
     private boolean is_newbie;
     private boolean checkedeula;
-    private static boolean has_libreblock = false;
-    private static boolean has_libreblock_set = false;
 
     @Inject
     BaseShelf homeShelf;
@@ -335,8 +243,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
 
     private ProcessInitialDataQuality.InitialDataQuality initialDataQuality;
 
-    private static final boolean oneshot = true;
-    private static ShowcaseView myShowcase;
     private static Activity mActivity;
 
     @Getter
@@ -363,31 +269,15 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
             }
         }
 
-        if (Build.VERSION.SDK_INT < 17) {
-            JoH.static_toast_long(gs(R.string.xdrip_will_not_work_below_android_version_42));
-            finish();
-        }
-
-        xdrip.checkForcedEnglish(Home.this);
-
         super.onCreate(savedInstanceState);
         setTheme(R.style.AppThemeToolBarLite); // for toolbar mode
 
-
         Injectors.getHomeShelfComponent().inject(this);
-
-        if (!Experience.gotData()) {
-            homeShelf.set("source_wizard", true);
-            homeShelf.set("source_wizard_auto", true);
-        }
 
         nanoStatus = new NanoStatus("collector", 1000);
         expiryStatus = new NanoStatus("s-expiry", 15000);
 
-        set_is_follower();
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
-
-        checkedeula = checkEula();
 
         binding = ActivityHomeBinding.inflate(getLayoutInflater());
         binding.setVs(homeShelf);
@@ -470,18 +360,7 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
 
         hideAllTreatmentButtons();
 
-        if (searchWords == null) {
-            initializeSearchWords("");
-        }
-        if (insulins == null)   // TODO only when using multiples?
-            insulins = InsulinManager.getDefaultInstance();
-
         this.btnSpeak = (ImageButton) findViewById(R.id.btnTreatment);
-        btnSpeak.setOnClickListener(v -> promptTextInput());
-        btnSpeak.setOnLongClickListener(v -> {
-            promptSpeechInput();
-            return true;
-        });
 
         this.btnNote = (ImageButton) findViewById(R.id.btnNote);
         btnNote.setOnLongClickListener(v -> {
@@ -507,8 +386,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
             // proccess and approve treatment
             textInsulinSumDose.setVisibility(View.INVISIBLE);
             buttonInsulinSingleDose.setVisibility(View.INVISIBLE);
-            Treatments.create(0, thisInsulinSumNumber, Treatments.getTimeStampWithOffset(thistimeoffset));
-            Pendiq.handleTreatment(thisInsulinSumNumber);
             thisInsulinSumNumber = 0;
             reset_viewport = true;
             if (hideTreatmentButtonsIfAllDone()) {
@@ -526,7 +403,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
                     textInsulinDose[finalI].setVisibility(View.INVISIBLE);
                     btnInsulinDose[finalI].setVisibility(View.INVISIBLE);
                     // create individual treatment just for this entry
-                    Treatments.create(0, thisinsulinnumber[finalI], Treatments.convertLegacyDoseToInjectionListByName(thisinsulinprofile[finalI].getName(), thisinsulinnumber[finalI]), Treatments.getTimeStampWithOffset(thistimeoffset));
 
                     thisinsulinnumber[finalI] = 0;
                     insulinset[finalI] = false;
@@ -546,7 +422,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
             textCarbohydrates.setVisibility(View.INVISIBLE);
             btnCarbohydrates.setVisibility(View.INVISIBLE);
             reset_viewport = true;
-            Treatments.create(thiscarbsnumber, 0, new ArrayList<InsulinInjection>(), Treatments.getTimeStampWithOffset(thistimeoffset));
             thiscarbsnumber = 0;
             if (hideTreatmentButtonsIfAllDone()) {
                 updateCurrentBgInfo("carbs button");
@@ -618,7 +493,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
 
         checkBadSettings();
         // lower priority
-        PlusSyncService.startSyncService(getApplicationContext(), "HomeOnCreate");
 
         if (checkedeula && (!getString(R.string.app_name).equals("xDrip"))) {
             showcasemenu(SHOWCASE_VARIANT);
@@ -789,7 +663,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
             final String calibration_type = Pref.getString("treatment_fingerstick_calibration_usage", "ask");
             Log.d(TAG, "Creating blood test record from input data");
             BloodTest.createFromCal(glucosenumber, timeoffset, "Manual Entry");
-            GcmActivity.syncBloodTests();
             if (!Pref.getBooleanDefaultFalse("bluetooth_meter_for_calibrations_auto")) { // If automatic calibration is disabled
                 if (calibration_type.equals("ask")) {
                     AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -867,7 +740,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
 
     private void cancelTreatment() {
         hideAllTreatmentButtons();
-        WatchUpdaterService.sendWearToast(gs(R.string.treatment_cancelled), Toast.LENGTH_SHORT);
     }
 
     private void processAndApproveTreatment() {
@@ -884,55 +756,9 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
             if ((mytimeoffset > (DAY_IN_MS * 3)) || (mytimeoffset < -HOUR_IN_MS * 3)) {
                 Log.e(TAG, "Treatment timestamp out of range: " + mytimeoffset);
                 JoH.static_toast_long(gs(R.string.treatment_time_wrong));
-                WatchUpdaterService.sendWearLocalToast(gs(R.string.treatment_error), Toast.LENGTH_LONG);
             } else {
                 JoH.static_toast_long(gs(R.string.treatment_processed));
-                WatchUpdaterService.sendWearLocalToast(gs(R.string.treatment_processed), Toast.LENGTH_LONG);
-                long time = Treatments.getTimeStampWithOffset(mytimeoffset);
-                // sanity check timestamp
-                final Treatments exists = Treatments.byTimestamp(time);
-                if (exists == null) {
-                    ArrayList<InsulinInjection> injections = new ArrayList<InsulinInjection>();
-                    for (int i = 0; i < maxInsulinProfiles; i++)
-                        if (insulinset[i] && thisinsulinprofile[i] != null) {
-                            InsulinInjection injection = new InsulinInjection(thisinsulinprofile[i], thisinsulinnumber[i]);
-                            injections.add(injection);
-                        }
-                    Log.d(TAG, "processAndApproveTreatment create watchkeypad Treatment carbs=" + thiscarbsnumber + " insulin=" + thisInsulinSumNumber + " timestamp=" + JoH.dateTimeText(time) + " uuid=" + thisuuid);
-                    Treatments.create(thiscarbsnumber, thisInsulinSumNumber, injections, time, thisuuid);
-// gruoner: changed pendiq handling 09/12/19        TODO remove duplicate code with helper function
-// in case of multiple injections in a treatment, select the injection with the primary insulin profile defined in the profile editor; if not found, take 0
-// in case of a single injection in a treatment, assume thats the #units to send to pendiq
-                    double pendiqInsulin = 0;
-                    if (MultipleInsulins.isEnabled() && injections.size() > 1) {
-                        for (InsulinInjection i : injections)
-                            if (i.getProfile() == InsulinManager.getBolusProfile())
-                                pendiqInsulin = i.getUnits();
-                    } else pendiqInsulin = thisInsulinSumNumber;
-                    Pendiq.handleTreatment(pendiqInsulin);
-                } else {
-                    Log.d(TAG, "processAndApproveTreatment Treatment already exists carbs=" + thiscarbsnumber + " insulin=" + thisInsulinSumNumber + " timestamp=" + JoH.dateTimeText(time));
-                }
             }
-        } else {
-            WatchUpdaterService.sendWearToast(gs(R.string.treatment_processed), Toast.LENGTH_LONG);
-            ArrayList<InsulinInjection> injections = new ArrayList<InsulinInjection>();
-            for (int i = 0; i < maxInsulinProfiles; i++)
-                if (insulinset[i] && thisinsulinprofile[i] != null) {
-                    InsulinInjection injection = new InsulinInjection(thisinsulinprofile[i], thisinsulinnumber[i]);
-                    injections.add(injection);
-                }
-            Treatments.create(thiscarbsnumber, thisInsulinSumNumber, injections, Treatments.getTimeStampWithOffset(mytimeoffset));
-// gruoner: changed pendiq handling 09/12/19   TODO remove duplicate code with helper function
-// in case of multiple injections in a treatment, select the injection with the primary insulin profile defined in the profile editor; if not found, take 0
-// in case of a single injection in a treatment, assume thats the #units to send to pendiq
-            double pendiqInsulin = 0;
-            if (MultipleInsulins.isEnabled() && injections.size() > 1) {
-                for (InsulinInjection i : injections)
-                    if (i.getProfile() == InsulinManager.getBolusProfile())
-                        pendiqInsulin = i.getUnits();
-            } else pendiqInsulin = thisInsulinSumNumber;
-            Pendiq.handleTreatment(pendiqInsulin);
         }
         hideAllTreatmentButtons();
 
@@ -958,20 +784,7 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     private void processIncomingBundle(Bundle bundle) {
         Log.d(TAG, "Processing incoming bundle");
         if (bundle != null) {
-            String receivedText = bundle.getString(WatchUpdaterService.WEARABLE_VOICE_PAYLOAD);
-            if (receivedText != null) {
-                voiceRecognitionText.setText(receivedText);
-                voiceRecognitionText.setVisibility(View.VISIBLE);
-                last_speech_time = JoH.ts();
-                naturalLanguageRecognition(receivedText);
-            }
-            if (bundle.getString(WatchUpdaterService.WEARABLE_APPROVE_TREATMENT) != null || watchkeypad)
-                processAndApproveTreatment();
-            else if (bundle.getString(WatchUpdaterService.WEARABLE_CANCEL_TREATMENT) != null)
-                cancelTreatment();
-            else if (bundle.getString(Home.START_SPEECH_RECOGNITION) != null) promptSpeechInput();
-            else if (bundle.getString(Home.START_TEXT_RECOGNITION) != null) promptTextInput_old();
-            else if (bundle.getString(Home.CREATE_TREATMENT_NOTE) != null) {
+            if (bundle.getString(Home.CREATE_TREATMENT_NOTE) != null) {
                 try {
                     showNoteTextInputDialog(null, Long.parseLong(bundle.getString(Home.CREATE_TREATMENT_NOTE)), JoH.tolerantParseDouble(bundle.getString(Home.CREATE_TREATMENT_NOTE + "2"), 0));
                 } catch (NullPointerException e) {
@@ -996,10 +809,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
                 } else {
                     Log.d(TAG, "Screen is already on so not turning on");
                 }
-            } else if (bundle.getString(Home.GCM_RESOLUTION_ACTIVITY) != null) {
-                GcmActivity.checkPlayServices(this, this);
-            } else if (bundle.getString(Home.SNOOZE_CONFIRM_DIALOG) != null) {
-                GcmActivity.sendSnoozeToRemoteWithConfirm(this);
             } else if (bundle.getString(Home.SHOW_NOTIFICATION) != null) {
                 final Intent notificationIntent = new Intent(this, Home.class);
                 final int notification_id = bundle.getInt("notification_id");
@@ -1020,10 +829,7 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
                 }
             } else if (bundle.getString(Home.ACTIVITY_SHOWCASE_INFO) != null) {
                 showcasemenu(SHOWCASE_MOTION_DETECTION);
-            } else if (bundle.getString("choice-intent") != null) {
-                CompatibleApps.showChoiceDialog(this, bundle.getParcelable("choice-intentx"));
             } else if (bundle.getString("numberIconTest") != null) {
-
                 JoH.show_ok_dialog(
                         this,
                         gs(R.string.prepare_to_test),
@@ -1032,8 +838,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
                             JoH.static_toast_long(gs(R.string.running_test_with_number_123));
                             NumberGraphic.testNotification("123");
                         });
-            } else if (bundle.getString("inpen-reset") != null) {
-                InPenEntry.startWithReset();
             } else if (bundle.getString(Home.BLOOD_TEST_ACTION) != null) {
                 Log.d(TAG, "BLOOD_TEST_ACTION");
                 final AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -1051,8 +855,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
                             final long time_since = msSince(bt.timestamp);
                             Home.startHomeWithExtra(xdrip.getAppContext(), Home.BLUETOOTH_METER_CALIBRATION, BgGraphBuilder.unitized_string_static(bt.mgdl), Long.toString(time_since));
                             bt.addState(BloodTest.STATE_CALIBRATION);
-                            GcmActivity.syncBloodTests();
-
                         });
 
                         builder.setNegativeButton(R.string.delete, (dialog, which) -> {
@@ -1064,9 +866,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
                                 dialog12.dismiss();
                                 bt.removeState(BloodTest.STATE_VALID);
                                 NativeCalibrationPipe.removePendingCalibration((int) bt.mgdl);
-                                GcmActivity.syncBloodTests();
-                                if (Home.get_show_wear_treatments())
-                                    BloodTest.pushBloodTestSyncToWatch(bt, false);
                                 staticRefreshBGCharts();
                                 JoH.static_toast_short(gs(R.string.deleted));
                             });
@@ -1086,10 +885,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
                         DidYouCancelAlarm.dialog(this, AlertPlayer::defaultSnooze);
                         break;
                 }
-            } else if (bundle.getString(Home.ENABLE_STREAMING_DIALOG) != null) {
-                NFCReaderX.enableBluetoothAskUser(mActivity);
-            } else if (bundle.getString(Home.CHOOSE_INSULIN_PEN) != null) {
-                ChooseInsulinPenDialog.show(this, bundle.getString(Home.CHOOSE_INSULIN_PEN));
             }
         }
     }
@@ -1134,7 +929,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     }
 
     public void cloudBackup(MenuItem x) {
-        JoH.startActivity(BackupActivity.class);
     }
 
     public void crowdTranslate(MenuItem x) {
@@ -1148,7 +942,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     }
 
     public void testFeature(MenuItem x) {
-        TestFeature.testFeature1();
     }
 
     public void viewEventLog(MenuItem x) {
@@ -1156,7 +949,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     }
 
     public void ShowLibreTrend(MenuItem x) {
-        startActivity(new Intent(this, LibreTrendGraph.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra("events", ""));
     }
 
     private boolean hideTreatmentButtonsIfAllDone() {
@@ -1175,7 +967,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
                 byTypeInvisible) {
             hideAllTreatmentButtons(); // we clear values here also
             //send toast to wear - closes the confirmation activity on the watch
-            WatchUpdaterService.sendWearToast(gs(R.string.treatment_processed), Toast.LENGTH_LONG);
             return true;
         } else {
             return false;
@@ -1239,26 +1030,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     }
 
     private void initializeSearchWords(String jstring) {
-        Log.d(TAG, "Initialize Search words");
-        wordDataWrapper lcs = new wordDataWrapper();
-        try {
-            InputStream in_s = getResources().openRawResource(R.raw.initiallexicon);
-
-            String input = readTextFile(in_s);
-
-            Gson gson = new Gson();
-            lcs = gson.fromJson(input, wordDataWrapper.class);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-
-            Log.d(TAG, "Got exception during search word load: " + e.toString());
-            Toast.makeText(getApplicationContext(),
-                    gs(R.string.problem_loading_speech_lexicon),
-                    Toast.LENGTH_LONG).show();
-        }
-        Log.d(TAG, "Loaded Words: " + lcs.entries.size());
-        searchWords = lcs;
     }
 
     public void promptSpeechNoteInput(View abc) {
@@ -1285,15 +1056,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     }
 
     private void promptKeypadInput() {
-        Log.d(TAG, "Showing pop-up");
-
-/*        LayoutInflater inflater = (LayoutInflater) xdrip.getAppContext().getSystemService(LAYOUT_INFLATER_SERVICE);
-        View popupView = inflater.inflate(R.layout.keypad_activity_phone, null);
-        myPopUp = new PopupWindow(popupView, ViewGroup.LayoutParams.FILL_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        myPopUp.showAtLocation(findViewById(R.id.chart), Gravity.CENTER, 0, 0);*/
-
-        startActivity(new Intent(this, PhoneKeypadInputActivity.class));
     }
 
     private void promptTextInput() {
@@ -1304,403 +1066,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         promptKeypadInput();
     }
 
-    private void promptTextInput_old() {
-
-        if (recognitionRunning) return;
-        recognitionRunning = true;
-
-
-        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle(R.string.type_treatment_eg);
-        // Set up the input
-        final EditText input = new EditText(this);
-        input.setInputType(InputType.TYPE_CLASS_TEXT);
-        builder.setView(input);
-        // Set up the buttons
-        builder.setPositiveButton(R.string.ok, (dialog, which) -> {
-            voiceRecognitionText.setText(input.getText().toString());
-            voiceRecognitionText.setVisibility(View.VISIBLE);
-            last_speech_time = JoH.ts();
-            naturalLanguageRecognition(input.getText().toString());
-
-        });
-        builder.setNegativeButton(R.string.cancel, (dialog, which) -> dialog.cancel());
-
-        final AlertDialog dialog = builder.create();
-        input.setOnFocusChangeListener((v, hasFocus) -> {
-            if (hasFocus) {
-                if (dialog != null)
-                    dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
-            }
-        });
-        dialog.show();
-        recognitionRunning = false;
-    }
-
-    /**
-     * Showing google speech input dialog
-     */
-    private synchronized void promptSpeechInput() {
-
-        if (JoH.ratelimit("speech-input", 1)) {
-            if (recognitionRunning) return;
-            recognitionRunning = true;
-
-            Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
-            // intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US"); // debug voice
-            intent.putExtra(RecognizerIntent.EXTRA_PROMPT,
-                    getString(R.string.speak_your_treatment));
-
-            try {
-                startActivityForResult(intent, REQ_CODE_SPEECH_INPUT);
-            } catch (ActivityNotFoundException a) {
-                Toast.makeText(getApplicationContext(),
-                        R.string.speech_recognition_is_not_supported,
-                        Toast.LENGTH_LONG).show();
-            }
-        }
-    }
-
-    private String classifyWord(String word) {
-        if (word == null) return null;
-        if (word.equals("watchkeypad")) return "watchkeypad";
-        if (word.equals("uuid")) return "uuid";
-        // convert fuzzy recognised word to our keyword from lexicon
-        for (wordData thislex : searchWords.entries) {
-            if (thislex.matchWords.contains(word)) {
-                Log.d(TAG, "Matched spoken word: " + word + " => " + thislex.lexicon);
-                return thislex.lexicon;
-            }
-        }
-        Log.d(TAG, "Could not match spoken word: " + word);
-        return null; // if cannot match
-    }
-
-    private void naturalLanguageRecognition(String allWords) {
-        if (searchWords == null) {
-
-            Toast.makeText(getApplicationContext(),
-                    gs(R.string.word_lexicon_not_loaded),
-                    Toast.LENGTH_LONG).show();
-            return;
-        }
-        Log.d(TAG, "Processing speech input allWords: " + allWords);
-        thisuuid = "";
-        int end = allWords.indexOf(" uuid ");
-        if (end > 0) {
-            thisuuid = (end > 0 ? allWords.substring(0, end) : "");
-            allWords = allWords.substring(end + 6, allWords.length());
-        }
-        byte[] RTL_BYTES = {(byte) 0xE2, (byte) 0x80, (byte) 0x8f}; // See https://stackoverflow.com/questions/21470476/why-is-e2808f-being-added-to-my-youtube-embed-code
-
-        allWords = allWords.trim();
-        allWords = allWords.replaceAll(":", "."); // fix real times
-        allWords = allWords.replaceAll("(\\d)([a-zA-Z])", "$1 $2"); // fix like 22mm
-        allWords = allWords.replaceAll("([0-9]\\.[0-9])([0-9][0-9])", "$1 $2"); // fix multi number order like blood 3.622 grams
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            allWords = allWords.replaceAll(new String(RTL_BYTES, StandardCharsets.UTF_8), "");
-        }
-        allWords = allWords.toLowerCase();
-
-        Log.d(TAG, "Processing speech input allWords second: " + allWords + " UUID: " + thisuuid);
-
-        if (allWords.contentEquals("delete last treatment")
-                || allWords.contentEquals("cancel last treatment")
-                || allWords.contentEquals("erase last treatment")) {
-            Treatments.delete_last(true);
-            updateCurrentBgInfo("delete last treatment");
-        } else if ((allWords.contentEquals("delete all treatments"))
-                || (allWords.contentEquals("delete all treatment"))) {
-            Treatments.delete_all(true);
-            updateCurrentBgInfo("delete all treatment");
-        } else if (allWords.contentEquals("delete all glucose data")) {
-            deleteAllBG(null);
-            LibreAlarmReceiver.clearSensorStats();
-        } else if (allWords.contentEquals("test trend arrow")) {
-            testGraphicalTrendArrow();
-        } else {
-            VoiceCommands.processVoiceCommand(allWords, this);
-        }
-
-        // reset parameters for new speech
-        watchkeypad = false;
-        watchkeypadset = false;
-        glucoseset = false;
-        thisInsulinSumNumber = 0;
-        thisinsulinnumber = new double[MAX_INSULIN_PROFILES];
-        thisinsulinprofile = new Insulin[MAX_INSULIN_PROFILES];
-        carbsset = false;
-        timeset = false;
-        thisnumber = -1;
-        thisword = "";
-
-        for (int i = 0; i < maxInsulinProfiles; i++)
-            thisinsulinprofile[i] = null;
-
-        final String[] wordsArray = allWords.split(" ");
-        for (int i = 0; i < wordsArray.length; i++) {
-            // per word in input stream
-            try {
-                double thisdouble = Double.parseDouble(wordsArray[i]);
-                thisnumber = thisdouble; // if no exception
-                handleWordPair();
-            } catch (NumberFormatException nfe) {
-                // detection of number or not
-                final String result = classifyWord(wordsArray[i]);
-                if (result != null)
-                    thisword = result;
-                else
-                    thisword = wordsArray[i].toLowerCase();  // if we can't translate the word make it lowercase to recognise it later
-                handleWordPair();
-                if (thisword.equals("note")) {
-                    String note_text = "";
-                    for (int j = i + 1; j < wordsArray.length; j++) {
-                        if (note_text.length() > 0) note_text += " ";
-                        note_text += wordsArray[j];
-                    }
-                    if (note_text.length() > 0) {
-                        // TODO respect historic timeset?
-                        Treatments.create_note(note_text, tsl());
-                        staticRefreshBGCharts();
-                        break; // don't process any more
-                    }
-                }
-            }
-        }
-    }
-
-    private void handleWordPair() {
-        boolean preserve = false;
-        if ((thisnumber == -1) || (thisword.equals(""))) return;
-
-        Log.d(TAG, "GOT WORD PAIR: " + thisnumber + " = " + thisword);
-
-        switch (thisword) {
-            case "watchkeypad":
-                if (!watchkeypadset && (thisnumber > 1501968469)) {
-                    watchkeypad = true;
-                    watchkeypadset = true;
-                    watchkeypad_timestamp = (long) (thisnumber * 1000);
-                    Log.d(TAG, "Treatment entered on watchkeypad: " + thisnumber);
-                } else {
-                    Log.d(TAG, "watchkeypad already set");
-                }
-                break;
-
-            case "rapid":
-                if (!insulinsumset) {
-                    final String thisNumberStr = Double.toString(thisnumber);
-                    if (thisnumber > 0) {
-                        thisInsulinSumNumber = thisnumber;
-                        textInsulinSumDose.setText(thisNumberStr + " units");
-                        Log.d(TAG, "Rapid dose: " + thisNumberStr);
-                        textInsulinSumDose.setVisibility(View.VISIBLE);
-                        if (!MultipleInsulins.isEnabled()) {
-                            buttonInsulinSingleDose.setVisibility(View.VISIBLE); // show the button next to the single insulin dose if not using multiples
-                        }
-                        insulinsumset = true;
-                    } else {
-                        Log.d(TAG, " Insulin dose is too small: " + thisNumberStr);
-                    }
-                } else {
-                    Log.d(TAG, "Rapid dose already set");
-                    preserve = true;
-                }
-                break;
-
-            case "carbs":
-                if (!carbsset && (thisnumber > 0)) {
-                    thiscarbsnumber = thisnumber;
-                    textCarbohydrates.setText((int)thisnumber + " g carbs");
-                    carbsset = true;
-                    Log.d(TAG, "Carbs eaten: " + thisnumber);
-                    btnCarbohydrates.setVisibility(View.VISIBLE);
-                    textCarbohydrates.setVisibility(View.VISIBLE);
-                } else {
-                    Log.d(TAG, "Carbs already set");
-                    preserve = true;
-                }
-                break;
-
-            case "blood":
-                if (!glucoseset && (thisnumber > 0)) {
-                    thisglucosenumber = thisnumber;
-                    if (Pref.getString("units", "mgdl").equals("mgdl")) {
-                        if (textBloodGlucose != null)
-                            textBloodGlucose.setText(thisnumber + " mg/dl");
-                    } else {
-                        if (textBloodGlucose != null)
-                            textBloodGlucose.setText(thisnumber + " mmol/l");
-                    }
-
-                    Log.d(TAG, "Blood test: " + thisnumber);
-                    glucoseset = true;
-                    if (textBloodGlucose != null) {
-                        btnBloodGlucose.setVisibility(View.VISIBLE);
-                        textBloodGlucose.setVisibility(View.VISIBLE);
-                    }
-
-                } else {
-                    Log.d(TAG, "Blood glucose already set");
-                    preserve = true;
-                }
-                break;
-
-            case "time":
-                Log.d(TAG, "processing time keyword");
-                if (!timeset && (thisnumber >= 0)) {
-
-                    final NumberFormat nf = NumberFormat.getNumberInstance(Locale.US);
-                    final DecimalFormat df = (DecimalFormat) nf;
-                    //DecimalFormat df = new DecimalFormat("#");
-                    df.setMinimumIntegerDigits(2);
-                    df.setMinimumFractionDigits(2);
-                    df.setMaximumFractionDigits(2);
-                    df.setMaximumIntegerDigits(2);
-
-                    final Calendar c = Calendar.getInstance();
-
-                    final SimpleDateFormat simpleDateFormat1 =
-                            new SimpleDateFormat("dd/M/yyyy ", Locale.US);
-                    final SimpleDateFormat simpleDateFormat2 =
-                            new SimpleDateFormat("dd/M/yyyy HH.mm", Locale.US); // TODO double check 24 hour 12.00 etc
-                    final String datenew = simpleDateFormat1.format(c.getTime()) + df.format(thisnumber);
-
-                    Log.d(TAG, "Time Timing data datenew: " + datenew);
-
-                    final Date datethen;
-                    final Date datenow = new Date();
-
-                    try {
-                        datethen = simpleDateFormat2.parse(datenew);
-                        double difference = datenow.getTime() - datethen.getTime();
-                        // is it more than 1 hour in the future? If so it must be yesterday
-                        if (difference < -(1000 * 60 * 60)) {
-                            difference = difference + (86400 * 1000);
-                        } else {
-                            // - midnight feast pre-bolus nom nom
-                            if (difference > (60 * 60 * 23 * 1000))
-                                difference = difference - (86400 * 1000);
-                        }
-
-                        Log.d(TAG, "Time Timing data: " + df.format(thisnumber) + " = difference ms: " + JoH.qs(difference));
-                        textTime.setText(df.format(thisnumber));
-                        timeset = true;
-                        thistimeoffset = difference;
-                        btnTime.setVisibility(View.VISIBLE);
-                        textTime.setVisibility(View.VISIBLE);
-                    } catch (ParseException e) {
-                        // toast to explain?
-                        Log.d(TAG, "Got exception parsing date time");
-                    }
-                } else {
-                    Log.d(TAG, "Time data already set");
-                    preserve = true;
-                }
-                break;
-            default:
-                if (MultipleInsulins.isEnabled()) {
-                    final Insulin insulin = InsulinManager.getProfile(thisword);
-                    if (insulin != null) {
-                        UserError.Log.d("TREATMENTS", "Processing for: " + insulin.getName());
-                        int number = 0;
-                        for (number = 0; number < maxInsulinProfiles; number++)
-                            if ((thisinsulinprofile[number] == null) || (thisinsulinprofile[number] == insulin)) {
-                                thisinsulinprofile[number] = insulin;
-                                break;
-                            }
-                        if (!insulinset[number]) {
-                            final String thisNumberStr = Double.toString(thisnumber);
-                            if (thisnumber > 0) {
-                                thisinsulinnumber[number] = thisnumber;
-                                textInsulinDose[number].setText(thisNumberStr + " " + insulin.getName());
-                                Log.d(TAG, insulin.getName() + " dose: " + thisNumberStr);
-                                insulinset[number] = true;
-                                btnInsulinDose[number].setVisibility(View.VISIBLE);
-                                textInsulinDose[number].setVisibility(View.VISIBLE);
-                            } else {
-                                Log.d(TAG, insulin.getName() + " dose is too small: " + thisNumberStr);
-                            }
-                        } else {
-                            Log.d(TAG, insulin.getName() + " dose already set");
-                            preserve = true;
-                        }
-                    }
-                }
-                break;
-        } // end switch
-
-        if (preserve == false) {
-            Log.d(TAG, "Clearing speech values");
-            thisnumber = -1;
-            thisword = "";
-        } else {
-            Log.d(TAG, "Preserving speech values");
-        }
-
-        // don't show approve if we only have time
-        if ((insulinsumset || glucoseset || carbsset) && !watchkeypad) {
-            btnApprove.setVisibility(View.VISIBLE);
-
-            if (small_screen) {
-                final float button_scale_factor = 0.60f;
-                final int small_text_size = 12;
-                ((ViewGroup.MarginLayoutParams) btnApprove.getLayoutParams()).leftMargin = 0;
-                ((ViewGroup.MarginLayoutParams) btnBloodGlucose.getLayoutParams()).leftMargin = 0;
-                ((ViewGroup.MarginLayoutParams) btnBloodGlucose.getLayoutParams()).setMarginStart(0);
-                ((ViewGroup.MarginLayoutParams) btnCancel.getLayoutParams()).setMarginStart(0);
-                ((ViewGroup.MarginLayoutParams) btnApprove.getLayoutParams()).rightMargin = 0;
-                ((ViewGroup.MarginLayoutParams) btnCancel.getLayoutParams()).rightMargin = 0;
-                btnApprove.setScaleX(button_scale_factor);
-                btnApprove.setScaleY(button_scale_factor);
-                btnCancel.setScaleX(button_scale_factor);
-                btnCancel.setScaleY(button_scale_factor);
-                for (int i = 0; i < maxInsulinProfiles; i++) {
-                    btnInsulinDose[i].setScaleY(button_scale_factor);
-                    btnInsulinDose[i].setScaleX(button_scale_factor);
-                    textInsulinDose[i].setTextSize(small_text_size);
-                }
-                btnCarbohydrates.setScaleX(button_scale_factor);
-                btnCarbohydrates.setScaleY(button_scale_factor);
-                btnBloodGlucose.setScaleX(button_scale_factor);
-                btnBloodGlucose.setScaleY(button_scale_factor);
-                btnTime.setScaleX(button_scale_factor);
-                btnTime.setScaleY(button_scale_factor);
-                textCarbohydrates.setTextSize(small_text_size);
-                textInsulinSumDose.setTextSize(small_text_size);
-                textBloodGlucose.setTextSize(small_text_size);
-                textTime.setTextSize(small_text_size);
-            }
-        }
-
-        if ((insulinsumset || glucoseset || carbsset || timeset) && !watchkeypad) {
-            btnCancel.setVisibility(View.VISIBLE);
-            if (chart != null) {
-                chart.setAlpha((float) 0.10);
-            }
-            ArrayList<InsulinInjection> injections = new ArrayList<InsulinInjection>();
-            for (int i = 0; i < maxInsulinProfiles; i++)
-                if (insulinset[i] && thisinsulinprofile[i] != null) {
-                    InsulinInjection injection = new InsulinInjection(thisinsulinprofile[i], thisinsulinnumber[i]);
-                    injections.add(injection);
-                }
-            Gson gson = new GsonBuilder()
-                    .excludeFieldsWithoutExposeAnnotation()
-                    .registerTypeAdapter(Date.class, new DateTypeAdapter())
-                    .serializeSpecialFloatingPointValues()
-                    .create();
-            WatchUpdaterService.sendTreatment(
-                    thiscarbsnumber,
-                    thisInsulinSumNumber,
-                    thisglucosenumber,
-                    gson.toJson(injections),
-                    thistimeoffset,
-                    textTime.getText().toString());
-        }
-    }
 
     public static void toaststatic(final String msg) {
         nexttoast = msg;
@@ -1739,50 +1104,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         super.onActivityResult(requestCode, resultCode, data);
 
         switch (requestCode) {
-            case REQ_CODE_SPEECH_INPUT:
-
-                if (resultCode == RESULT_OK && null != data) {
-                    ArrayList<String> result = data
-                            .getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-                    voiceRecognitionText.setText(result.get(0));
-                    voiceRecognitionText.setVisibility(View.VISIBLE);
-                    last_speech_time = JoH.ts();
-                    naturalLanguageRecognition(result.get(0));
-                }
-                recognitionRunning = false;
-                break;
-
-            case REQ_CODE_SPEECH_NOTE_INPUT:
-                if (resultCode == RESULT_OK && null != data) {
-                    ArrayList<String> result = data
-                            .getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-                    //voiceRecognitionText.setText(result.get(0));
-                    //voiceRecognitionText.setVisibility(View.VISIBLE);
-                    //last_speech_time = JoH.ts();
-                    //naturalLanguageRecognition(result.get(0));
-                    String treatment_text = result.get(0).trim();
-                    Log.d(TAG, "Got treatment note: " + treatment_text);
-                    voiceRecognitionText.setText(result.get(0));
-                    voiceRecognitionText.setVisibility(View.VISIBLE);
-                    Treatments.create_note(treatment_text, 0); // timestamp?
-                    if (dialog != null) {
-                        dialog.cancel();
-                        dialog = null;
-                    }
-                    Home.staticRefreshBGCharts();
-
-                }
-                recognitionRunning = false;
-                break;
-
-            case NFCReaderX.REQ_CODE_NFC_TAG_FOUND:
-                if (NFCReaderX.useNFC()) {
-                    NFCReaderX nfcReader = new NFCReaderX();
-                    //noinspection AccessStaticViaInstance
-                    nfcReader.tagFound(this, data);
-                }
-                break;
-
             case REQ_CODE_BATTERY_OPTIMIZATION:
                 staticRefreshBGCharts();
                 break;
@@ -1807,26 +1128,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     @Override
     public String getMenuName() {
         return getString(R.string.home_screen);
-    }
-
-    private boolean checkEula() {
-
-        final boolean warning_agreed_to = Pref.getBoolean("warning_agreed_to", false);
-        if (!warning_agreed_to) {
-            startActivity(new Intent(getApplicationContext(), Agreement.class));
-            finish();
-            return false;
-        } else {
-            final boolean IUnderstand = Pref.getBoolean("I_understand", false);
-            if (!IUnderstand) {
-                Intent intent = new Intent(getApplicationContext(), LicenseAgreementActivity.class);
-                startActivity(intent);
-                finish();
-                return false;
-            } else {
-                return true;
-            }
-        }
     }
 
     public static void staticRefreshBGCharts() {
@@ -1865,10 +1166,7 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     @Override
     protected void onResume() {
         super.onResume();
-        xdrip.checkForcedEnglish(xdrip.getAppContext());
         handleFlairColors();
-        checkEula();
-        set_is_follower();
         // status line must only have current bwp/iob data
         statusIOB = "";
         statusBWP = "";
@@ -1908,7 +1206,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
             }
         };
 
-
         registerReceiver(_broadcastReceiver, new IntentFilter(Intent.ACTION_TIME_TICK));
         registerReceiver(newDataReceiver, new IntentFilter(Intents.ACTION_NEW_BG_ESTIMATE_NO_DATA));
 
@@ -1919,64 +1216,10 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         updateCurrentBgInfo("generic on resume");
         updateHealthInfo("generic on resume");
 
-        NFControl.initNFC(this, false);
-
-        if (get_follower() || get_master()) {
-           // GcmActivity.checkSync(this);
-        }
-
-        checkWifiSleepPolicy();
-
         if (homeShelf.getDefaultFalse("source_wizard_auto")) {
             if (Experience.gotData()) {
                 homeShelf.set("source_wizard", false);
                 homeShelf.set("source_wizard_auto", false);
-            }
-        }
-
-        HeyFamUpdateOptInDialog.heyFam(this); // remind about updates
-        firstRunDialogs(checkedeula);
-
-        Inevitable.task("home-resume-bg", 2000, () -> {
-            InPenEntry.startIfEnabled();
-            EmergencyAssistActivity.checkPermissionRemoved();
-            NightscoutUploader.launchDownloadRest();
-            Pendiq.immortality(); // Experimental testing phase
-        });
-    }
-
-    private void checkWifiSleepPolicy() {
-        if (Build.VERSION.SDK_INT < 33) {      // setting removed after android 12
-            if (!JoH.getWifiSleepPolicyNever()) {
-                if (JoH.ratelimit("policy-never", 3600)) {
-                    if (Pref.getLong("wifi_warning_never", 0) == 0) {
-                        if (!JoH.isMobileDataOrEthernetConnected()) {
-                            AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                            builder.setTitle(gs(R.string.wifi_sleep_policy_issue));
-                            builder.setMessage(gs(R.string.your_wifi_is_set_to_sleep_when_the_phone_screen_is_off__this_may_cause_problems_if_you_dont_have_cellular_data_or_have_devices_on_your_local_network__would_you_like_to_go_to_the_settings_page_to_set__always_keep_wifi_on_during_sleep));
-
-                            builder.setNeutralButton(gs(R.string.maybe_later), (dialog, which) -> dialog.dismiss());
-
-                            builder.setPositiveButton(gs(R.string.yes_do_it), (dialog, which) -> {
-                                dialog.dismiss();
-                                toast(gs(R.string.recommend_that_you_change_wifi_to_always_be_on_during_sleep));
-                                try {
-                                    startActivity(new Intent(Settings.ACTION_WIFI_IP_SETTINGS));
-                                } catch (ActivityNotFoundException e) {
-                                    JoH.static_toast_long(gs(R.string.ooops_this_device_doesnt_seem_to_have_a_wifi_settings_page));
-                                }
-                            });
-
-                            builder.setNegativeButton(R.string.no_never, (dialog, which) -> {
-                                dialog.dismiss();
-                                Pref.setLong("wifi_warning_never", (long) JoH.ts());
-                            });
-
-                            AlertDialog alert = builder.create();
-                            alert.show();
-                        }
-                    }
-                }
             }
         }
     }
@@ -2152,7 +1395,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     public void onPause() {
         activityVisible = false;
         super.onPause();
-        NFControl.initNFC(this, true); // disables
         nanoStatus.setRunning(false);
         expiryStatus.setRunning(false);
         if (_broadcastReceiver != null) {
@@ -2177,28 +1419,8 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         }
     }
 
-    private static void set_is_follower() {
-        is_follower = PreferenceManager.getDefaultSharedPreferences(xdrip.getAppContext()).getString("dex_collection_method", "").equals("Follower");
-        is_follower_set = true;
-    }
-
     public static boolean get_follower() {
-        if (!is_follower_set) set_is_follower();
-        return Home.is_follower;
-    }
-
-    private static void setHasLibreblock() {
-        has_libreblock =  LibreBlock.getLatestForTrend() != null;
-        has_libreblock_set = true;
-    }
-
-    public static boolean hasLibreblock() {
-        if (!has_libreblock_set) setHasLibreblock();
-        return has_libreblock;
-    }
-
-    public static boolean get_is_libre_whole_house_collector() {
-        return Pref.getBooleanDefaultFalse("libre_whole_house_collector");
+        return false;
     }
 
     public static boolean get_engineering_mode() {
@@ -2206,56 +1428,20 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     }
 
     public static boolean get_master() {
-        // TODO optimize this
-        return (!get_follower()) && (Pref.getBooleanDefaultFalse("plus_follow_master"));
-    }
-
-    public static boolean get_master_or_follower() {
-        return get_follower() || get_master();
-    }
-
-    public static boolean get_show_wear_treatments() {
-        return Pref.getBooleanDefaultFalse("wear_sync") &&
-                Pref.getBooleanDefaultFalse("show_wear_treatments");
-    }
-
-    public static boolean follower_or_accept_follower() {
-        return get_follower() || Pref.getBoolean("plus_accept_follower_actions", true);
+        return false;
     }
 
     public static boolean get_forced_wear() {
-        return Pref.getBooleanDefaultFalse("wear_sync") &&
-                Pref.getBooleanDefaultFalse("enable_wearG5") &&
-                Pref.getBooleanDefaultFalse("force_wearG5");
-    }
-
-    public static boolean get_enable_wear() {
-        return Pref.getBooleanDefaultFalse("wear_sync") &&
-                Pref.getBooleanDefaultFalse("enable_wearG5");
+        return false;
     }
 
     public static void startWatchUpdaterService(Context context, String action, String logTag) {
-        final boolean wear_integration = Pref.getBoolean("wear_sync", false);
-        if (wear_integration) {
-            Log.d(logTag, "start WatchUpdaterService with " + action);
-            context.startService(new Intent(context, WatchUpdaterService.class).setAction(action));
-        }
     }
 
     public static void startWatchUpdaterService(Context context, String action, String logTag, String key, String value) {
-        final boolean wear_integration = Pref.getBoolean("wear_sync", false);
-        if (wear_integration) {
-            Log.d(logTag, "start WatchUpdaterService with " + action);
-            context.startService(new Intent(context, WatchUpdaterService.class).setAction(action).putExtra(key, value));
-        }
     }
 
     public static void startWatchUpdaterService(Context context, String action, String logTag, String key, boolean value) {
-        final boolean wear_integration = Pref.getBoolean("wear_sync", false);
-        if (wear_integration) {
-            Log.d(logTag, "start WatchUpdaterService with " + action);
-            context.startService(new Intent(context, WatchUpdaterService.class).setAction(action).putExtra(key, value));
-        }
     }
 
     public static boolean get_holo() {
@@ -2268,7 +1454,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     }
 
     public void sourceWizardButtonClick(View v) {
-        SourceWizard.start(Home.this, true);
     }
 
     private long whichTimeLocked() {
@@ -2395,27 +1580,8 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     }
 
     private void updateHealthInfo(String caller) {
-
-        final StepCounter pm = StepCounter.last();
-        final boolean use_pebble_health = Pref.getBoolean("use_pebble_health", true);
-        if ((use_pebble_health) && (pm != null)) {
-            stepsButton.setText(Integer.toString(StepCounter.getDailyTotal()));
-            stepsButton.setVisibility(View.VISIBLE);
-            // TODO this can be done with PrefsView binding
-            stepsButton.setAlpha(Pref.getBoolean("show_pebble_movement_line", true) ? 1.0f : 0.3f);
-        } else {
-            stepsButton.setVisibility(View.INVISIBLE);
-        }
-
-        final HeartRate hr = HeartRate.last();
-        if ((use_pebble_health) && (hr != null)) {
-            bpmButton.setText(Integer.toString(hr.bpm));
-            bpmButton.setVisibility(View.VISIBLE);
-            // TODO this can be done with PrefsView binding
-            bpmButton.setAlpha(Pref.getBoolean("show_pebble_movement_line", true) ? 1.0f : 0.3f);
-        } else {
-            bpmButton.setVisibility(View.INVISIBLE);
-        }
+	    stepsButton.setVisibility(View.INVISIBLE);
+	    bpmButton.setVisibility(View.INVISIBLE);
     }
 
     private void updateCurrentBgInfo(final String source) {
@@ -2491,18 +1657,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         }
         if (collector.equals(DexCollectionType.Disabled)) {
             notificationText.append(getString(R.string.__data_source_disabled));
-            if (!Experience.gotData()) {
-                // TODO should this move to Experience::processSteps ?
-                final Activity activity = this;
-                JoH.runOnUiThreadDelayed(() -> {
-                    if ((dialog == null || !dialog.isShowing())) {
-                        if (JoH.ratelimit("start_source_wizard", 30)) {
-                            SourceWizard.start(activity, false);
-                        }
-                    }
-                }, 500);
-
-            }
         } else if (collector.equals(DexCollectionType.Mock)) {
             notificationText.append("\n USING FAKE DATA SOURCE !!!");
             if (MockDataSource.getDivisorScale() == 1500000) {
@@ -2597,22 +1751,13 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
             last_speech_time = 0;
         }
 
-        if (ActivityRecognizedService.is_in_vehicle_mode()) {
-            btnVehicleMode.setVisibility(View.VISIBLE);
-        } else {
-            btnVehicleMode.setVisibility(View.INVISIBLE);
-        }
+	    btnVehicleMode.setVisibility(View.INVISIBLE);
 
-        //if (isG5Share) showcasemenu(SHOWCASE_G5FIRMWARE); // nov 2016 firmware warning resolved 15/12/2016
+	    //if (isG5Share) showcasemenu(SHOWCASE_G5FIRMWARE); // nov 2016 firmware warning resolved 15/12/2016
         //showcasemenu(1); // 3 dot menu
     }
 
     private void updateCurrentBgInfoForWifiWixel(DexCollectionType collector, TextView notificationText) {
-        if (!WixelReader.IsConfigured()) {
-            notificationText.setText(R.string.first_configure_ip_address);
-            return;
-        }
-
         updateCurrentBgInfoCommon(collector, notificationText);
     }
 
@@ -2632,19 +1777,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     private void updateCurrentBgInfoCommon(DexCollectionType collector, TextView notificationText) {
         if (alreadyDisplayedBgInfoCommon) return; // with bluetooth and wifi, skip second time
         alreadyDisplayedBgInfoCommon = true;
-
-        if(get_is_libre_whole_house_collector()) {
-            Long lastReading = PersistentStore.getLong("libre-reading-timestamp");
-            if(lastReading == 0) {
-                notificationText.setText(R.string.in_libre_all_house_mode_no_readings_collected_yet);
-            } else {
-                int minutes = (int) (tsl() - lastReading) / (60 * 1000);
-                final String fmt = getString(R.string.minutes_ago);
-                notificationText.setText(R.string.in_libre_all_house_mode_last_data_collected);
-                notificationText.append(MessageFormat.format(fmt, minutes));
-            }
-            return;
-        }
 
         boolean isSensorActive = Sensor.isActive();
 
@@ -2668,17 +1800,7 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
 
             if ((dialog == null) || (!dialog.isShowing())) {
                 if (!Experience.gotData() && Experience.backupAvailable() && JoH.ratelimit("restore-backup-prompt", 10)) {
-                    final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                    final Context context = this;
-                    builder.setTitle(gs(R.string.restore_backup));
-                    builder.setMessage(gs(R.string.do_you_want_to_restore_the_backup_file_) + Pref.getString("last-saved-database-zip", "ERROR").replaceFirst("^.*/", ""));
-                    builder.setNegativeButton(gs(R.string.no), (dialog, which) -> dialog.dismiss());
-                    builder.setPositiveButton(gs(R.string.restore), (dialog, which) -> {
-                        dialog.dismiss();
-                        startActivity(new Intent(context, ImportDatabaseActivity.class).putExtra("importit", Pref.getString("last-saved-database-zip", "")).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-                    });
-                    dialog = builder.create();
-                    dialog.show();
+
                 } else {
                     if (!Experience.gotData() && !QuickSettingsDialogs.isDialogShowing() && !notConnectedToG6Yet && JoH.ratelimit("start-sensor_prompt", 20)) {
                         // Show the start sensor prompt only if G6 is not selected or the G6 transmitter is synchronized.
@@ -2876,11 +1998,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     }
 
     private void updateCurrentBgInfoForBtShare(TextView notificationText) {
-        if ((android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.JELLY_BEAN_MR2)) {
-            notificationText.setText(R.string.unfortunately_andoird_version_no_blueooth_low_energy);
-            return;
-        }
-
         String receiverSn = Pref.getString("share_key", "SM00000000").toUpperCase();
         if (receiverSn.compareTo("SM00000000") == 0 || receiverSn.length() == 0) {
             notificationText.setText(R.string.please_set_dex_receiver_serial_number);
@@ -2910,10 +2027,7 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         df.setMaximumFractionDigits(0);
 
         final boolean isDexbridge = CollectionServiceStarter.isDexBridgeOrWifiandDexBridge();
-        // final boolean hasBtWixel = DexCollectionType.hasBtWixel();
         final boolean isLimitter = CollectionServiceStarter.isLimitter();
-        //boolean isWifiWixel = CollectionServiceStarter.isWifiandBTWixel(getApplicationContext()) | CollectionServiceStarter.isWifiWixel(getApplicationContext());
-        //  if (isDexbridge||isLimitter||hasBtWixel||is_follower) {
         if (DexCollectionType.hasBattery()) {
             final int bridgeBattery = Pref.getInt("bridge_battery", 0);
 
@@ -2923,19 +2037,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
             } else {
                 if (isDexbridge) {
                     dexbridgeBattery.setText(getString(R.string.xbridge_battery) + ": " + bridgeBattery + "%");
-                } else if (isLimitter) {
-                    final String limitterName = DexCollectionService.getBestLimitterHardwareName();
-                    if (limitterName.equals(DexCollectionService.LIMITTER_NAME)) {
-                        dexbridgeBattery.setText(getString(R.string.limitter_battery) + ": " + bridgeBattery + "%");
-                    } else if (limitterName.equals("BlueReader")) {
-                        if (Pref.getBooleanDefaultFalse("blueReader_restdays_on_home")) {
-                            dexbridgeBattery.setText(limitterName + " " + getString(R.string.battery) + ": " + bridgeBattery + "% (" + PersistentStore.getString("bridge_battery_days") + " " + getString(R.string.days) + ")");
-                        } else {
-                            dexbridgeBattery.setText(limitterName + " " + getString(R.string.battery) + ": " + bridgeBattery + "%");
-                        }
-                    } else {
-                        dexbridgeBattery.setText(limitterName + " " + getString(R.string.battery) + ": " + bridgeBattery + "%");
-                    }
                 } else {
                     dexbridgeBattery.setText(getString(R.string.bridge_battery) + ": " + bridgeBattery + ((bridgeBattery < 200) ? "%" : "mV"));
                 }
@@ -2975,7 +2076,7 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         }
 
         final int sensor_age = Pref.getInt("nfc_sensor_age", 0);
-        if (sensor_age > 0 && (DexCollectionType.hasLibre() || hasLibreblock())) {
+        if (sensor_age > 0 && (DexCollectionType.hasLibre())) {
             final String age_problem = (Pref.getBooleanDefaultFalse("nfc_age_problem") ? " \u26A0\u26A0\u26A0" : "");
             if (Pref.getBoolean("nfc_show_age", true)) {
                 sensorAge.setText(getResources().getQuantityString(R.plurals.sensor_age, sensor_age / 1440, JoH.qs(((double) sensor_age) / 1440, 1)) + age_problem);
@@ -3008,9 +2109,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         if ((currentBgValueText.getPaintFlags() & Paint.STRIKE_THRU_TEXT_FLAG) > 0) {
             currentBgValueText.setPaintFlags(currentBgValueText.getPaintFlags() & (~Paint.STRIKE_THRU_TEXT_FLAG));
             dexbridgeBattery.setPaintFlags(dexbridgeBattery.getPaintFlags() & (~Paint.STRIKE_THRU_TEXT_FLAG));
-            if (get_follower()) {
-                GcmActivity.requestPing();
-            }
         }
         final BgReading lastBgReading = BgReading.lastNoSenssor();
         boolean predictive = PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).getBoolean("predictive_bg", false);
@@ -3040,8 +2138,8 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         }
 
         if (Pref.getBoolean("extra_status_line", false)) {
-            extraStatusLineText.setText(StatusLine.extraStatusLine());
-            extraStatusLineText.setVisibility(View.VISIBLE);
+//            extraStatusLineText.setText(StatusLine.extraStatusLine());
+//            extraStatusLineText.setVisibility(View.VISIBLE);
         } else {
             extraStatusLineText.setText("");
             extraStatusLineText.setVisibility(View.GONE);
@@ -3183,32 +2281,12 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         return true;
     }
 
-    // This function is needed in hebrew in order to allow printing the text (for exapmle) -3 mg/dl
-    // It seems that without this hack, printing it is impossibale. Android will print something like:
-    // -mg/dl 3 or mg/dl 3- or  mg/dl -3. (but never -3 mg/dl)
-    // The problem seems to happen becaud of the extra 0x0a char that somehow gets to the buffer.
-    // Since this text has high visabilty, I'm doing it. Will not be done in other places.
-    private void HebrewAppendDisplayData() {
-        // Do the append for the hebrew language
-        String original_text = notificationText.getText().toString();
-        Log.d(TAG, "original_text = " + HexDump.dumpHexString(original_text.getBytes()));
-        if (original_text.length() >= 1 && original_text.charAt(0) == 0x0a) {
-            Log.d(TAG, "removing first and appending " + display_delta);
-            notificationText.setText(display_delta + "  " + original_text.substring(1));
-        } else {
-            notificationText.setText(display_delta + "  " + original_text);
-        }
-    }
-
     private void addDisplayDelta() {
         if (BgGraphBuilder.isXLargeTablet(getApplicationContext())) {
-            if (Locale.getDefault().getLanguage().equals("iw")) {
-                HebrewAppendDisplayData();
-            } else {
-                notificationText.append("  ");
-                notificationText.append(display_delta);
-            }
-        } else {
+	        notificationText.append("  ");
+	        notificationText.append(display_delta);
+        }
+        else {
             notificationText.append("\n");
             notificationText.append(display_delta);
         }
@@ -3228,270 +2306,21 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_home, menu);
-
-        //wear integration
-        if (!Pref.getBoolean("wear_sync", false)) {
-            menu.removeItem(R.id.action_open_watch_settings);
-            menu.removeItem(R.id.action_sync_watch_db);//KS
-        }
-        if (!Pref.getBoolean("wear_sync", false) && !Pref.getBoolean("pref_amazfit_enable_key", false)) {
-            menu.removeItem(R.id.action_resend_last_bg);
-        }
-
-        //speak readings
-        MenuItem menuItem = menu.findItem(R.id.action_toggle_speakreadings);
-        if (Pref.getBoolean("bg_to_speech_shortcut", false)) {
-
-            menuItem.setVisible(true);
-            if (Pref.getBoolean("bg_to_speech", false)) {
-                menuItem.setChecked(true);
-            } else {
-                menuItem.setChecked(false);
-            }
-        } else {
-            menuItem.setVisible(false);
-        }
-
-        boolean got_data = Experience.gotData();
-        menu.findItem(R.id.crowdtranslate).setVisible(got_data);
-
-        menu.findItem(R.id.showreminders).setVisible(Pref.getBoolean("plus_show_reminders", true) && !is_newbie);
-
-        if (!hasLibreblock()) {
-            menu.findItem(R.id.libreLastMinutes).setVisible(false);
-        }
-
         return super.onCreateOptionsMenu(menu);
     }
 
     @Override
     public void onNewIntent(Intent intent) {
-        Bundle bundle = intent.getExtras();
+	    super.onNewIntent(intent);
+	    Bundle bundle = intent.getExtras();
         processIncomingBundle(bundle);
     }
 
     private synchronized void showcasemenu(int option) {
-        if ((myShowcase != null) && (myShowcase.isShowing())) return;
-        if (ShotStateStore.hasShot(option)) return;
-        //  if (showcaseblocked) return;
-        try {
-            ViewTarget target = null;
-            String title = "";
-            String message = "";
-            int size1 = 90;
-            int size2 = 14;
-
-            switch (option) {
-
-                case SHOWCASE_MOTION_DETECTION:
-                    target = new ViewTarget(R.id.btnNote, this); // dummy
-                    size1 = 0;
-                    size2 = 0;
-                    title = getString(R.string.title_motion_detection_warning);
-                    message = getString(R.string.message_motion_detection_warning);
-                    break;
-
-                 /*   case SHOWCASE_G5FIRMWARE:
-                        target= new ViewTarget(R.id.btnNote, this); // dummy
-                        size1=0;
-                        size2=0;
-                        title="G5 Firmware Warning";
-                        message="Transmitters containing updated firmware which started shipping around 20th Nov 2016 appear to be currently incompatible with xDrip\n\nWork will continue to try to resolve this issue but at the time of writing there is not yet a solution.  For the latest updates you can select the Alpha or Nightly update channel.";
-                        break;*/
-
-                case SHOWCASE_VARIANT:
-                    target = new ViewTarget(R.id.btnNote, this); // dummy
-                    size1 = 0;
-                    size2 = 0;
-                    title = getString(R.string.title_variant);
-                    message = getString(R.string.message_variant);
-                    break;
-
-                case SHOWCASE_NOTE_LONG:
-                    target = new ViewTarget(R.id.btnNote, this);
-                    title = getString(R.string.note_button);
-                    message = getString(R.string.showcase_note_long);
-                    break;
-                case SHOWCASE_REDO:
-                    target = new ViewTarget(R.id.btnRedo, this);
-                    title = getString(R.string.redo_button);
-                    message = getString(R.string.showcase_redo);
-                    break;
-                case SHOWCASE_UNDO:
-                    target = new ViewTarget(R.id.btnUndo, this);
-                    title = getString(R.string.undo_button);
-                    message = getString(R.string.showcase_undo);
-                    break;
-                case 3:
-                    target = new ViewTarget(R.id.btnTreatment, this);
-                    break;
-
-                case 1:
-                    Toolbar toolbar = (Toolbar) findViewById(R.id.my_toolbar);
-
-                    List<View> views = toolbar.getTouchables();
-
-                    //Log.d("xxy", Integer.toString(views.size()));
-                    for (View view : views) {
-                        Log.d("jamhorham showcase", view.getClass().getSimpleName());
-
-                        if (view.getClass().getSimpleName().equals("OverflowMenuButton")) {
-                            target = new ViewTarget(view);
-                            break;
-                        }
-                    }
-                    break;
-            }
-
-            if (target != null) {
-                //showcaseblocked = true;
-                myShowcase = new ShowcaseView.Builder(this)
-
-                        /* .setOnClickListener(new View.OnClickListener() {
-                             @Override
-                             public void onClick(View v) {
-                                 showcaseblocked=false;
-                                 myShowcase.hide();
-                             }
-                         })*/
-                        .setTarget(target)
-                        .setStyle(R.style.CustomShowcaseTheme2)
-                        .setContentTitle(title)
-                        .setContentText("\n" + message)
-                        .setShowcaseDrawer(new JamorhamShowcaseDrawer(getResources(), getTheme(), size1, size2))
-                        .singleShot(oneshot ? option : -1)
-                        .build();
-
-                myShowcase.setBackgroundColor(Color.TRANSPARENT);
-                myShowcase.show();
-            }
-
-        } catch (Exception e) {
-            Log.e(TAG, "Exception in showcase: " + e.toString());
-        }
-    }
-
-    public void shareMyConfig(MenuItem myitem) {
-        startActivity(new Intent(getApplicationContext(), DisplayQRCode.class));
-    }
-
-    public void exportDatabase(MenuItem myitem) {
-        new AsyncTask<Void, Void, String>() {
-            @Override
-            protected String doInBackground(Void... params) {
-                if (ContextCompat.checkSelfPermission(Home.this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED ||
-                        ContextCompat.checkSelfPermission(Home.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(Home.this,
-                            new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                            0);
-                    return null;
-                } else {
-                    return DatabaseUtil.saveSql(getBaseContext());
-                }
-
-            }
-
-            @Override
-            protected void onPostExecute(String filename) {
-                super.onPostExecute(filename);
-                if (filename != null) {
-
-                    snackBar(R.string.share, getString(R.string.exported_to) + filename, makeSnackBarUriLauncher(Uri.fromFile(new File(filename)), getString(R.string.share_database)), Home.this);
-                    startActivity(new Intent(xdrip.getAppContext(), SdcardImportExport.class).putExtra("backup", "now").setFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-                    /*    SnackbarManager.show(
-                                Snackbar.with(Home.this)
-                                        .type(SnackbarType.MULTI_LINE)
-                                        .duration(4000)
-                                        .text(getString(R.string.exported_to) + filename) // text to display
-                                        .actionLabel("Share") // action button label
-                                        .actionListener(new SnackbarUriListener(Uri.fromFile(new File(filename)))),
-                                Home.this);*/
-                } else {
-                    Toast.makeText(Home.this, R.string.could_not_export_database, Toast.LENGTH_LONG).show();
-                }
-            }
-        }.execute();
-    }
-
-    public void restoreDatabase(MenuItem myitem) {
-        startActivity(new Intent(this, ImportDatabaseActivity.class));
-    }
-
-    public void exportCSVasSiDiary(MenuItem myitem) {
-        long from = Pref.getLong("sidiary_last_exportdate", 0);
-        final GregorianCalendar date = new GregorianCalendar();
-        final DatePickerFragment datePickerFragment = new DatePickerFragment();
-        if (from > 0) datePickerFragment.setInitiallySelectedDate(from);
-        datePickerFragment.setAllowFuture(false);
-        datePickerFragment.setTitle(getString(R.string.sidiary_date_title));
-        datePickerFragment.setDateCallback(new ProfileAdapter.DatePickerCallbacks() {
-            @Override
-            public void onDateSet(int year, int month, int day) {
-                date.set(year, month, day);
-                date.set(Calendar.HOUR_OF_DAY, 0);
-                date.set(Calendar.MINUTE, 0);
-                date.set(Calendar.SECOND, 0);
-                date.set(Calendar.MILLISECOND, 0);
-                new AsyncTask<Void, Void, String>() {
-                    @Override
-                    protected String doInBackground(Void... params) {
-                        int permissionCheck = ContextCompat.checkSelfPermission(Home.this,
-                                Manifest.permission.READ_EXTERNAL_STORAGE);
-                        if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
-                            ActivityCompat.requestPermissions(Home.this,
-                                    new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                                    0);
-                            return null;
-                        } else {
-                            return DatabaseUtil.saveCSV(getBaseContext(), date.getTimeInMillis());
-                        }
-                    }
-
-                    @Override
-                    protected void onPostExecute(String filename) {
-                        super.onPostExecute(filename);
-                        if (filename != null) {
-                            Pref.setLong("sidiary_last_exportdate", System.currentTimeMillis());
-                            snackBar(R.string.share, getString(R.string.exported_to) + filename, makeSnackBarUriLauncher(Uri.fromFile(new File(filename)), getString(R.string.share_database)), Home.this);
-                        } else {
-                            Toast.makeText(Home.this, gs(R.string.could_not_export_csv_), Toast.LENGTH_LONG).show();
-                        }
-                    }
-                }.execute();
-            }
-        });
-        datePickerFragment.show(getFragmentManager(), "DatePicker");
     }
 
     public void settingsSDcardExport(MenuItem myitem) {
         startActivity(new Intent(getApplicationContext(), SdcardImportExport.class));
-    }
-
-    public void showHelpFromMenu(MenuItem myitem) {
-        startActivity(new Intent(getApplicationContext(), HelpActivity.class));
-    }
-
-    public void showRemindersFromMenu(MenuItem myitem) {
-        startActivity(new Intent(getApplicationContext(), Reminders.class));
-    }
-
-    public void showAssistFromMenu(MenuItem myitem) {
-        startActivity(new Intent(getApplicationContext(), EmergencyAssistActivity.class));
-    }
-
-    public void resendGlucoseToWatch(MenuItem myitem) {
-        WatchUpdaterService.startServiceAndResendData(0);
-        if (Pref.getBooleanDefaultFalse("pref_amazfit_enable_key")) {
-            Amazfitservice.start("xDrip_synced_SGV_data");
-        }
-    }
-
-    public void openSettingsOnWatch(MenuItem myitem) {
-        startService(new Intent(this, WatchUpdaterService.class).setAction(WatchUpdaterService.ACTION_OPEN_SETTINGS));
-    }
-
-    public void resetWearDb(MenuItem myitem) {
-        startService(new Intent(this, WatchUpdaterService.class).setAction(WatchUpdaterService.ACTION_RESET_DB));
     }
 
     public void undoButtonClick(View myitem) {
@@ -3530,7 +2359,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         dialogBuilder.setPositiveButton(R.string.done, (dialog, whichButton) -> {
             String treatment_text = edt.getText().toString().trim();
             Log.d(TAG, "Got treatment note: " + treatment_text);
-            Treatments.create_note(treatment_text, timestamp, position); // timestamp?
             Home.staticRefreshBGCharts();
 
             if (treatment_text.length() > 0) {
@@ -3549,23 +2377,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
             }
 
         });
-        if (Treatments.byTimestamp(timestamp, (int) (2.5 * MINUTE_IN_MS)) != null) {
-            dialogBuilder.setNeutralButton(R.string.delete, (dialog, whichButton) -> {
-                // are you sure?
-                final AlertDialog.Builder builder = new AlertDialog.Builder(mActivity);
-                builder.setTitle(gs(R.string.confirm_delete));
-                builder.setMessage(gs(R.string.are_you_sure_you_want_to_delete_this_treatment));
-                builder.setPositiveButton(gs(R.string.yes_delete), (dialog1, which) -> {
-                    dialog1.dismiss();
-                    Treatments.delete_by_timestamp(timestamp, (int) (2.5 * MINUTE_IN_MS), true); // 2.5 min resolution
-                    staticRefreshBGCharts();
-                    JoH.static_toast_short(gs(R.string.deleted));
-                });
-                builder.setNegativeButton(gs(R.string.no), (dialog12, which) -> dialog12.dismiss());
-                final AlertDialog alert = builder.create();
-                alert.show();
-            });
-        }
         dialog = dialogBuilder.create();
         edt.setInputType(InputType.TYPE_CLASS_TEXT);
         edt.setOnFocusChangeListener((v, hasFocus) -> {
@@ -3573,37 +2384,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
                 dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
         });
         dialog.show();
-    }
-
-    public void doBackFillBroadcast(MenuItem myitem) {
-        GcmActivity.syncBGTable2();
-        toast(gs(R.string.starting_sync_to_other_devices));
-    }
-
-    public void deleteAllBG(MenuItem myitem) {
-        BgReading.deleteALL();
-        toast(gs(R.string.deleting_all_bg_readings));
-        staticRefreshBGCharts();
-    }
-
-    public void checkForUpdate(MenuItem myitem) {
-        if (JoH.ratelimit("manual-update-check", 5)) {
-            toast(getString(R.string.checking_for_update));
-            UpdateActivity.last_check_time = -1;
-            UpdateActivity.checkForAnUpdate(this, true);
-        }
-    }
-
-    public void toggleSpeakReadings(MenuItem myitem) {
-        Pref.toggleBoolean("bg_to_speech");
-        invalidateOptionsMenu();
-        if (Pref.getBooleanDefaultFalse("bg_to_speech")) {
-            BgToSpeech.testSpeech();
-        }
-    }
-
-    public void sendFeedback(MenuItem myitem) {
-        startActivity(new Intent(getApplicationContext(), SendFeedBack.class));
     }
 
     @Override
@@ -3683,15 +2463,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         snackbar.show();
     }
 
-    public static void staticBlockUI(Activity context, boolean state) {
-        blockTouches = state;
-        if (state) {
-            JoH.lockOrientation(context);
-        } else {
-            JoH.releaseOrientation(context);
-        }
-    }
-
     // classes
     private class MainChartViewPortListener implements ViewportChangeListener {
         @Override
@@ -3766,99 +2537,22 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         }
     }
 
-    private void testGraphicalTrendArrow() {
-        if (itr != null) {
-            JoH.runOnUiThreadDelayed(() -> itr.update(5d), 1000);
-            JoH.runOnUiThreadDelayed(() -> itr.update(-5d), 5000);
-            JoH.runOnUiThreadDelayed(() -> itr.update(-0d), 9000);
-            JoH.runOnUiThreadDelayed(() -> itr.update(5d), 13000);
-        }
-    }
-
-    private View.OnClickListener makeSnackBarUriLauncher(final Uri uri, final String text) {
-        return v -> {
-            Intent shareIntent = new Intent();
-            shareIntent.setAction(Intent.ACTION_SEND);
-            shareIntent.putExtra(Intent.EXTRA_STREAM, uri);
-            shareIntent.setType("application/octet-stream");
-            Home.this.startActivity(Intent.createChooser(shareIntent, text));
-        };
-    }
-
     public static PendingIntent getHomePendingIntent() {
         return PendingIntent.getActivity(xdrip.getAppContext(), 0, new Intent(xdrip.getAppContext(), Home.class), android.app.PendingIntent.FLAG_UPDATE_CURRENT);
-    }
-
-   /* class SnackbarUriListener implements ActionClickListener {
-        Uri uri;
-
-        SnackbarUriListener(Uri uri) {
-            this.uri = uri;
-        }
-
-        @Override
-        public void onActionClicked(Snackbar snackbar) {
-            Intent shareIntent = new Intent();
-            shareIntent.setAction(Intent.ACTION_SEND);
-            shareIntent.putExtra(Intent.EXTRA_STREAM, uri);
-            shareIntent.setType("application/octet-stream");
-            startActivity(Intent.createChooser(shareIntent, "Share database..."));
-        }
-    }*/
-
-    class MyActionItemTarget implements Target {
-
-        //private final Toolbar toolbar;
-        // private final int menuItemId;
-        private final View mView;
-        private final int xoffset;
-        private final int yoffset;
-
-        public MyActionItemTarget(View mView, int xoffset, int yoffset) {
-            // this.toolbar = toolbar;
-            //this.menuItemId = itemId;
-            this.mView = mView;
-            // get dp yada
-            this.xoffset = xoffset;
-            this.yoffset = yoffset;
-        }
-
-        @Override
-        public Point getPoint() {
-            int[] location = new int[2];
-            mView.getLocationInWindow(location);
-            int x = location[0] + mView.getWidth() / 2;
-            int y = location[1] + mView.getHeight() / 2;
-            return new Point(x + xoffset, y + yoffset);
-        }
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode,
                                            @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
         // automatically restore settings backup if we just approved a request coming from that
-        if (requestCode == SdcardImportExport.TRIGGER_RESTORE_PERMISSIONS_REQUEST_STORAGE
+	    if (requestCode == SdcardImportExport.TRIGGER_RESTORE_PERMISSIONS_REQUEST_STORAGE
                 && permissions.length > 0 && grantResults.length > 0
                 && permissions[0].equals(WRITE_EXTERNAL_STORAGE) && grantResults[0] == 0) {
             SdcardImportExport.restoreSettingsNow(this);
         }
     }
 
-  /*  class ToolbarActionItemTarget implements Target {
-
-        private final Toolbar toolbar;
-        private final int menuItemId;
-
-        public ToolbarActionItemTarget(Toolbar toolbar, @IdRes int itemId) {
-            this.toolbar = toolbar;
-            this.menuItemId = itemId;
-        }
-
-        @Override
-        public Point getPoint() {
-            return new ViewTarget(toolbar.findViewById(menuItemId)).getPoint();
-        }
-
-    }*/
 }

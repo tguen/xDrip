@@ -1,5 +1,84 @@
 package com.eveningoutpost.dexdrip.services;
 
+import android.annotation.TargetApi;
+import android.app.PendingIntent;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothGattService;
+import android.bluetooth.BluetoothManager;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.SharedPreferences;
+import android.media.AudioManager;
+import android.os.Build;
+import android.os.IBinder;
+import android.os.ParcelUuid;
+import android.os.PowerManager;
+import android.preference.PreferenceManager;
+import android.text.SpannableString;
+import android.text.SpannableStringBuilder;
+
+import com.eveningoutpost.dexdrip.AddCalibration;
+import com.eveningoutpost.dexdrip.DoubleCalibrationActivity;
+import com.eveningoutpost.dexdrip.Home;
+import com.eveningoutpost.dexdrip.R;
+import com.eveningoutpost.dexdrip.g5model.*;
+import com.eveningoutpost.dexdrip.models.BgReading;
+import com.eveningoutpost.dexdrip.models.JoH;
+import com.eveningoutpost.dexdrip.models.Sensor;
+import com.eveningoutpost.dexdrip.models.UserError;
+import com.eveningoutpost.dexdrip.plugin.IPluginDA;
+import com.eveningoutpost.dexdrip.plugin.Loader;
+import com.eveningoutpost.dexdrip.plugin.Registry;
+import com.eveningoutpost.dexdrip.ui.helpers.Span;
+import com.eveningoutpost.dexdrip.utilitymodels.BroadcastGlucose;
+import com.eveningoutpost.dexdrip.utilitymodels.CollectionServiceStarter;
+import com.eveningoutpost.dexdrip.utilitymodels.Constants;
+import com.eveningoutpost.dexdrip.utilitymodels.Inevitable;
+import com.eveningoutpost.dexdrip.utilitymodels.PersistentStore;
+import com.eveningoutpost.dexdrip.utilitymodels.Pref;
+import com.eveningoutpost.dexdrip.utilitymodels.RxBleProvider;
+import com.eveningoutpost.dexdrip.utilitymodels.StatusItem;
+import com.eveningoutpost.dexdrip.utilitymodels.StatusItem.Highlight;
+import com.eveningoutpost.dexdrip.utils.DexCollectionType;
+import com.eveningoutpost.dexdrip.utils.bt.Subscription;
+import com.eveningoutpost.dexdrip.utils.framework.WakeLockTrampoline;
+import com.eveningoutpost.dexdrip.xdrip;
+import com.google.common.collect.Sets;
+import com.polidea.rxandroidble2.RxBleClient;
+import com.polidea.rxandroidble2.RxBleConnection;
+import com.polidea.rxandroidble2.RxBleCustomOperation;
+import com.polidea.rxandroidble2.RxBleDevice;
+import com.polidea.rxandroidble2.RxBleDeviceServices;
+import com.polidea.rxandroidble2.exceptions.BleGattCallbackTimeoutException;
+import com.polidea.rxandroidble2.exceptions.BleScanException;
+import com.polidea.rxandroidble2.internal.RxBleLog;
+import com.polidea.rxandroidble2.internal.connection.RxBleGattCallback;
+import com.polidea.rxandroidble2.scan.ScanFilter;
+import com.polidea.rxandroidble2.scan.ScanResult;
+import com.polidea.rxandroidble2.scan.ScanSettings;
+
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+
+import androidx.annotation.NonNull;
+import io.reactivex.Observable;
+import io.reactivex.Scheduler;
+import io.reactivex.schedulers.Schedulers;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.val;
+
 import static com.eveningoutpost.dexdrip.Home.get_engineering_mode;
 import static com.eveningoutpost.dexdrip.cgm.dex.TxIdHelper.isTransmitterIdOkay;
 import static com.eveningoutpost.dexdrip.g5model.BatteryInfoRxMessage.battery0VException;
@@ -53,110 +132,11 @@ import static com.eveningoutpost.dexdrip.utilitymodels.StatusItem.Highlight.NORM
 import static com.eveningoutpost.dexdrip.utilitymodels.StatusItem.Highlight.NOTICE;
 import static com.eveningoutpost.dexdrip.utils.DexCollectionType.DexcomG5;
 import static com.eveningoutpost.dexdrip.utils.bt.Subscription.addErrorHandler;
-import static com.eveningoutpost.dexdrip.watch.thinjam.BlueJayEntry.isNative;
 import static com.eveningoutpost.dexdrip.xdrip.gs;
 import static com.polidea.rxandroidble2.scan.ScanSettings.CALLBACK_TYPE_ALL_MATCHES;
 import static com.polidea.rxandroidble2.scan.ScanSettings.CALLBACK_TYPE_FIRST_MATCH;
 import static com.polidea.rxandroidble2.scan.ScanSettings.SCAN_MODE_BALANCED;
 import static com.polidea.rxandroidble2.scan.ScanSettings.SCAN_MODE_LOW_LATENCY;
-
-import android.annotation.TargetApi;
-import android.app.PendingIntent;
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothGatt;
-import android.bluetooth.BluetoothGattService;
-import android.bluetooth.BluetoothManager;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.SharedPreferences;
-import android.media.AudioManager;
-import android.os.Build;
-import android.os.IBinder;
-import android.os.ParcelUuid;
-import android.os.PowerManager;
-import android.preference.PreferenceManager;
-
-import androidx.annotation.NonNull;
-
-import android.text.SpannableString;
-import android.text.SpannableStringBuilder;
-
-import com.eveningoutpost.dexdrip.AddCalibration;
-import com.eveningoutpost.dexdrip.DoubleCalibrationActivity;
-import com.eveningoutpost.dexdrip.Home;
-import com.eveningoutpost.dexdrip.R;
-import com.eveningoutpost.dexdrip.g5model.BatteryInfoRxMessage;
-import com.eveningoutpost.dexdrip.g5model.BluetoothServices;
-import com.eveningoutpost.dexdrip.g5model.CalibrationState;
-import com.eveningoutpost.dexdrip.g5model.DexPairKeeper;
-import com.eveningoutpost.dexdrip.g5model.DexSyncKeeper;
-import com.eveningoutpost.dexdrip.g5model.DexTimeKeeper;
-import com.eveningoutpost.dexdrip.g5model.FirmwareCapability;
-import com.eveningoutpost.dexdrip.g5model.Ob1DexTransmitterBattery;
-import com.eveningoutpost.dexdrip.g5model.Ob1G5StateMachine;
-import com.eveningoutpost.dexdrip.g5model.TransmitterStatus;
-import com.eveningoutpost.dexdrip.g5model.VersionRequest1RxMessage;
-import com.eveningoutpost.dexdrip.g5model.VersionRequest2RxMessage;
-import com.eveningoutpost.dexdrip.g5model.VersionRequestRxMessage;
-import com.eveningoutpost.dexdrip.models.BgReading;
-import com.eveningoutpost.dexdrip.models.JoH;
-import com.eveningoutpost.dexdrip.models.Sensor;
-import com.eveningoutpost.dexdrip.models.Treatments;
-import com.eveningoutpost.dexdrip.models.UserError;
-import com.eveningoutpost.dexdrip.plugin.IPluginDA;
-import com.eveningoutpost.dexdrip.plugin.Loader;
-import com.eveningoutpost.dexdrip.plugin.Registry;
-import com.eveningoutpost.dexdrip.ui.helpers.Span;
-import com.eveningoutpost.dexdrip.utilitymodels.BroadcastGlucose;
-import com.eveningoutpost.dexdrip.utilitymodels.CollectionServiceStarter;
-import com.eveningoutpost.dexdrip.utilitymodels.Constants;
-import com.eveningoutpost.dexdrip.utilitymodels.Inevitable;
-import com.eveningoutpost.dexdrip.utilitymodels.PersistentStore;
-import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.eveningoutpost.dexdrip.utilitymodels.RxBleProvider;
-import com.eveningoutpost.dexdrip.utilitymodels.SendFeedBack;
-import com.eveningoutpost.dexdrip.utilitymodels.StatusItem;
-import com.eveningoutpost.dexdrip.utilitymodels.StatusItem.Highlight;
-import com.eveningoutpost.dexdrip.utilitymodels.UpdateActivity;
-import com.eveningoutpost.dexdrip.utilitymodels.WholeHouse;
-import com.eveningoutpost.dexdrip.utils.DexCollectionType;
-import com.eveningoutpost.dexdrip.utils.bt.Subscription;
-import com.eveningoutpost.dexdrip.utils.framework.WakeLockTrampoline;
-import com.eveningoutpost.dexdrip.watch.thinjam.BlueJayEntry;
-import com.eveningoutpost.dexdrip.xdrip;
-import com.google.common.collect.Sets;
-import com.polidea.rxandroidble2.RxBleClient;
-import com.polidea.rxandroidble2.RxBleConnection;
-import com.polidea.rxandroidble2.RxBleCustomOperation;
-import com.polidea.rxandroidble2.RxBleDevice;
-import com.polidea.rxandroidble2.RxBleDeviceServices;
-import com.polidea.rxandroidble2.exceptions.BleGattCallbackTimeoutException;
-import com.polidea.rxandroidble2.exceptions.BleScanException;
-import com.polidea.rxandroidble2.internal.RxBleLog;
-import com.polidea.rxandroidble2.internal.connection.RxBleGattCallback;
-import com.polidea.rxandroidble2.scan.ScanFilter;
-import com.polidea.rxandroidble2.scan.ScanResult;
-import com.polidea.rxandroidble2.scan.ScanSettings;
-
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-
-import io.reactivex.Observable;
-import io.reactivex.Scheduler;
-import io.reactivex.schedulers.Schedulers;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.val;
 
 
 /**
@@ -838,23 +818,6 @@ public class Ob1G5CollectionService extends G5BaseService {
         if (!Pref.getBooleanDefaultFalse(OB1G5_PREFS)) return false;
         if (!(DexCollectionType.getDexCollectionType() == DexcomG5)) return false;
 
-        if (!android_wear) {
-            if (Home.get_forced_wear()) {
-                if (JoH.quietratelimit("forced-wear-notice", 3))
-                    UserError.Log.d(TAG, "Not running due to forced wear");
-                return false;
-            }
-
-            if (BlueJayEntry.isPhoneCollectorDisabled()) {
-                UserError.Log.d(TAG, "Not running as BlueJay is collector");
-                return false;
-            }
-
-        } else {
-            // android wear code
-            if (!PersistentStore.getBoolean(CollectionServiceStarter.pref_run_wear_collector))
-                return false;
-        }
         return true;
     }
 
@@ -877,7 +840,7 @@ public class Ob1G5CollectionService extends G5BaseService {
     }
 
     public static boolean immediateBonding() {
-        return Pref.getBooleanDefaultFalse("engineering_ob1_bonding_test") || isNative();
+        return Pref.getBooleanDefaultFalse("engineering_ob1_bonding_test");
     }
 
     public static boolean ignoreBonding() {
@@ -1426,13 +1389,8 @@ public class Ob1G5CollectionService extends G5BaseService {
                         //
                     }
 
-                    if (WholeHouse.isRpi()) {
-                        UserError.Log.e(TAG, "Trying to turn off/on bluetooth");
-                        JoH.niceRestartBluetooth(xdrip.getAppContext());
-                    } else {
-                        UserError.Log.e(TAG, "Trying to Turn Bluetooth on");
-                        JoH.setBluetoothEnabled(xdrip.getAppContext(), true);
-                    }
+	                UserError.Log.e(TAG, "Trying to Turn Bluetooth on");
+	                JoH.setBluetoothEnabled(xdrip.getAppContext(), true);
                 }
             }
             // TODO count scan duration
@@ -2033,14 +1991,14 @@ public class Ob1G5CollectionService extends G5BaseService {
                 final PendingIntent pi = PendingIntent.getActivity(xdrip.getAppContext(), G5_SENSOR_STARTED, JoH.getStartActivityIntent(Home.class), PendingIntent.FLAG_UPDATE_CURRENT);
                 JoH.showNotification(state.getText(), "Sensor Stopped", pi, G5_SENSOR_STARTED, true, true, false);
                 UserError.Log.ueh(TAG, "Native Sensor is now Stopped: " + state.getExtendedText());
-                Treatments.sensorStop(null, "Stopped by transmitter: " + state.getExtendedText());
+//                Treatments.sensorStop(null, "Stopped by transmitter: " + state.getExtendedText());
             } else {
                 UserError.Log.ueh(TAG, "Suppressing duplicate stop notification: transmitter stop ack belongs to a session already replaced in xDrip");
             }
         } else if (is_started && !was_started) {
             JoH.cancelNotification(G5_SENSOR_STARTED);
             UserError.Log.ueh(TAG, "Native Sensor is now Started: " + state.getExtendedText());
-            Treatments.sensorStartIfNeeded();
+//            Treatments.sensorStartIfNeeded();
         }
 
         if (is_failed && !was_failed) {
@@ -2056,7 +2014,7 @@ public class Ob1G5CollectionService extends G5BaseService {
         updateG5State(is_failed, was_failed, IS_FAILED);
 
         if (is_started && shortTxId() && JoH.pratelimit("update_alternate_dex_session_start_time", 60 * 60)) { // Once an hour if there is a local session
-            Treatments.sensorUpdateStartTimeIfNeeded();
+//            Treatments.sensorUpdateStartTimeIfNeeded();
         }
     }
 
@@ -2251,11 +2209,6 @@ public class Ob1G5CollectionService extends G5BaseService {
 
     private static void handleUnknownFirmwareClick() {
         UserError.Log.d(TAG, "handleUnknownFirmwareClick()");
-        if (UpdateActivity.testAndSetNightly(true)) {
-            val vr1 = (VersionRequest1RxMessage) Ob1G5StateMachine.getFirmwareXDetails(getTransmitterID(), 1);
-            UserError.Log.d(TAG, "Starting feedback activity");
-            xdrip.getAppContext().startActivity(new Intent(xdrip.getAppContext(), SendFeedBack.class).putExtra("generic_text", "Automated Report of unknown firmware version\n" + vr1.toString()).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-        }
     }
 
     // data for MegaStatus
@@ -2275,7 +2228,7 @@ public class Ob1G5CollectionService extends G5BaseService {
             l.add(new StatusItem("Turn Sound On!", "You will not hear pairing request with volume set low or do not disturb enabled!", CRITICAL));
         }
 
-        l.add(new StatusItem("Phone Service State", lastState + (BlueJayEntry.isPhoneCollectorDisabled() ? "\nDisabled by BlueJay option" : ""), msSince(lastStateUpdated) < 300000 ? (lastState.startsWith("Got data") ? Highlight.GOOD : NORMAL) : (isWatchRunning() ? Highlight.GOOD : CRITICAL)));
+        l.add(new StatusItem("Phone Service State", lastState, msSince(lastStateUpdated) < 300000 ? (lastState.startsWith("Got data") ? Highlight.GOOD : NORMAL) : (isWatchRunning() ? Highlight.GOOD : CRITICAL)));
         if (last_scan_started > 0) {
             final long scanning_time = msSince(last_scan_started);
             l.add(new StatusItem("Time scanning", niceTimeScalar(scanning_time), scanning_time > MINUTE_IN_MS * 5 ? (scanning_time > MINUTE_IN_MS * 10 ? BAD : NOTICE) : NORMAL));
@@ -2362,7 +2315,7 @@ public class Ob1G5CollectionService extends G5BaseService {
                         }
                     }
                 }
-                val unknown = !known ? (" " + "Unknown!" + "\n" + (UpdateActivity.testAndSetNightly(false) ? "Tap to report" : "Tap to use nightly version")) : "";
+                val unknown = !known ? (" " + "Unknown!") : "";
 
                 l.add(new StatusItem("Firmware Version", vr1.firmware_version_string + unknown, !known ? CRITICAL : NORMAL, !known ? "long-press" : null, !known ? (Runnable) Ob1G5CollectionService::handleUnknownFirmwareClick : null));
                 //l.add(new StatusItem("Build Version", "" + vr1.build_version));
