@@ -38,10 +38,8 @@ import android.os.IBinder;
 import android.os.PowerManager;
 import android.preference.PreferenceManager;
 
-import com.eveningoutpost.dexdrip.GcmActivity;
 import com.eveningoutpost.dexdrip.Home;
 import com.eveningoutpost.dexdrip.R;
-import com.eveningoutpost.dexdrip.cgm.nsfollow.utils.Anticipate;
 import com.eveningoutpost.dexdrip.importedlibraries.usbserial.util.HexDump;
 import com.eveningoutpost.dexdrip.models.ActiveBluetoothDevice;
 import com.eveningoutpost.dexdrip.models.BgReading;
@@ -83,7 +81,6 @@ import no.nordicsemi.android.ble.observer.ConnectionObserver;
 
 import static android.bluetooth.BluetoothDevice.TRANSPORT_LE;
 import static android.bluetooth.BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT;
-import static com.eveningoutpost.dexdrip.models.JoH.convertPinToBytes;
 import static com.eveningoutpost.dexdrip.models.JoH.msSince;
 import static com.eveningoutpost.dexdrip.models.JoH.tsl;
 import static com.eveningoutpost.dexdrip.utilitymodels.BgGraphBuilder.DEXCOM_PERIOD;
@@ -93,7 +90,6 @@ import static com.eveningoutpost.dexdrip.utils.bt.Helper.getStatusName;
 import static com.eveningoutpost.dexdrip.xdrip.gs;
 
 
-@TargetApi(Build.VERSION_CODES.KITKAT)
 public class DexCollectionService extends Service implements BtCallBack {
     public static final String LIMITTER_NAME = "LimiTTer";
     private final static String TAG = DexCollectionService.class.getSimpleName();
@@ -754,9 +750,6 @@ public class DexCollectionService extends Service implements BtCallBack {
             Log.d(TAG, "Not starting pairing request receiver on android 8+");
         }
         Log.i(TAG, "onCreate: STARTING SERVICE: pin code: " + DEFAULT_BT_PIN);
-
-        Blukon.unBondIfBlukonAtInit();
-
     }
 
     @Override
@@ -871,7 +864,7 @@ public class DexCollectionService extends Service implements BtCallBack {
         mStaticState = mConnectionState;
         if (shouldServiceRun()) {
             //final long retry_in = (Constants.SECOND_IN_MS * 25);
-            final long retry_in = (useAnticipate && last_connected > 0) ? (Anticipate.next(tsl(),last_connected, 120_000, 15) - tsl()) : whenToRetryNext();
+            final long retry_in = whenToRetryNext();
             Log.d(TAG, "setRetryTimer: Restarting in: " + (retry_in / Constants.SECOND_IN_MS) + " seconds - last connected: "+JoH.dateTimeText(last_connected));
             //serviceIntent = PendingIntent.getService(this, Constants.DEX_COLLECTION_SERVICE_RETRY_ID, new Intent(this, this.getClass()), 0);
             serviceIntent = WakeLockTrampoline.getPendingIntent(this.getClass(), Constants.DEX_COLLECTION_SERVICE_RETRY_ID);
@@ -1215,24 +1208,11 @@ public class DexCollectionService extends Service implements BtCallBack {
 
         closeCycle(should_close);
 
-     /*   if (device != null) {
-            if (!device.getAddress().equals(address)) {
-                UserError.Log.e(TAG, "Device address changed from: " + device.getAddress() + " to " + address);
-                device = null;
-            }
-        }*/
-        //if (device == null) {
         device = mBluetoothAdapter.getRemoteDevice(address);
-        // }
         if (device == null) {
             Log.w(TAG, "Device not found.  Unable to connect.");
             setRetryTimer();
             return false;
-        }
-
-        if (static_use_blukon || Blukon.expectingBlukonDevice()) {
-            UserError.Log.d(TAG, "Setting blukon pairing pin to: " + DEFAULT_BT_PIN);
-            device.setPin(convertPinToBytes(DEFAULT_BT_PIN));
         }
 
         setRetryTimer();
@@ -1316,88 +1296,8 @@ public class DexCollectionService extends Service implements BtCallBack {
 
         last_time_seen = tsl();
         watchdog_count = 0;
-        if (static_use_blukon && Blukon.checkBlukonPacket(buffer)) {
-            final byte[] reply = Blukon.decodeBlukonPacket(buffer);
-            if (reply != null) {
-                Log.d(TAG, "Sending reply message from Blukon decoder");
-                sendBtMessage(reply);
-                gotValidPacket();
-            }
-        } else if (blueReader.isblueReader()) {
-            final byte[] reply = blueReader.decodeblueReaderPacket(buffer, len);
-            if (reply != null) {
-                Log.d(TAG, "Sending reply message from blueReader decoder");
-                sendBtMessage(reply);
-                gotValidPacket();
-            }
-        } else if (Tomato.isTomato()) {
-            final BridgeResponse reply = Tomato.decodeTomatoPacket(buffer, len);
-            if (reply.shouldDelay()) {
-                Inevitable.task("send-tomato-reply", reply.getDelay(), () -> sendReply(reply));
-            } else {
-                sendReply(reply);
-            }
-            if (reply.hasError()) {
-                JoH.static_toast_long(reply.getError_message());
-                error(reply.getError_message());
-            }
-            if (reply.StillWaitingForData()){
-                Log.d(TAG, "Arming the timer, asking to send again...");
-                Inevitable.task("send-tomato-init", 5000, () -> {Log.d(TAG, "Asking for sending data again"); sendReply(Tomato.resetTomatoState());});
-            } else if(reply.GotAllData()) {
-                Inevitable.kill("send-tomato-init");
-            }
 
-            gotValidPacket();
-
-        }else if (Bubble.isBubble()) {
-            final BridgeResponse reply = Bubble.decodeBubblePacket(buffer, len);
-            if (reply.shouldDelay()) {
-                Inevitable.task("send-bubble-reply", reply.getDelay(), () -> sendReply(reply));
-            } else {
-                sendReply(reply);
-            }
-            if (reply.hasError()) {
-                JoH.static_toast_long(reply.getError_message());
-                error(reply.getError_message());
-            }
-            gotValidPacket();
-
-        }else if (Atom.isAtom()) {
-            final BridgeResponse reply = Atom.decodeAtomPacket(buffer, len);
-            if (reply.shouldDelay()) {
-                Inevitable.task("send-atom-reply", reply.getDelay(), () -> sendReply(reply));
-            } else {
-                sendReply(reply);
-            }
-            if (reply.hasError()) {
-                JoH.static_toast_long(reply.getError_message());
-                error(reply.getError_message());
-            }
-            gotValidPacket();
-
-        } else if (LibreBluetooth.isLibreBluettoh()) {
-            final BridgeResponse reply = LibreBluetooth.decodeLibrePacket(buffer, len);
-            if (reply.shouldDelay()) {
-                Inevitable.task("send-tomato-reply", reply.getDelay(), () -> sendReply(reply));
-            } else {
-                sendReply(reply);
-            }
-            if (reply.hasError()) {
-                JoH.static_toast_long(reply.getError_message());
-                error(reply.getError_message());
-            }
-            gotValidPacket();
-
-        } else if (XbridgePlus.isXbridgeExtensionPacket(buffer)) {
-            // handle xBridge+ protocol packets
-            final byte[] reply = XbridgePlus.decodeXbridgeExtensionPacket(buffer);
-            if (reply != null) {
-                Log.d(TAG, "Sending reply message from xBridge decoder");
-                sendBtMessage(reply);
-                gotValidPacket();
-            }
-        } else {
+        {
             long timestamp = new Date().getTime();
             if (((buffer.length > 0) && (buffer[0] == 0x07 || buffer[0] == 0x11 || buffer[0] == 0x15)) || CollectionServiceStarter.isDexBridgeOrWifiandDexBridge()) {
                 if ((buffer.length == 1) && (buffer[0] == 0x00)) {
@@ -1458,8 +1358,6 @@ public class DexCollectionService extends Service implements BtCallBack {
                         gotValidPacket();
                         Log.v(TAG, "setSerialDataToTransmitterRawData: Creating TransmitterData at " + timestamp);
                         processNewTransmitterData(TransmitterData.create(buffer, len, timestamp), timestamp);
-                        if (Home.get_master())
-                            GcmActivity.sendBridgeBattery(Pref.getInt("bridge_battery", -1));
                         CheckBridgeBattery.checkBridgeBattery();
                     }
                 }
@@ -1574,26 +1472,6 @@ public class DexCollectionService extends Service implements BtCallBack {
 
     private void receivedLibreData(byte[] buffer)
     {
-        if (buffer == null) {
-            return; // TODO log? other response?
-        }
-        gotValidPacket();
-        final BridgeResponse reply = LibreBluetooth.decodeLibrePacket(buffer, buffer.length);
-        if (reply.shouldDelay()) {
-            Inevitable.task("send-libre-reply", reply.getDelay(), () -> sendReply(reply));
-        } else {
-            sendReply(reply);
-        }
-        if (reply.hasError()) {
-            JoH.static_toast_long(reply.getError_message());
-            error(reply.getError_message());
-        }
-        last_time_seen = tsl();
-        last_connected = tsl(); // treat packet as connection event
-        if (JoH.quietratelimit("received-libre-data",5)) {
-            setFailoverTimer(); // restart the countdown
-        }
-
     }
 
     private class InternalManager extends BleManager {

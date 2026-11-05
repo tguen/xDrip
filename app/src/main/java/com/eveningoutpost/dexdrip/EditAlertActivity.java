@@ -46,8 +46,6 @@ import com.eveningoutpost.dexdrip.utilitymodels.BgGraphBuilder;
 import com.eveningoutpost.dexdrip.utilitymodels.Constants;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
 import com.eveningoutpost.dexdrip.utils.ActivityWithMenu;
-import com.eveningoutpost.dexdrip.watch.thinjam.BlueJayEntry;
-import com.eveningoutpost.dexdrip.wearintegration.WatchUpdaterService;
 
 import java.text.DecimalFormat;
 import java.text.ParseException;
@@ -133,14 +131,7 @@ public class EditAlertActivity extends ActivityWithMenu {
     }
 
     @Override
-    protected void onResume() {
-        xdrip.checkForcedEnglish(xdrip.getAppContext());
-        super.onResume();
-    }
-
-    @Override
     protected void onCreate(Bundle savedInstanceState) {
-        xdrip.checkForcedEnglish(xdrip.getAppContext());
         super.onCreate(savedInstanceState);
         mContext = this;
         setContentView(R.layout.activity_edit_alert);
@@ -559,10 +550,8 @@ public class EditAlertActivity extends ActivityWithMenu {
                     AlertType.add_alert(null, alertText.getText().toString(), above, threshold, allDay, alertReraise, mp3_file, timeStart, timeEnd, overrideSilentMode, forceSpeaker, defaultSnooze, vibrate, !disabled);
                 }
 
-                startWatchUpdaterService(mContext, WatchUpdaterService.ACTION_SYNC_ALERTTYPE, TAG);
                 Intent returnIntent = new Intent();
                 setResult(RESULT_OK,returnIntent);
-                BlueJayEntry.startWithRefreshIfEnabled();
                 finish();
             }
 
@@ -576,7 +565,6 @@ public class EditAlertActivity extends ActivityWithMenu {
                                 Log.wtf(TAG, "Error remove pressed, while we were adding an alert");
                             } else {
                                 AlertType.remove_alert(uuid);
-                                startWatchUpdaterService(mContext, WatchUpdaterService.ACTION_SYNC_ALERTTYPE, TAG);
                             }
                             Intent returnIntent = new Intent();
                             setResult(RESULT_OK, returnIntent);
@@ -711,7 +699,8 @@ public class EditAlertActivity extends ActivityWithMenu {
     }
 
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (resultCode == RESULT_OK) {
+	    super.onActivityResult(requestCode, resultCode, data);
+	    if (resultCode == RESULT_OK) {
             Uri uri = data.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI);
             if (uri != null) {
                 audioPath = uri.toString();

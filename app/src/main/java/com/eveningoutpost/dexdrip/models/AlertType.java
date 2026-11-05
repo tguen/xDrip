@@ -2,17 +2,20 @@ package com.eveningoutpost.dexdrip.models;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import androidx.preference.PreferenceManager;
 import android.provider.BaseColumns;
 
-import com.activeandroid.util.SQLiteUtils;
-import com.eveningoutpost.dexdrip.models.UserError.Log;
 import com.activeandroid.Model;
 import com.activeandroid.annotation.Column;
 import com.activeandroid.annotation.Table;
 import com.activeandroid.query.Select;
+import com.activeandroid.util.SQLiteUtils;
+import com.eveningoutpost.dexdrip.models.UserError.Log;
 import com.eveningoutpost.dexdrip.utilitymodels.AlertPlayer;
 import com.eveningoutpost.dexdrip.utilitymodels.Notifications;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.annotations.Expose;
+import com.google.gson.internal.bind.DateTypeAdapter;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -20,12 +23,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.annotations.Expose;
-import com.google.gson.internal.bind.DateTypeAdapter;
-
+import androidx.preference.PreferenceManager;
 import lombok.val;
+
 
 /**
  * Created by Emma Black on 1/14/15.
@@ -192,21 +192,19 @@ public class AlertType extends Model {
     private static AlertType get_highest_active_alert_helper(double bg, SharedPreferences prefs) {
         // Chcek the low alerts
 
-        final double offset = ActivityRecognizedService.raise_limit_due_to_vehicle_mode() ? ActivityRecognizedService.getVehicle_mode_adjust_mgdl() : 0;
-
         if(prefs.getLong("low_alerts_disabled_until", 0) > new Date().getTime()){
             Log.i("NOTIFICATIONS", "get_highest_active_alert_helper: Low alerts are currently disabled!! Skipping low alerts");
 
         } else {
             List<AlertType> lowAlerts  = new Select()
                     .from(AlertType.class)
-                    .where("threshold >= ?", bg-offset)
+                    .where("threshold >= ?", bg)
                     .where("above = ?", false)
                     .orderBy("threshold asc")
                     .execute();
 
             for (AlertType lowAlert : lowAlerts) {
-                if(lowAlert.should_alarm(bg-offset)) {
+                if(lowAlert.should_alarm(bg)) {
                     return filter_alert_on_stale(lowAlert,prefs);
                 }
             }

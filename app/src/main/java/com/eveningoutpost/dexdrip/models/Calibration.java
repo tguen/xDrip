@@ -1009,13 +1009,6 @@ public class Calibration extends Model {
         return gson.toJson(this);
     }
 
-    public static Calibration byid(long id) {
-        return new Select()
-                .from(Calibration.class)
-                .where("_ID = ?", id)
-                .executeSingle();
-    }
-
     public static Calibration byuuid(String uuid) {
         if (uuid == null) return null;
         return new Select()

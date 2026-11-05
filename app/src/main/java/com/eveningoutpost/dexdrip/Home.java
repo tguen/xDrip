@@ -2026,8 +2026,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         DecimalFormat df = new DecimalFormat("#");
         df.setMaximumFractionDigits(0);
 
-        final boolean isDexbridge = CollectionServiceStarter.isDexBridgeOrWifiandDexBridge();
-        final boolean isLimitter = CollectionServiceStarter.isLimitter();
         if (DexCollectionType.hasBattery()) {
             final int bridgeBattery = Pref.getInt("bridge_battery", 0);
 
@@ -2035,17 +2033,12 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
                 //dexbridgeBattery.setText(R.string.waiting_for_packet);
                 dexbridgeBattery.setVisibility(View.INVISIBLE);
             } else {
-                if (isDexbridge) {
-                    dexbridgeBattery.setText(getString(R.string.xbridge_battery) + ": " + bridgeBattery + "%");
-                } else {
                     dexbridgeBattery.setText(getString(R.string.bridge_battery) + ": " + bridgeBattery + ((bridgeBattery < 200) ? "%" : "mV"));
-                }
             }
             if (bridgeBattery < 50) dexbridgeBattery.setTextColor(Color.YELLOW);
             if (bridgeBattery < 25) dexbridgeBattery.setTextColor(Color.RED);
             else dexbridgeBattery.setTextColor(Color.GREEN);
             dexbridgeBattery.setVisibility(View.VISIBLE);
-
         } else {
             dexbridgeBattery.setVisibility(View.INVISIBLE);
         }

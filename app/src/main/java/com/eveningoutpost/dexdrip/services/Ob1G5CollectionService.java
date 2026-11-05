@@ -26,7 +26,6 @@ import com.eveningoutpost.dexdrip.DoubleCalibrationActivity;
 import com.eveningoutpost.dexdrip.Home;
 import com.eveningoutpost.dexdrip.R;
 import com.eveningoutpost.dexdrip.g5model.*;
-import com.eveningoutpost.dexdrip.models.BgReading;
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.Sensor;
 import com.eveningoutpost.dexdrip.models.UserError;
@@ -450,12 +449,7 @@ public class Ob1G5CollectionService extends G5BaseService {
         tryLoadingSavedMAC();
         final int modulo = (connectNowFailures + scanTimeouts) % 2;
         UserError.Log.d(TAG, "minimize: " + minimize_scanning + " mac: " + transmitterMAC + " lastfailed:" + lastConnectFailed + " nowfail:" + connectNowFailures + " stimeout:" + scanTimeouts + " modulo:" + modulo);
-        final boolean wholeHouse = WholeHouse.isLive();
         boolean alwaysMinimize = false;
-        if (wholeHouse) {
-            estimateAnticipateFromLinkedData();
-            alwaysMinimize = !preScanFailureMarker;
-        }
         if (!alwaysMinimize) {
             alwaysMinimize = Pref.getBooleanDefaultFalse("ob1_avoid_scanning");
             if (alwaysMinimize && !upForAtLeastMins(15)) {
@@ -473,15 +467,6 @@ public class Ob1G5CollectionService extends G5BaseService {
         }
         return minimize_scanning && transmitterMAC != null && (!lastConnectFailed || (modulo == 1) || alwaysMinimize)
                 && (DexSyncKeeper.isReady(transmitterID));
-    }
-
-    private void estimateAnticipateFromLinkedData() {
-        final BgReading bg = BgReading.last();
-        if (bg != null && bg.timestamp > static_last_connected && msSince(bg.timestamp) < HOUR_IN_MS * 3) {
-            final long ts = bg.timestamp - Constants.SECOND_IN_MS;
-            UserError.Log.d(TAG, "Updating Sync Keeper with network learned timestamp: " + JoH.dateTimeText(ts));
-            DexSyncKeeper.store(transmitterID, ts);
-        }
     }
 
     private void resetState() {

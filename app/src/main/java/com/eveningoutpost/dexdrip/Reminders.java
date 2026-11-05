@@ -157,7 +157,8 @@ public class Reminders extends ActivityWithRecycler implements SensorEventListen
 
     @Override
     public void onNewIntent(Intent intent) {
-        final Bundle bundle = intent.getExtras();
+	    super.onNewIntent(intent);
+	    final Bundle bundle = intent.getExtras();
 
         processIncomingBundle(bundle);
     }
@@ -578,7 +579,8 @@ public class Reminders extends ActivityWithRecycler implements SensorEventListen
     }
 
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (resultCode == RESULT_OK) {
+	    super.onActivityResult(requestCode, resultCode, data);
+	    if (resultCode == RESULT_OK) {
             if (requestCode == REQUEST_CODE_CHOOSE_RINGTONE) {
                 final Uri uri = data.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI);
                 if (uri != null) {

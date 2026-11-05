@@ -15,7 +15,6 @@ public class SensorRxMessage extends BaseMessage {
     public int timestamp;
     public int unfiltered;
     public int filtered;
-    private final static String TAG = G5CollectionService.TAG; // meh
 
     public SensorRxMessage(byte[] packet) {
         UserError.Log.d(TAG, "SensorRX dbg: " + JoH.bytesToHex(packet));

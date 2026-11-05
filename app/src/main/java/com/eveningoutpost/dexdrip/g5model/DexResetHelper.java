@@ -3,9 +3,6 @@ package com.eveningoutpost.dexdrip.g5model;
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.UserError;
 
-import static com.eveningoutpost.dexdrip.utilitymodels.CompatibleApps.createActionIntent;
-import static com.eveningoutpost.dexdrip.utilitymodels.CompatibleApps.createChoiceIntent;
-import static com.eveningoutpost.dexdrip.utilitymodels.CompatibleApps.showNotification;
 import static com.eveningoutpost.dexdrip.utilitymodels.Constants.DEX_BASE_ID;
 
 // jamorham
@@ -22,11 +19,11 @@ public class DexResetHelper {
             final String title = "Hard Reset Transmitter?";
 
             // piggybacking on the existing choice dialog system for compatible apps
-            showNotification(title, reason,
-                    createActionIntent(id, id + 1, CompatibleApps.Feature.HARD_RESET_TRANSMITTER),
-                    createActionIntent(id, id + 2, CompatibleApps.Feature.CANCEL),
-                    createChoiceIntent(id, id + 3, CompatibleApps.Feature.HARD_RESET_TRANSMITTER, title, reason),
-                    id);
+//            showNotification(title, reason,
+//                    createActionIntent(id, id + 1, CompatibleApps.Feature.HARD_RESET_TRANSMITTER),
+//                    createActionIntent(id, id + 2, CompatibleApps.Feature.CANCEL),
+//                    createChoiceIntent(id, id + 3, CompatibleApps.Feature.HARD_RESET_TRANSMITTER, title, reason),
+//                    id);
         } else {
             UserError.Log.d(TAG, "Not offering reset as within rate limit");
         }

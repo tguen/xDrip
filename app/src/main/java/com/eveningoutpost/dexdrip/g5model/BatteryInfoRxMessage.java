@@ -15,8 +15,6 @@ import lombok.val;
 
 public class BatteryInfoRxMessage extends BaseMessage {
 
-    private final static String TAG = G5CollectionService.TAG; // meh
-
     public static final byte opcode = 0x23;
     public static final byte opcode2 = 0x22;
 

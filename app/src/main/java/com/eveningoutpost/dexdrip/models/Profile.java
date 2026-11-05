@@ -1,17 +1,19 @@
 package com.eveningoutpost.dexdrip.models;
 
 import android.content.SharedPreferences;
-import androidx.preference.PreferenceManager;
 import android.util.Log;
 
 import com.eveningoutpost.dexdrip.Home;
-import com.eveningoutpost.dexdrip.utilitymodels.Constants;
-import com.eveningoutpost.dexdrip.utilitymodels.Pref;
 import com.eveningoutpost.dexdrip.profileeditor.ProfileEditor;
 import com.eveningoutpost.dexdrip.profileeditor.ProfileItem;
+import com.eveningoutpost.dexdrip.utilitymodels.Constants;
+import com.eveningoutpost.dexdrip.utilitymodels.Pref;
 import com.eveningoutpost.dexdrip.xdrip;
 
 import java.util.List;
+
+import androidx.preference.PreferenceManager;
+
 
 /**
  * Created by jamorham on 04/01/16.
@@ -241,7 +243,7 @@ public class Profile {
     }
 
     public static double getBasalRate(final long when) {
-        return BasalRepository.getActiveRate(when);
+        return 0;
     }
 
     public static double getBasalRateAbsoluteFromPercent(final long when, int basal_percent) {

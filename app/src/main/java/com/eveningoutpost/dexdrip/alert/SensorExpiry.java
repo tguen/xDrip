@@ -1,14 +1,5 @@
 package com.eveningoutpost.dexdrip.alert;
 
-import static com.eveningoutpost.dexdrip.models.JoH.cancelNotification;
-import static com.eveningoutpost.dexdrip.models.JoH.msSince;
-import static com.eveningoutpost.dexdrip.models.JoH.niceTimeScalar;
-import static com.eveningoutpost.dexdrip.models.JoH.niceTimeScalarNatural;
-import static com.eveningoutpost.dexdrip.models.JoH.showNotification;
-import static com.eveningoutpost.dexdrip.models.JoH.tsl;
-import static com.eveningoutpost.dexdrip.utilitymodels.Constants.SENSORY_EXPIRY_NOTIFICATION_ID;
-import static com.eveningoutpost.dexdrip.utilitymodels.NotificationChannels.GENERAL_CHANNEL;
-
 import com.eveningoutpost.dexdrip.Home;
 import com.eveningoutpost.dexdrip.R;
 import com.eveningoutpost.dexdrip.g5model.SensorDays;
@@ -21,6 +12,15 @@ import com.eveningoutpost.dexdrip.utils.Localized;
 import com.eveningoutpost.dexdrip.xdrip;
 
 import lombok.val;
+
+import static com.eveningoutpost.dexdrip.models.JoH.cancelNotification;
+import static com.eveningoutpost.dexdrip.models.JoH.msSince;
+import static com.eveningoutpost.dexdrip.models.JoH.niceTimeScalar;
+import static com.eveningoutpost.dexdrip.models.JoH.niceTimeScalarNatural;
+import static com.eveningoutpost.dexdrip.models.JoH.showNotification;
+import static com.eveningoutpost.dexdrip.utilitymodels.Constants.SENSORY_EXPIRY_NOTIFICATION_ID;
+import static com.eveningoutpost.dexdrip.utilitymodels.NotificationChannels.GENERAL_CHANNEL;
+
 
 /**
  * JamOrHam
@@ -57,7 +57,7 @@ public class SensorExpiry extends BaseAlert {
         val expiry = niceTimeScalarNatural(SensorDays.get().getRemainingSensorPeriodInMs(), 1);
         val expireMsg = xdrip.gs(R.string.sensor_will_expire_in, expiry);
         showExpiryNotification(expireMsg);
-        Treatments.create_note(NOTE_PREFIX + expireMsg, tsl()); // TODO i18n but note classifier also needs updating for that
+//        Treatments.create_note(NOTE_PREFIX + expireMsg, tsl()); // TODO i18n but note classifier also needs updating for that
         UserError.Log.uel(TAG, "Sensor will expire soon");
         return true;
     }

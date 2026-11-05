@@ -220,25 +220,6 @@ public class Reminder extends Model {
         }
     }
 
-    public boolean shouldNotify() {
-        return enabled && isDue() && !isSnoozed();
-    }
-
-    public synchronized void notified() {
-        if (last_fired < next_due) fired_times++;
-        alerted_times++;
-        last_fired = JoH.tsl();
-        if (chime_only) {
-            if (repeating) {
-                UserError.Log.d(TAG, "Rescheduling next");
-                schedule_next();
-            } else {
-                enabled = false;
-            }
-        }
-        save();
-    }
-
     public synchronized void reminder_alert() {
         Reminders.doAlert(this);
     }
@@ -300,19 +281,6 @@ public class Reminder extends Model {
         return reminder;
     }
 
-    public static List<Reminder> getActiveReminders() {
-        fixUpTable(schema);
-        final long now = JoH.tsl();
-        final List<Reminder> reminders = new Select()
-                .from(Reminder.class)
-                .where("enabled = ?", true)
-                .where("next_due < ?", now)
-                .where("snoozed_till < ?", now)
-                .orderBy("enabled desc, next_due asc")
-                .execute();
-        return reminders;
-    }
-
     private static boolean isNight() {
         final int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
         return hour < 9; // midnight to 9am we say is night
@@ -344,20 +312,7 @@ public class Reminder extends Model {
     }
 
     public static Reminder getNextActiveReminder() {
-        fixUpTable(schema);
-        final boolean onHomeWifi = !HomeWifi.isSet() || HomeWifi.isConnected();
-        final long now = JoH.tsl();
-        final Reminder reminder = new Select()
-                .from(Reminder.class)
-                .where("enabled = ?", true)
-                .where("next_due < ?", now)
-                .where("snoozed_till < ?", now)
-                .where("last_fired < (? - (600000 * alerted_times))", now)
-                // if on home wifi or not set then anything otherwise only home only = false
-                .where(onHomeWifi ? "homeonly > -1 " : "homeonly = 0")
-                .orderBy("enabled desc, priority desc, next_due asc")
-                .executeSingle();
-        return reminder;
+        return null;
     }
 
     public static List<Reminder> getAllReminders() {
@@ -399,21 +354,4 @@ public class Reminder extends Model {
                 .where("_ID = ?", id)
                 .executeSingle();
     }
-
-
-    /*static Reminder getForPreciseTimestamp(double timestamp, double precision, String plugin) {
-        fixUpTable(schema);
-        final Reminder Reminder = new Select()
-                .from(Reminder.class)
-                .where("timestamp <= ?", (timestamp + precision))
-                .where("timestamp >= ?", (timestamp - precision))
-                .where("plugin = ?", plugin)
-                .orderBy("abs(timestamp - " + timestamp + ") asc")
-                .executeSingle();
-        if (Reminder != null && Math.abs(Reminder.timestamp - timestamp) < precision) {
-            return Reminder;
-        }
-        return null;
-    }
-*/
 }

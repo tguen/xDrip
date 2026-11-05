@@ -10,7 +10,7 @@ import java.nio.ByteBuffer;
  */
 public class DisconnectTxMessage extends BaseMessage {
     byte opcode = 0x09;
-    private final static String TAG = G5CollectionService.TAG; // meh
+
     public DisconnectTxMessage() {
         data = ByteBuffer.allocate(1);
         data.put(opcode);

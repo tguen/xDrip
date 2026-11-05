@@ -19,8 +19,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class GlucoseRxMessage extends BaseGlucoseRxMessage {
 
-    private final static String TAG = G5CollectionService.TAG; // meh
-
     public static final byte opcode = 0x31;
 
 

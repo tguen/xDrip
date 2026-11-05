@@ -5,25 +5,21 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
-
-import com.eveningoutpost.dexdrip.models.JoH;
-import com.eveningoutpost.dexdrip.models.Sensor;
-import com.eveningoutpost.dexdrip.models.UserError.Log;
-
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 
+import com.eveningoutpost.dexdrip.databinding.ActivityDoubleCalibrationBinding;
 import com.eveningoutpost.dexdrip.models.Calibration;
+import com.eveningoutpost.dexdrip.models.JoH;
+import com.eveningoutpost.dexdrip.models.Sensor;
+import com.eveningoutpost.dexdrip.models.UserError.Log;
 import com.eveningoutpost.dexdrip.utilitymodels.CollectionServiceStarter;
 import com.eveningoutpost.dexdrip.utilitymodels.Constants;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
 import com.eveningoutpost.dexdrip.utilitymodels.PrefsViewImpl;
-import com.eveningoutpost.dexdrip.databinding.ActivityDoubleCalibrationBinding;
 import com.eveningoutpost.dexdrip.utils.ActivityWithMenu;
-
-import static com.eveningoutpost.dexdrip.Home.startWatchUpdaterService;
 
 
 public class DoubleCalibrationActivity extends ActivityWithMenu {
@@ -32,7 +28,6 @@ public class DoubleCalibrationActivity extends ActivityWithMenu {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        xdrip.checkForcedEnglish(this);
         super.onCreate(savedInstanceState);
         if (CollectionServiceStarter.isBTShare(getApplicationContext())) {
             Intent intent = new Intent(this, Home.class);
@@ -43,12 +38,6 @@ public class DoubleCalibrationActivity extends ActivityWithMenu {
         binding.setPrefs(new PrefsViewImpl());
         setContentView(binding.getRoot());
         addListenerOnButton();
-    }
-
-    @Override
-    protected void onResume() {
-        xdrip.checkForcedEnglish(this);
-        super.onResume();
     }
 
     @Override

@@ -11,7 +11,6 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Parcelable;
 import android.os.PowerManager;
-import androidx.preference.PreferenceManager;
 
 import com.eveningoutpost.dexdrip.BestGlucose;
 import com.eveningoutpost.dexdrip.models.Accuracy;
@@ -23,28 +22,24 @@ import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.models.UserNotification;
 import com.eveningoutpost.dexdrip.services.MissedReadingService;
-import com.eveningoutpost.dexdrip.utilitymodels.AlertPlayer;
-import com.eveningoutpost.dexdrip.utilitymodels.BgGraphBuilder;
-import com.eveningoutpost.dexdrip.utilitymodels.Constants;
-import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.eveningoutpost.dexdrip.stats.StatsResult;
-import com.eveningoutpost.dexdrip.store.FastStore;
-import com.eveningoutpost.dexdrip.store.KeyStore;
 import com.eveningoutpost.dexdrip.services.broadcastservice.models.BroadcastModel;
 import com.eveningoutpost.dexdrip.services.broadcastservice.models.GraphLine;
 import com.eveningoutpost.dexdrip.services.broadcastservice.models.Settings;
+import com.eveningoutpost.dexdrip.store.FastStore;
+import com.eveningoutpost.dexdrip.store.KeyStore;
+import com.eveningoutpost.dexdrip.utilitymodels.AlertPlayer;
+import com.eveningoutpost.dexdrip.utilitymodels.BgGraphBuilder;
+import com.eveningoutpost.dexdrip.utilitymodels.Constants;
 import com.eveningoutpost.dexdrip.xdrip;
 
 import java.util.HashMap;
 import java.util.Map;
 
+import androidx.preference.PreferenceManager;
 import lecho.lib.hellocharts.model.Line;
 
 import static com.eveningoutpost.dexdrip.utilitymodels.Constants.DAY_IN_MS;
 
-// External status line from AAPS added
-import static com.eveningoutpost.dexdrip.wearintegration.ExternalStatusService.getLastStatusLine;
-import static com.eveningoutpost.dexdrip.wearintegration.ExternalStatusService.getLastStatusLineTime;
 
 /**
  *  Broadcast API which provides common data like, bg values, graph info, statistic info.
@@ -171,26 +166,6 @@ public class BroadcastService extends Service {
                                 break;
                             }
                             serviceIntent.putExtra(Const.INTENT_ALERT_TYPE, activeAlertType);
-                            startService = true;
-                            break;
-                        case Const.CMD_ADD_STEPS:
-                            timeStamp = intent.getLongExtra("timeStamp", JoH.tsl());
-                            int steps = intent.getIntExtra("value", 0);
-                            StepCounter.createEfficientRecord(timeStamp, steps);
-                            break;
-                        case Const.CMD_ADD_HR:
-                            timeStamp = intent.getLongExtra("timeStamp", JoH.tsl());
-                            int hrValue = intent.getIntExtra("value", 0);
-                            HeartRate.create(timeStamp, hrValue, 1);
-                            break;
-                        case Const.CMD_ADD_TREATMENT: //so it would be possible to add treatment via watch
-                            timeStamp = intent.getLongExtra("timeStamp", JoH.tsl());
-                            double carbs = intent.getDoubleExtra("carbs", 0);
-                            double insulin = intent.getDoubleExtra("insulin", 0);
-                            Treatments.create(carbs, insulin, timeStamp);
-                            function = Const.CMD_REPLY_MSG;
-                            serviceIntent.putExtra(Const.INTENT_REPLY_MSG, "Treatment were added");
-                            serviceIntent.putExtra(Const.INTENT_REPLY_CODE, Const.INTENT_REPLY_CODE_OK);
                             startService = true;
                             break;
                         case Const.CMD_STAT_INFO:
@@ -414,21 +389,7 @@ public class BroadcastService extends Service {
             UserError.Log.d(TAG, "Stats Cache Miss");
             UserError.Log.d(TAG, "Getting StatsResult");
             bundle = new Bundle();
-            final StatsResult statsResult = new StatsResult(Pref.getInstance(), Constants.HOUR_IN_MS * statHours, JoH.tsl());
 
-            bundle.putString("status.avg", statsResult.getAverageUnitised());
-            bundle.putString("status.a1c_dcct", statsResult.getA1cDCCT());
-            bundle.putString("status.a1c_ifcc", statsResult.getA1cIFCC());
-            bundle.putString("status.in", statsResult.getInPercentage());
-            bundle.putString("status.high", statsResult.getHighPercentage());
-            bundle.putString("status.low", statsResult.getLowPercentage());
-            bundle.putString("status.stdev", statsResult.getStdevUnitised());
-            bundle.putString("status.gvi", statsResult.getGVI());
-            bundle.putString("status.carbs", String.valueOf(Math.round(statsResult.getTotal_carbs())));
-            bundle.putString("status.insulin", JoH.qs(statsResult.getTotal_insulin(), 2));
-            bundle.putString("status.royce_ratio", JoH.qs(statsResult.getRatio(), 2));
-            bundle.putString("status.capture_percentage", statsResult.getCapturePercentage(false));
-            bundle.putString("status.capture_realtime_capture_percentage", statsResult.getRealtimeCapturePercentage(false));
             String accuracyString;
             final long accuracy_period = DAY_IN_MS * 3;
             final String accuracy_report = Accuracy.evaluateAccuracy(accuracy_period);
@@ -439,7 +400,6 @@ public class BroadcastService extends Service {
                 accuracyString = (accuracy != null) ? " " + accuracy : "";
             }
             bundle.putString("status.accuracy", accuracyString);
-            bundle.putString("status.steps", String.valueOf(statsResult.getTotal_steps()));
 
             broadcastModel.setStatCache(bundle, statHours);
         }
@@ -454,7 +414,6 @@ public class BroadcastService extends Service {
 
         Bundle bundle = new Bundle();
         bundle.putBoolean("doMgdl", (prefs.getString("units", "mgdl").equals("mgdl")));
-        bundle.putInt("phoneBattery", PowerStateReceiver.getBatteryLevel(xdrip.getAppContext()));
 
         BestGlucose.DisplayGlucose dg = BestGlucose.getDisplayGlucose();
         BgReading bgReading = BgReading.last();
@@ -491,18 +450,6 @@ public class BroadcastService extends Service {
             bundle.putBoolean("bg.isStale", isStale);
             bundle.putString("bg.plugin", plugin);
             bundle.putDouble("bg.deltaValueMgdl", deltaValue);
-            bundle.putString("pumpJSON", PumpStatus.toJson());
-
-            Treatments treatment = Treatments.last();
-            if (treatment != null && treatment.hasContent() && !treatment.noteOnly()) {
-                if (treatment.insulin > 0) {
-                    bundle.putDouble("treatment.insulin", treatment.insulin);
-                }
-                if (treatment.carbs > 0) {
-                    bundle.putDouble("treatment.carbs", treatment.carbs);
-                }
-                bundle.putLong("treatment.timeStamp", treatment.timestamp);
-            }
 
             if (settings.isDisplayGraph()) {
                 long graphStartOffset = settings.getGraphStart();
@@ -551,10 +498,6 @@ public class BroadcastService extends Service {
                 bundle.putString("predict.BWP", last_bwp);
                 bundle.putLong("predict.BWP.timeStamp", keyStore.getL("last_bwp_timestamp"));
             }
-
-            // External status line from AAPS added
-            bundle.putString("external.statusLine", getLastStatusLine());
-            bundle.putLong("external.timeStamp", getLastStatusLineTime());
 
         }
         return bundle;

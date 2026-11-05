@@ -1,15 +1,11 @@
 package com.eveningoutpost.dexdrip.profileeditor;
 
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.graphics.Color;
-import android.graphics.Point;
 import android.os.Build;
 import android.os.Bundle;
-
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
@@ -17,28 +13,27 @@ import android.widget.Button;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
-import androidx.recyclerview.widget.DefaultItemAnimator;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-
 import com.eveningoutpost.dexdrip.BaseAppCompatActivity;
 import com.eveningoutpost.dexdrip.Home;
+import com.eveningoutpost.dexdrip.R;
 import com.eveningoutpost.dexdrip.importedlibraries.dexcom.Dex_Constants;
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.Profile;
 import com.eveningoutpost.dexdrip.models.UserError;
-import com.eveningoutpost.dexdrip.R;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.eveningoutpost.dexdrip.utilitymodels.ShotStateStore;
 import com.eveningoutpost.dexdrip.utils.Preferences;
 import com.github.amlcurran.showcaseview.ShowcaseView;
-import com.github.amlcurran.showcaseview.targets.Target;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import androidx.recyclerview.widget.DefaultItemAnimator;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
 
 /**
  * Created by jamorham on 21/06/2016.
@@ -504,82 +499,6 @@ public class ProfileEditor extends BaseAppCompatActivity {
     }
 
     private synchronized void showcasemenu(int option) {
-        if ((myShowcase != null) && (myShowcase.isShowing())) return;
-        if (ShotStateStore.hasShot(option)) return;
-        try {
-            ProfileViewTarget target = null;
-            String title = "";
-            String message = "";
-
-            switch (option) {
-
-                case SHOWCASE_PROFILE_SPLIT:
-                    target = new ProfileViewTarget(R.id.profile_recycler_view, this, 40, 40);
-
-                    title = getString(R.string.long_press_to_split_or_delete);
-                    message = getString(R.string.press_and_hold_on_the_background_to_split_or_delete);
-                    break;
-
-            }
-
-
-            if (target != null) {
-                myShowcase = new ShowcaseView.Builder(this)
-
-                        .setTarget(target)
-                        .setStyle(R.style.CustomShowcaseTheme2)
-                        .setContentTitle(title)
-                        .setContentText("\n" + message)
-                        .setShowcaseDrawer(new JamorhamShowcaseDrawer(getResources(), getTheme(), 90, 14))
-                        .singleShot(oneshot ? option : -1)
-                        .build();
-
-                myShowcase.setBackgroundColor(Color.TRANSPARENT);
-                myShowcase.show();
-            }
-
-        } catch (Exception e) {
-            Log.e(TAG, "Exception in showcase: " + e.toString());
-        }
     }
-
-    public class ProfileViewTarget implements Target {
-
-        private final View mView;
-        private int offsetX = 0;
-        private int offsetY = 0;
-
-        public ProfileViewTarget(View view) {
-            mView = view;
-        }
-
-        public ProfileViewTarget(int viewId, Activity activity) {
-            mView = activity.findViewById(viewId);
-        }
-
-        public ProfileViewTarget(int viewId, Activity activity, int offsetX, int offsetY) {
-            mView = activity.findViewById(viewId);
-            this.offsetX = offsetX;
-            this.offsetY = offsetY;
-        }
-
-
-        @Override
-        public Point getPoint() {
-            int[] location = new int[2];
-            mView.getLocationInWindow(location);
-            int x, y;
-            if ((offsetX != 0) || (offsetY != 0)) {
-                // TODO to implement DP we probably need to check scaling!!!
-                x = offsetX + location[0]; // from top left if offset specified
-                y = offsetY + location[1];
-            } else {
-                x = location[0] + mView.getWidth() / 2;
-                y = location[1] + mView.getHeight() / 2;
-            }
-            return new Point(x, y);
-        }
-    }
-
 
 }

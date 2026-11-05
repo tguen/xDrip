@@ -10,8 +10,7 @@ import java.util.Locale;
 // jamorham
 
 public class BaseMessage {
-
-    protected static final String TAG = G5CollectionService.TAG; // meh
+    protected static final String TAG = "DexMessage";
     static final int INVALID_TIME = 0xFFFFFFFF;
     @Expose
     long postExecuteGuardTime = 50;

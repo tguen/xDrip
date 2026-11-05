@@ -1,11 +1,5 @@
 package com.eveningoutpost.dexdrip;
 
-import static com.eveningoutpost.dexdrip.Home.startWatchUpdaterService;
-import static com.eveningoutpost.dexdrip.models.BgReading.AGE_ADJUSTMENT_TIME;
-import static com.eveningoutpost.dexdrip.services.Ob1G5CollectionService.getTransmitterID;
-import static com.eveningoutpost.dexdrip.ui.dialog.QuickSettingsDialogs.FINISH_ACTIVITY_ON_DIALOG_DISMISS;
-import static com.eveningoutpost.dexdrip.xdrip.gs;
-
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
@@ -13,8 +7,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
-import androidx.annotation.NonNull;
-
 import android.widget.Button;
 import android.widget.Toast;
 
@@ -26,25 +18,31 @@ import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.Sensor;
 import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.models.UserError.Log;
-import com.eveningoutpost.dexdrip.services.Ob1G5CollectionService;
-import com.eveningoutpost.dexdrip.utilitymodels.CollectionServiceStarter;
-import com.eveningoutpost.dexdrip.utilitymodels.Pref;
 import com.eveningoutpost.dexdrip.profileeditor.DatePickerFragment;
 import com.eveningoutpost.dexdrip.profileeditor.ProfileAdapter;
 import com.eveningoutpost.dexdrip.profileeditor.TimePickerFragment;
+import com.eveningoutpost.dexdrip.services.Ob1G5CollectionService;
 import com.eveningoutpost.dexdrip.ui.dialog.G6CalibrationCodeDialog;
 import com.eveningoutpost.dexdrip.ui.dialog.G6EndOfLifeDialog;
+import com.eveningoutpost.dexdrip.utilitymodels.CollectionServiceStarter;
+import com.eveningoutpost.dexdrip.utilitymodels.Pref;
 import com.eveningoutpost.dexdrip.utils.ActivityWithMenu;
 import com.eveningoutpost.dexdrip.utils.DexCollectionHelper;
 import com.eveningoutpost.dexdrip.utils.DexCollectionType;
 import com.eveningoutpost.dexdrip.utils.LocationHelper;
-import com.eveningoutpost.dexdrip.wearintegration.WatchUpdaterService;
 
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 
+import androidx.annotation.NonNull;
 import lombok.val;
+
+import static com.eveningoutpost.dexdrip.models.BgReading.AGE_ADJUSTMENT_TIME;
+import static com.eveningoutpost.dexdrip.services.Ob1G5CollectionService.getTransmitterID;
+import static com.eveningoutpost.dexdrip.ui.dialog.QuickSettingsDialogs.FINISH_ACTIVITY_ON_DIALOG_DISMISS;
+import static com.eveningoutpost.dexdrip.xdrip.gs;
+
 
 public class StartNewSensor extends ActivityWithMenu {
     // public static String menu_name = "Start Sensor";
@@ -116,7 +114,6 @@ public class StartNewSensor extends ActivityWithMenu {
             if (!DexSyncKeeper.isReady(Pref.getString("dex_txid", "NULL")) || transmitterAgeInDays() == -1) {
                 JoH.static_toast_long("Need to connect to transmitter before we can start sensor");
                 UserError.Log.e(TAG, "Need to connect to transmitter before we can start sensor");
-                MegaStatus.startStatus(MegaStatus.G5_STATUS);
             } else {
                 startSensorOrAskForG6Code();   // If we're using native mode, don't bother asking about insertion time
             }
@@ -243,15 +240,6 @@ public class StartNewSensor extends ActivityWithMenu {
 
         JoH.static_toast_long(gs(R.string.new_sensor_started));
 
-        startWatchUpdaterService(xdrip.getAppContext(), WatchUpdaterService.ACTION_SYNC_SENSOR, TAG);
-
-        LibreAlarmReceiver.clearSensorStats();
-        // TODO this is just a timer and could be confusing - consider removing this notification
-        // JoH.scheduleNotification(xdrip.getAppContext(), "Sensor should be ready", xdrip.getAppContext().getString(R.string.please_enter_two_calibrations_to_get_started), 60 * 130, Home.SENSOR_READY_ID);
-
-        // Add treatment entry in db
-        Treatments.sensorStart(startTime, "Started by xDrip");
-
         CollectionServiceStarter.restartCollectionServiceBackground();
 
         Ob1G5StateMachine.startSensor(startTime);
@@ -276,36 +264,4 @@ public class StartNewSensor extends ActivityWithMenu {
         }
     }
 
-    /*public void oldaddListenerOnButton() {
-
-        button = (Button)findViewById(R.id.startNewSensor);
-
-        button.setOnClickListener(new View.OnClickListener() {
-          public void onClick(View v) {
-
-              Calendar calendar = Calendar.getInstance();
-              calendar.set(dp.getYear(), dp.getMonth(), dp.getDayOfMonth(),
-              tp.getCurrentHour(), tp.getCurrentMinute(), 0);
-              long startTime = calendar.getTime().getTime();
-
-              Sensor.create(startTime);
-              Log.d("NEW SENSOR", "Sensor started at " + startTime);
-
-              Toast.makeText(getApplicationContext(), gs(R.string.new_sensor_started), Toast.LENGTH_LONG).show();
-              CollectionServiceStarter.newStart(getApplicationContext());
-              SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-              Intent intent;
-              if(prefs.getBoolean("store_sensor_location",true)) {
-                  intent = new Intent(getApplicationContext(), NewSensorLocation.class);
-              } else {
-                  intent = new Intent(getApplicationContext(), Home.class);
-              }
-
-              startActivity(intent);
-              finish();
-          }
-
-        });
-
-    }*/
 }

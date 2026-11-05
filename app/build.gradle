@@ -220,16 +220,16 @@ android {
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
-    wearApp project(':wear')
+//    wearApp project(':wear')
     //weapApp files('../wear/build/outputs/apk/wear_release.apk')
-    implementation('com.github.nightscout:android-uploader:CORE_FOR_XDRIP') {
-        transitive = false
-    }
+//    implementation('com.github.nightscout:android-uploader:CORE_FOR_XDRIP') {
+//        transitive = false
+//    }
 
-    implementation project(':localeapi')
+//    implementation project(':localeapi')
     implementation project(':ipluginda')
     implementation project(':libkeks')
-    implementation project(':libglupro')
+//    implementation project(':libglupro')
 
     // add missing JAXB dependencies for JDK 9+
     if (JavaVersion.current().ordinal() >= JavaVersion.VERSION_1_9.ordinal()) {
@@ -413,4 +413,4 @@ tasks.withType(Test).configureEach {
     }
 }
 
-apply plugin: 'com.google.gms.google-services'
+//apply plugin: 'com.google.gms.google-services'

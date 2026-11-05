@@ -8,18 +8,15 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
 import com.eveningoutpost.dexdrip.BaseAppCompatActivity;
-import com.eveningoutpost.dexdrip.GcmActivity;
 import com.eveningoutpost.dexdrip.Home;
+import com.eveningoutpost.dexdrip.R;
 import com.eveningoutpost.dexdrip.models.AlertType;
 import com.eveningoutpost.dexdrip.models.JoH;
-import com.eveningoutpost.dexdrip.R;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
 import com.eveningoutpost.dexdrip.xdrip;
 
@@ -31,11 +28,14 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
 import static com.eveningoutpost.dexdrip.receiver.InfoContentProvider.ping;
 import static com.eveningoutpost.dexdrip.utils.FileUtils.getExternalDir;
-
-
 import static com.eveningoutpost.dexdrip.xdrip.gs;
+
+
 public class SdcardImportExport extends BaseAppCompatActivity {
 
     private final static String TAG = "jamorham sdcard";
@@ -123,32 +123,7 @@ public class SdcardImportExport extends BaseAppCompatActivity {
 
     public static void hardReset_orig() {
         // shared preferences are cached so we need a hard restart
-        GcmActivity.last_sync_request = 0;
         android.os.Process.killProcess(android.os.Process.myPid());
-    }
-
-    public static void forceGMSreset() {
-        final Context context = xdrip.getAppContext();
-        final String gmsfiles = "shared_prefs/com.google.android.gms.measurement.prefs.xml,shared_prefs/com.google.android.gms.appid.xml,databases/google_app_measurement.db,databases/google_app_measurement.db-journal";
-        final String[] filenames = gmsfiles.split(",");
-        for (String filename : filenames) {
-            if (deleteFolder(new File(context.getFilesDir().getParent() + "/" + filename), false)) {
-                Log.d(TAG, "Successfully deleted: " + filename);
-            } else {
-                Log.e(TAG, "Error deleting: " + filename);
-            }
-        }
-        hardReset();
-    }
-
-    public static void deletePersistentStore() {
-        final String filename = "shared_prefs/persist_internal_store.xml";
-        if (deleteFolder(new File(xdrip.getAppContext().getFilesDir().getParent() + "/" + filename), false)) {
-            Log.d(TAG, "Successfully deleted: " + filename);
-        } else {
-            Log.e(TAG, "Error deleting: " + filename);
-        }
-        hardReset();
     }
 
     public void loadPreferencesToSD(View myview) {
@@ -181,10 +156,6 @@ public class SdcardImportExport extends BaseAppCompatActivity {
         } else {
             toast(getString(R.string.deletion_problem));
         }
-    }
-
-    public static byte[] getPreferencesFileAsBytes(Context context) {
-        return dataToBytes(PREFERENCES_FILE, context);
     }
 
     public boolean savePreferencesToSD() {

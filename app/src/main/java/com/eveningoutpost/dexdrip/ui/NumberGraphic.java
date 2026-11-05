@@ -21,8 +21,7 @@ import com.eveningoutpost.dexdrip.xdrip;
 
 import static android.content.Context.NOTIFICATION_SERVICE;
 import static com.eveningoutpost.dexdrip.utilitymodels.ColorCache.getCol;
-import static com.eveningoutpost.dexdrip.ui.activities.NumberWallPreview.ViewModel.PREF_numberwall_multi_param;
-import static com.eveningoutpost.dexdrip.ui.helpers.BitmapUtil.getScreenDpi;
+
 
 /**
  * Created by jamorham on 05/03/2018.
@@ -82,22 +81,6 @@ public class NumberGraphic {
         return getBitmap(text, Color.BLACK, arrow);
     }
 
-    public static boolean isLockScreenBitmapTiled() {
-        return Pref.getBooleanDefaultFalse(PREF_numberwall_multi_param);
-    }
-
-    public static Bitmap getLockScreenBitmap(final String text, final String arrow, final boolean strike_through, final int textColor) {
-        final boolean tiled = isLockScreenBitmapTiled();
-        final double x_ratio = JoH.tolerantParseDouble(Pref.getString("numberwall_x_param", ""), 50d) / 100d;
-        double y_ratio = JoH.tolerantParseDouble(Pref.getString("numberwall_y_param", ""), 50d) / 100d;
-        double spacer_ratio = JoH.tolerantParseDouble(Pref.getString("numberwall_s_param", ""), 10d) / 100d;
-
-        if (!tiled) {
-            y_ratio = 0.30d; // standardized defaults somewhere for this would be nice; and roll in to final declaration above
-            spacer_ratio = 0d;
-        }
-        return getBitmap(text, textColor, arrow, (int) (getScreenDpi() * x_ratio), (int) (getScreenDpi() * x_ratio * y_ratio), (int) (getScreenDpi() * x_ratio * spacer_ratio), strike_through, !tiled, true);
-    }
 
     public static Bitmap getBitmap(final String text, int fillColor, final String arrow) {
         try {

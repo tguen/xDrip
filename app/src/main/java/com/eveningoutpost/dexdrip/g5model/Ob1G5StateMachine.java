@@ -802,14 +802,14 @@ public class Ob1G5StateMachine {
                                         } else {
                                             if (!parent.lastSensorState.sensorStarted()) {
                                                 UserError.Log.uel(TAG, "Stopping sensor session due to repeated restart failure");
-                                                Treatments.sensorStop(null, "Stopped due to repeated start failure");
+//                                                Treatments.sensorStop(null, "Stopped due to repeated start failure");
                                                 Sensor.stopSensor();
                                             }
                                         }
                                     } else {
                                         if (!parent.lastSensorState.sensorStarted()) {
                                             UserError.Log.uel(TAG, "Stopping sensor session due to start failure");
-                                            Treatments.sensorStop(null, "Stopped due to start failure");
+//                                            Treatments.sensorStop(null, "Stopped due to start failure");
                                             Sensor.stopSensor();
                                         }
                                     }
@@ -1427,17 +1427,16 @@ public class Ob1G5StateMachine {
     public static void restartSensorWithTimeTravel(long when) {
         if (acceptCommands()) {
             enqueueUniqueCommand(
-                    new SessionStopTxMessage(
-                            DexTimeKeeper.getDexTime(getTransmitterID(), when)),
-                    "Auto Stop Sensor");
+                new SessionStopTxMessage(DexTimeKeeper.getDexTime(getTransmitterID(), when)),
+                "Auto Stop Sensor");
             final long when_started = when + SECOND_IN_MS;
-            enqueueUniqueCommand(new SessionStartTxMessage(when,
-                            DexTimeKeeper.getDexTime(getTransmitterID(), when_started)),
-                    "Auto Start Sensor");
+            enqueueUniqueCommand(
+                new SessionStartTxMessage(when, DexTimeKeeper.getDexTime(getTransmitterID(), when_started)),
+                "Auto Start Sensor");
             if (Pref.getBoolean("ob1_g5_preemptive_restart_alert", true)) {
                 Notifications.ob1SessionRestartRequested();
             }
-            Treatments.create_note(xdrip.getAppContext().getString(R.string.ob1_session_restarted_note), JoH.tsl());
+//            Treatments.create_note(xdrip.getAppContext().getString(R.string.ob1_session_restarted_note), JoH.tsl());
         }
     }
 
@@ -1616,11 +1615,6 @@ public class Ob1G5StateMachine {
                 // emit local broadcast on wear if reading was newly created
                 BroadcastGlucose.sendLocalBroadcast(bgReading);
             }
-
-            if (WholeHouse.isLive()) {
-                Mimeograph.poll(false);
-            }
-
         } else {
             // TODO this is duplicated in processCalibrationState()
             if (glucose.calibrationState().sensorFailed() && Sensor.isActive()) {
@@ -1663,10 +1657,6 @@ public class Ob1G5StateMachine {
             processNewTransmitterData((int) RawScaling.scale(sensorRx.unfiltered, getTransmitterID(), false),
                     (int) RawScaling.scale(sensorRx.filtered, getTransmitterID(), true),
                     sensor_battery_level, new Date().getTime());
-        }
-
-        if (WholeHouse.isLive()) {
-            Mimeograph.poll(false);
         }
     }
 
@@ -1826,9 +1816,9 @@ public class Ob1G5StateMachine {
         if ((batteryInfoRxMessage.voltagea < old_level) || (old_level == 0)) {
             if (batteryInfoRxMessage.voltagea < LOW_BATTERY_WARNING_LEVEL) {
                 if (JoH.pratelimit("g5-low-battery-warning", 40000)) {
-                    final boolean loud = !PowerStateReceiver.is_power_connected();
+//                    final boolean loud = !PowerStateReceiver.is_power_connected();
                     final boolean silent = false;
-                    boolean sound_vibrate = loud;
+                    boolean sound_vibrate = false; //loud;
                     if (getBestCollectorHardwareName().equals("G7")) {
                         sound_vibrate = silent;
                     }
@@ -2140,8 +2130,7 @@ public class Ob1G5StateMachine {
     }
 
     public static boolean usingAlt() {
-        return (android_wear && !Pref.getBooleanDefaultFalse("only_ever_use_wear_collector"))
-                || (immediateBonding() && !ignoreBonding()) || WholeHouse.isLive();
+        return immediateBonding() && !ignoreBonding();
     }
 
     private static class OperationSuccess extends RuntimeException {

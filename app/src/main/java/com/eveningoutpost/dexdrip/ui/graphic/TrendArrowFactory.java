@@ -60,28 +60,27 @@ public class TrendArrowFactory {
     public static ITrendArrow create(String type, ImageView imageView) {
         switch (type) {
 
-            case "JamTrendArrowImpl":
-                return new JamTrendArrowImpl(imageView);
+//            case "JamTrendArrowImpl":
+//                return new JamTrendArrowImpl(imageView);
 
-            case "JamTrendArrow2Impl":
-                return new JamTrendArrow2Impl(imageView);
+//            case "JamTrendArrow2Impl":
+//                return new JamTrendArrow2Impl(imageView);
 
-            case "JamTrendArrow2bImpl":
-                return new JamTrendArrow2bImpl(imageView);
+//            case "JamTrendArrow2bImpl":
+//                return new JamTrendArrow2bImpl(imageView);
 
-            case "JamTrendArrow3Impl":
-                return new JamTrendArrow3Impl(imageView);
+//            case "JamTrendArrow3Impl":
+//                return new JamTrendArrow3Impl(imageView);
 
 
             // add any other arrow types here
 
 
             // try to handle app downgrades as gracefully as possible
-            default:
-                return new JamTrendArrowImpl(imageView);
-
-
+//            default:
+//                return new JamTrendArrowImpl(imageView);
         }
+        return null;
     }
 
     private static String[] getArrayValues() {

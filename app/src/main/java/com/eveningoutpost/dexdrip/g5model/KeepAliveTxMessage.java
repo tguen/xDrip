@@ -13,7 +13,6 @@ public class KeepAliveTxMessage extends BaseMessage {
     public static final int opcode = 0x06;
     private int time;
 
-    private final static String TAG = G5CollectionService.TAG; // meh
 
     public KeepAliveTxMessage(int time) {
         this.time = time;

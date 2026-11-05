@@ -2,10 +2,10 @@ package com.eveningoutpost.dexdrip.utilitymodels;
 
 import com.eveningoutpost.dexdrip.models.Calibration;
 import com.eveningoutpost.dexdrip.models.JoH;
-import com.eveningoutpost.dexdrip.models.UserError;
 
 import java.util.ArrayList;
 import java.util.List;
+
 
 /**
  * Created by jamorham on 16/06/2016.
@@ -77,19 +77,7 @@ public class UndoRedo {
             synchronized (queue_lock) {
                 final int location = undo_queue.size() - 1;
                 Undo_item item = undo_queue.get(location);
-                if (item.Treatment_uuid != null) {
-                    try {
-                        item.saved_data = Treatments.byuuid(item.Treatment_uuid).toJSON();
-                        item.expires = JoH.ts() + EXPIRY_TIME;
-                        redo_queue.add(item);
-                        undo_queue.remove(location);
-                        Treatments.delete_by_uuid(item.Treatment_uuid,true);
-                    } catch (NullPointerException e) {
-                        UserError.Log.wtf(TAG, "Null pointer exception in undoNext()");
-                        undo_queue.remove(location);
-                    }
-                    return true;
-                } else if (item.Calibration_uuid != null) {
+                if (item.Calibration_uuid != null) {
                     // TODO try catch
                     Calibration calibration = Calibration.byuuid(item.Calibration_uuid);
                     if(calibration != null) {
@@ -118,15 +106,6 @@ public class UndoRedo {
                 final int location = redo_queue.size() - 1;
                 Undo_item item = redo_queue.get(location);
                 // check saved data innit
-
-                if (item.Treatment_uuid !=null)
-                {
-                    // TODO try catch
-                    Treatments.pushTreatmentFromJson(item.saved_data,true); // from interactive
-                    undo_queue.add(item);
-                    redo_queue.remove(location);
-                    return true;
-                }
 
                 // TODO do same for calibrations - not complete yet
                 if (item.Calibration_uuid != null) {

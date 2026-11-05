@@ -16,8 +16,6 @@ import lombok.val;
 @NoArgsConstructor
 public abstract class BaseGlucoseRxMessage extends BaseMessage {
 
-    private final static String TAG = G5CollectionService.TAG; // meh
-
     public TransmitterStatus status;
     public int status_raw;
     public int timestamp;

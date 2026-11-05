@@ -110,7 +110,6 @@ public class AlertList extends ActivityWithMenu {
                     // as well (or you can use the convenience method lv.setLongClickable(true);). This way you can have a list
                     // with only some items responding to longclick. (might be used for non removable alerts)
 
-                    xdrip.checkForcedEnglish(xdrip.getAppContext());
                     Intent myIntent = new Intent(AlertList.this, EditAlertActivity.class);
                     myIntent.putExtra("uuid", item.get("uuid")); //Optional parameters
                     AlertList.this.startActivityForResult(myIntent, EDIT_ALERT);
@@ -128,12 +127,6 @@ public class AlertList extends ActivityWithMenu {
             view.startAnimation(anim);
             return true;
         }
-    }
-
-    @Override
-    protected void onResume() {
-        xdrip.checkForcedEnglish(xdrip.getAppContext());
-        super.onResume();
     }
 
     @Override
@@ -166,7 +159,6 @@ public class AlertList extends ActivityWithMenu {
 
         createLowAlert.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                xdrip.checkForcedEnglish(xdrip.getAppContext());
                 Intent myIntent = new Intent(AlertList.this, EditAlertActivity.class);
                 myIntent.putExtra("above", "false");
                 AlertList.this.startActivityForResult(myIntent, ADD_ALERT);
@@ -176,7 +168,6 @@ public class AlertList extends ActivityWithMenu {
 
         createHighAlert.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                xdrip.checkForcedEnglish(xdrip.getAppContext());
                 Intent myIntent = new Intent(AlertList.this, EditAlertActivity.class);
                 myIntent.putExtra("above", "true");
                 AlertList.this.startActivityForResult(myIntent, ADD_ALERT);
@@ -210,7 +201,8 @@ public class AlertList extends ActivityWithMenu {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        Log.d(TAG, "onActivityResult called request code  = " + requestCode + " result code " + resultCode);
+	    super.onActivityResult(requestCode, resultCode, data);
+	    Log.d(TAG, "onActivityResult called request code  = " + requestCode + " result code " + resultCode);
         if (!AlertType.activeLowAlertExists()) {
             displayWarning();
         }

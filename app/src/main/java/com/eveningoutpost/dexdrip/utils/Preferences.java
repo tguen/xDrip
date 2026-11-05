@@ -1,18 +1,11 @@
 package com.eveningoutpost.dexdrip.utils;
 
-import android.Manifest;
 import android.annotation.SuppressLint;
-import android.app.Activity;
-import android.app.AlertDialog;
-import android.appwidget.AppWidgetManager;
 import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -27,14 +20,12 @@ import android.text.InputFilter;
 import android.text.TextUtils;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.BaseAdapter;
 import android.widget.Toast;
 
 import com.bytehamster.lib.preferencesearch.SearchConfiguration;
 import com.bytehamster.lib.preferencesearch.SearchPreferenceResult;
 import com.bytehamster.lib.preferencesearch.SearchPreferenceResultListener;
 import com.eveningoutpost.dexdrip.BasePreferenceActivity;
-import com.eveningoutpost.dexdrip.Home;
 import com.eveningoutpost.dexdrip.R;
 import com.eveningoutpost.dexdrip.alert.Registry;
 import com.eveningoutpost.dexdrip.calibrations.PluggableCalibration;
@@ -47,7 +38,6 @@ import com.eveningoutpost.dexdrip.models.UserError.Log;
 import com.eveningoutpost.dexdrip.models.UserNotification;
 import com.eveningoutpost.dexdrip.profileeditor.ProfileEditor;
 import com.eveningoutpost.dexdrip.receiver.InfoContentProvider;
-import com.eveningoutpost.dexdrip.services.DexCollectionService;
 import com.eveningoutpost.dexdrip.services.G5BaseService;
 import com.eveningoutpost.dexdrip.services.UiBasedCollector;
 import com.eveningoutpost.dexdrip.services.broadcastservice.BroadcastService;
@@ -59,7 +49,6 @@ import com.eveningoutpost.dexdrip.utilitymodels.Experience;
 import com.eveningoutpost.dexdrip.utilitymodels.Inevitable;
 import com.eveningoutpost.dexdrip.utilitymodels.Intents;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.eveningoutpost.dexdrip.utilitymodels.ShotStateStore;
 import com.eveningoutpost.dexdrip.xdrip;
 import com.google.zxing.BinaryBitmap;
 import com.google.zxing.MultiFormatReader;
@@ -69,14 +58,10 @@ import com.google.zxing.Result;
 import com.google.zxing.common.HybridBinarizer;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
-import com.nightscout.core.barcode.NSBarcodeConfig;
-
-import net.tribe7.common.base.Joiner;
 
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.lang.reflect.Method;
-import java.net.URI;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -85,7 +70,6 @@ import java.util.Map;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
-import androidx.core.app.ActivityCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -120,10 +104,6 @@ public class Preferences extends BasePreferenceActivity implements SearchPrefere
     private static String static_units;
     private static Preference profile_insulin_sensitivity_default;
     private static Preference profile_carb_ratio_default;
-
-    private static ListPreference locale_choice;
-    private static Preference force_english;
-    private static Preference nfc_expiry_days;
 
     private static AllPrefsFragment pFragment;
     private BroadcastReceiver mibandStatusReceiver;
@@ -187,28 +167,6 @@ public class Preferences extends BasePreferenceActivity implements SearchPrefere
 
     public interface OnServiceTaskCompleted {
         void onTaskCompleted(byte[] result);
-    }
-
-    public class ServiceCallback implements OnServiceTaskCompleted {
-        @Override
-        public void onTaskCompleted(byte[] result) {
-            if (result.length > 0) {
-                if ((staticKey == null) || (staticKey.length != 16)) {
-                    toast("Error processing security key");
-                } else {
-                    byte[] plainbytes = JoH.decompressBytesToBytes(CipherUtils.decryptBytes(result, staticKey));
-                    staticKey = null;
-                    Log.d(TAG, "Plain bytes size: " + plainbytes.length);
-                    if (plainbytes.length > 0) {
-                        SdcardImportExport.storePreferencesFromBytes(plainbytes, getApplicationContext());
-                    } else {
-                        toast("Error processing data - empty");
-                    }
-                }
-            } else {
-                toast("Error processing settings - no data - try again?");
-            }
-        }
     }
 
 
@@ -356,63 +314,10 @@ public class Preferences extends BasePreferenceActivity implements SearchPrefere
         }
 
         if (scanFormat.equals("QR_CODE")) { // The scan is a QR code
-
             if (QRcodeUtils.hasDecoderMarker(scanContents)) {
                 installxDripPlusPreferencesFromQRCode(prefs, scanContents);
                 return;
             }
-
-            final NSBarcodeConfig barcode = new NSBarcodeConfig(scanContents);
-            if (barcode.hasMongoConfig()) {
-                if (barcode.getMongoUri().isPresent()) {
-                    SharedPreferences.Editor editor = prefs.edit();
-                    editor.putString("cloud_storage_mongodb_uri", barcode.getMongoUri().get());
-                    editor.putString("cloud_storage_mongodb_collection", barcode.getMongoCollection().or("entries"));
-                    editor.putString("cloud_storage_mongodb_device_status_collection", barcode.getMongoDeviceStatusCollection().or("devicestatus"));
-                    editor.putBoolean("cloud_storage_mongodb_enable", true);
-                    editor.apply();
-                }
-                if (barcode.hasApiConfig()) {
-                    SharedPreferences.Editor editor = prefs.edit();
-                    editor.putBoolean("cloud_storage_api_enable", true);
-                    editor.putString("cloud_storage_api_base", Joiner.on(' ').join(barcode.getApiUris()));
-                    editor.apply();
-                } else {
-                  //  prefs.edit().putBoolean("cloud_storage_api_enable", false).apply(); // no need to disable
-                }
-            }
-            if (barcode.hasApiConfig()) {
-                SharedPreferences.Editor editor = prefs.edit();
-                editor.putBoolean("cloud_storage_api_enable", true);
-                editor.putString("cloud_storage_api_base", Joiner.on(' ').join(barcode.getApiUris()));
-                editor.apply();
-            } else {
-               // prefs.edit().putBoolean("cloud_storage_api_enable", false).apply(); // no need to disable
-            }
-
-            if (barcode.hasMqttConfig()) {
-                if (barcode.getMqttUri().isPresent()) {
-                    URI uri = URI.create(barcode.getMqttUri().or(""));
-                    if (uri.getUserInfo() != null) {
-                        String[] userInfo = uri.getUserInfo().split(":");
-                        if (userInfo.length == 2) {
-                            String endpoint = uri.getScheme() + "://" + uri.getHost() + ":" + uri.getPort();
-                            if (userInfo[0].length() > 0 && userInfo[1].length() > 0) {
-                                SharedPreferences.Editor editor = prefs.edit();
-                                editor.putString("cloud_storage_mqtt_endpoint", endpoint);
-                                editor.putString("cloud_storage_mqtt_user", userInfo[0]);
-                                editor.putString("cloud_storage_mqtt_password", userInfo[1]);
-                                editor.putBoolean("cloud_storage_mqtt_enable", true);
-                                editor.apply();
-                            }
-                        }
-                    }
-                }
-            }
-
-        } else if (scanFormat.equals("CODE_128")) {
-            Log.d(TAG, "Setting serial number to: " + scanContents);
-            prefs.edit().putString("share_key", scanContents).apply();
         }
         refreshFragments();
     }
@@ -572,9 +477,6 @@ public class Preferences extends BasePreferenceActivity implements SearchPrefere
         profile_insulin_sensitivity_default.setTitle(format_insulin_sensitivity(profile_insulin_sensitivity_default.getTitle().toString(), ProfileEditor.minMaxSens(ProfileEditor.loadData(false))));
     }
 
-    private static void restartPebble() {
-    }
-
     private static Preference.OnPreferenceChangeListener sBindPreferenceSummaryToValueListener = new Preference.OnPreferenceChangeListener() {
         @Override
         public boolean onPreferenceChange(Preference preference, Object value) {
@@ -650,18 +552,7 @@ public class Preferences extends BasePreferenceActivity implements SearchPrefere
         @Override
         public boolean onPreferenceChange(Preference preference, Object value) {
 
-            boolean do_update = false;
-            // detect not first run
-            if (preference.getTitle().toString().contains("(")) {
-                do_update = true;
-            }
-
             preference.setTitle(preference.getTitle().toString().replaceAll("  \\([a-z0-9A-Z]+\\)$", "") + "  (" + value.toString() + ")");
-            if (do_update) {
-                preference.getEditor().putString(preference.getKey(), value.toString()).apply(); // update prefs now
-                UpdateActivity.last_check_time = -2;
-                UpdateActivity.checkForAnUpdate(preference.getContext());
-            }
             return true;
         }
     };

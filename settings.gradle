@@ -3,7 +3,7 @@ plugins {
 }
 include ':ipluginda'
 include ':app'
-include ':localeapi'
+//include ':localeapi'
 include ':libkeks'
-include ':libglupro'
-include ':wear'
+//include ':libglupro'
+//include ':wear'

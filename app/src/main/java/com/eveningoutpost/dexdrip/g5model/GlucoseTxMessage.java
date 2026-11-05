@@ -10,7 +10,6 @@ import com.eveningoutpost.dexdrip.models.UserError;
 
 public class GlucoseTxMessage extends BaseMessage {
 
-    private final static String TAG = G5CollectionService.TAG; // meh
     static final byte opcode = 0x30;
 
     public GlucoseTxMessage() {

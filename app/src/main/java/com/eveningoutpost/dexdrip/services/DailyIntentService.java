@@ -10,7 +10,6 @@ import android.os.PowerManager;
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.models.UserError.Log;
-import com.eveningoutpost.dexdrip.utilitymodels.SettingsValidation;
 import com.eveningoutpost.dexdrip.xdrip;
 
 
@@ -54,12 +53,6 @@ public class DailyIntentService extends IntentService {
                     UserError.cleanup();
                 } catch (Exception e) {
                     Log.e(TAG, "DailyIntentService exception on UserError ", e);
-                }
-
-                try {
-                    SettingsValidation.notifyAboutInadvisableSettings();
-                } catch (Exception e) {
-                    Log.e(TAG, "Exception in SettingsValidation: " + e);
                 }
 
                 Log.i(TAG, "DailyIntentService onHandleIntent exiting after " + ((JoH.tsl() - start) / 1000) + " seconds");
