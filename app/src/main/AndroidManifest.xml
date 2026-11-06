@@ -314,7 +314,6 @@
             android:name=".EventLogActivity"
             android:configChanges="orientation|screenSize"
             android:label="@string/title_activity_error" />
-        <activity android:name=".ui.activities.TimePickerPrefActivity" />
     </application>
 
 </manifest>

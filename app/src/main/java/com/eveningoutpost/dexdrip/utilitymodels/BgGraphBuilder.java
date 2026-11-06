@@ -367,21 +367,11 @@ public class BgGraphBuilder {
         return "Low";
     }
 
-    private void extend_line(List<PointValue> points, double x, float y) {
-        if (points.size() > 1) {
-            points.remove(1); // replace last
-        }
-        points.add(new HPointValue(x, y));
-        Log.d(TAG, "Extend line size: " + points.size());
-    }
-
     private List<Line> predictiveLines() {
         final List<Line> lines = new LinkedList<>();
 
         final boolean g_prediction = Pref.getBooleanDefaultFalse("show_g_prediction");
-        final boolean medtrum = (DexCollectionType.getDexCollectionType() == DexCollectionType.Medtrum)
-                && Pref.getBooleanDefaultFalse("show_medtrum_secondary");
-        if (medtrum || g_prediction) {
+        if (g_prediction) {
             final List<Prediction> plist = Prediction.latestForGraph(4000, loaded_start, loaded_end);
             if (plist.size() > 0) {
                 final List<PointValue> gpoints = new ArrayList<>(plist.size());
@@ -391,10 +381,6 @@ public class BgGraphBuilder {
                         case "EGlucoseRx":
                             final PointValue point = new HPointValue(((double) (p.timestamp + (Constants.MINUTE_IN_MS * 10)) / FUZZER), (float) (p.glucose * yscale));
                             gpoints.add(point);
-                            break;
-                        case "Medtrum2nd":
-                            final PointValue mpoint = new HPointValue(((double) p.timestamp / FUZZER), (float) (p.glucose * yscale));
-                            gpoints.add(mpoint);
                             break;
                     }
                 }
@@ -619,13 +605,6 @@ public class BgGraphBuilder {
             lines.add(treatments[5]); // predictive
             lines.add(treatments[6]); // cob
             lines.add(treatments[7]); // poly predict
-
-
-            if (prefs.getBoolean("show_libre_trend_line", false)) {
-                if (DexCollectionType.hasLibre()) {
-                    lines.add(libreTrendLine());
-                }
-            }
 
             lines.add(minShowLine());
             lines.add(maxShowLine());
@@ -1461,23 +1440,6 @@ public class BgGraphBuilder {
                         keyStore.putL("bwp_last_insulin_timestamp", -1);
                         if (d)
                             Log.i(TAG, "Predictive BWP: Current prediction: " + JoH.qs(predictedbg) + " / carbs: " + JoH.qs(evaluation[0]) + " insulin: " + JoH.qs(evaluation[1]));
-                        if (!BgReading.isDataStale()) {
-                            if (((low_occurs_at < 1) || Pref.getBooleanDefaultFalse("always_show_bwp")) && (Pref.getBooleanDefaultFalse("show_bwp"))) {
-                                if (evaluation[0] > Profile.minimum_carb_recommendation) {
-                                    //PointValue iv = new HPointValue((double) fuzzed_timestamp, (float) (10 * bgScale));
-                                    //iv.setLabel("+Carbs: " + JoH.qs(evaluation[0], 0));
-                                    bwp_update = "\u224F" + " Carbs: " + JoH.qs(evaluation[0], 0); // TODO I18n
-                                    //annotationValues.add(iv); // needs to be different value list so we can make annotation nicer
-                                } else if (evaluation[1] > Profile.minimum_insulin_recommendation) {
-                                    //PointValue iv = new HPointValue((double) fuzzed_timestamp, (float) (11 * bgScale));
-                                    //iv.setLabel("+Insulin: " + JoH.qs(evaluation[1], 1));
-                                    keyStore.putS("bwp_last_insulin", JoH.qs(evaluation[1], 1) + ((low_occurs_at > 0) ? ("!") : ""));
-                                    keyStore.putL("bwp_last_insulin_timestamp", JoH.tsl());
-                                    bwp_update = "\u224F" + " Insulin: " + JoH.qs(evaluation[1], 1) + ((low_occurs_at > 0) ? (" " + "\u26A0") : ""); // warning symbol // TODO I18n
-                                    //annotationValues.add(iv); // needs to be different value list so we can make annotation nicer
-                                }
-                            }
-                        }
                         keyStore.putS("last_bwp", bwp_update);
                         keyStore.putL("last_bwp_timestamp", JoH.tsl());
                         Home.updateStatusLine("bwp", bwp_update); // always send so we can blank if needed

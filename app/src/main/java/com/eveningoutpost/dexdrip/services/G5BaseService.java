@@ -11,7 +11,6 @@ import com.eveningoutpost.dexdrip.utilitymodels.ForegroundServiceStarter;
 import com.eveningoutpost.dexdrip.utilitymodels.Inevitable;
 import com.eveningoutpost.dexdrip.utilitymodels.PersistentStore;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.google.android.gms.wearable.DataMap;
 
 /**
  * Created by jamorham on 21/09/2017.
@@ -62,18 +61,6 @@ public abstract class G5BaseService extends Service {
         service = this;
         UserError.Log.d("FOREGROUND", "Current Service: " + service.getClass().getSimpleName());
         startInForeground();
-    }
-
-    public static void setWatchStatus(DataMap dataMap) {
-        lastStateWatch = dataMap.getString("lastState", "");
-        static_last_timestamp_watch = dataMap.getLong("timestamp", 0);
-    }
-
-    public static DataMap getWatchStatus() {
-        DataMap dataMap = new DataMap();
-        dataMap.putString("lastState", lastState);
-        dataMap.putLong("timestamp", static_last_timestamp);
-        return dataMap;
     }
 
     protected static String bondState(int bs) {

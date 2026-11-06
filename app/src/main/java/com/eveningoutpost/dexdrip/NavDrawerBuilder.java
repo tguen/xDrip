@@ -37,8 +37,6 @@ public class NavDrawerBuilder {
     public final List<Intent> nav_drawer_intents = new ArrayList<>();
     public final List<String> nav_drawer_options = new ArrayList<>();
 
-    private static boolean use_note_search = false;
-
     public NavDrawerBuilder(final Context context) {
         final DexCollectionType collector = DexCollectionType.getDexCollectionType();
 
@@ -58,12 +56,12 @@ public class NavDrawerBuilder {
             this.nav_drawer_intents.add(new Intent(context, CalibrationGraph.class));
         }
 
-        if (prefs.getBoolean("show_data_tables", false)) {
+//        if (prefs.getBoolean("show_data_tables", false)) {
             this.nav_drawer_options.add(context.getString(R.string.bg_data_table));
             this.nav_drawer_intents.add(new Intent(context, BgReadingTable.class));
             this.nav_drawer_options.add(context.getString(R.string.calibration_data_table));
             this.nav_drawer_intents.add(new Intent(context, CalibrationDataTable.class));
-        }
+//        }
 
         if (DexCollectionType.isAlwaysNativeCal()) {
             this.nav_drawer_options.add(context.getString(R.string.add_calibration));
@@ -111,11 +109,6 @@ public class NavDrawerBuilder {
                 this.nav_drawer_options.add(context.getString(R.string.start_sensor));
                 this.nav_drawer_intents.add(new Intent(context, StartNewSensor.class));
             }
-        }
-
-        if (DexCollectionType.usesBluetoothScan()) {
-            this.nav_drawer_options.add(context.getString(R.string.bluetooth_scan));
-            this.nav_drawer_intents.add(new Intent(context, BluetoothScan.class));
         }
 
         boolean bg_alerts = prefs.getBoolean("bg_alerts_from_main_menu", false);

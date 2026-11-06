@@ -24,7 +24,6 @@ import android.text.TextWatcher;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
-import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -169,12 +168,6 @@ public class Reminders extends ActivityWithRecycler implements SensorEventListen
         } else {
             swipePromptText.setVisibility(View.GONE);
         }
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_reminders, menu);
-        return super.onCreateOptionsMenu(menu);
     }
 
     @Override

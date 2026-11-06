@@ -1126,11 +1126,7 @@ public class JoH {
                 Log.e(TAG, "Exception cancelling alarm in wakeUpIntent: " + e);
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                if (buggy_samsung && Pref.getBoolean("allow_samsung_workaround", true)) {
-                    alarm.setAlarmClock(new AlarmManager.AlarmClockInfo(wakeTime, null), pendingIntent);
-                } else {
                     alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, wakeTime, pendingIntent);
-                }
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
                 alarm.setExact(AlarmManager.RTC_WAKEUP, wakeTime, pendingIntent);
             } else
