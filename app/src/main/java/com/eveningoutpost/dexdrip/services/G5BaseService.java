@@ -9,15 +9,14 @@ import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.utilitymodels.ForegroundServiceStarter;
 import com.eveningoutpost.dexdrip.utilitymodels.Inevitable;
-import com.eveningoutpost.dexdrip.utilitymodels.PersistentStore;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
+
 
 /**
  * Created by jamorham on 21/09/2017.
  */
 
 public abstract class G5BaseService extends Service {
-
 
     private final PowerManager.WakeLock wl = JoH.getWakeLock("g5-base-bt", 100);
 
@@ -91,14 +90,6 @@ public abstract class G5BaseService extends Service {
         return runningStringCheck(lastStateWatch);
     }
 
-    public static void resetTransmitterBatteryStatus() {
-        final String transmitterId = Pref.getString("dex_txid", "NULL");
-        PersistentStore.setString(G5_BATTERY_MARKER + transmitterId, "");
-        PersistentStore.setLong(G5_BATTERY_FROM_MARKER + transmitterId, 0);
-        PersistentStore.setLong(G5_BATTERY_LEVEL_MARKER + transmitterId, 0);
-        PersistentStore.commit();
-    }
-
     public static void updateBatteryWarningLevel() {
         LOW_BATTERY_WARNING_LEVEL = Pref.getStringToInt("g5-battery-warning-level", G5_LOW_BATTERY_WARNING_DEFAULT);
     }
@@ -145,18 +136,8 @@ public abstract class G5BaseService extends Service {
         Inevitable.task("foreground-status", 2000, () -> UserError.Log.d("FOREGROUND", service.getClass().getSimpleName() + (JoH.isServiceRunningInForeground(service.getClass()) ? " is running in foreground" : " is not running in foreground")));
     }
 
-    protected static byte[] nn(final byte[] array) {
-        if (array == null) {
-            if (JoH.ratelimit("never-null", 60)) {
-                UserError.Log.wtf("NeverNullG5Base", "Attempt to pass null!!! " + JoH.backTrace());
-                return new byte[1];
-            }
-        }
-        return array;
-    }
-
     public static boolean usingG6() {
-        return Pref.getBooleanDefaultFalse("using_g6");
+        return true; //Pref.getBooleanDefaultFalse("using_g6");
     }
 
     public static void setG6bareBones() {
@@ -174,10 +155,6 @@ public abstract class G5BaseService extends Service {
         Pref.setBoolean("ob1_g5_fallback_to_xdrip", false);
         Pref.setBoolean("display_glucose_from_plugin", false);
         setG6bareBones();
-    }
-
-    public static void setHardResetTransmitterNow() {
-        hardResetTransmitterNow = true;
     }
 
     public static String getLastTwoCharacters(final String txid) {

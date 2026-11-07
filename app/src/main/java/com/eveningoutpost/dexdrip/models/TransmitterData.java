@@ -11,7 +11,6 @@ import com.eveningoutpost.dexdrip.models.UserError.Log;
 import com.eveningoutpost.dexdrip.utilitymodels.Constants;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
 import com.eveningoutpost.dexdrip.utils.CheckBridgeBattery;
-import com.eveningoutpost.dexdrip.utils.DexCollectionType;
 import com.google.gson.annotations.Expose;
 
 import java.nio.ByteBuffer;
@@ -89,19 +88,6 @@ public class TransmitterData extends Model {
                             CheckBridgeBattery.checkBridgeBattery();
                         } catch (Exception e) {
                             Log.e(TAG, "Got exception processing classic wixel or limitter battery value: " + e.toString());
-                        }
-                        if (data.length > 3) {
-                            if ((DexCollectionType.getDexCollectionType() == DexCollectionType.LimiTTer)
-                                    && (!Pref.getBooleanDefaultFalse("use_transmiter_pl_bluetooth"))) {
-                                try {
-                                    // reported sensor age in minutes
-                                    final Integer sensorAge = Integer.parseInt(data[3]);
-                                    if ((sensorAge > 0) && (sensorAge < 200000))
-                                        Pref.setInt("nfc_sensor_age", sensorAge);
-                                } catch (Exception e) {
-                                    Log.e(TAG, "Got exception processing field 4 in classic limitter protocol: " + e);
-                                }
-                            }
                         }
                     }
                 }

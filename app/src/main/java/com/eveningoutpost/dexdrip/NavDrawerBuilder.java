@@ -12,7 +12,6 @@ import com.eveningoutpost.dexdrip.models.Sensor;
 import com.eveningoutpost.dexdrip.services.Ob1G5CollectionService;
 import com.eveningoutpost.dexdrip.tables.BgReadingTable;
 import com.eveningoutpost.dexdrip.tables.CalibrationDataTable;
-import com.eveningoutpost.dexdrip.utilitymodels.CollectionServiceStarter;
 import com.eveningoutpost.dexdrip.utilitymodels.Experience;
 import com.eveningoutpost.dexdrip.utils.DexCollectionType;
 import com.eveningoutpost.dexdrip.utils.Preferences;
@@ -23,7 +22,6 @@ import java.util.List;
 import androidx.preference.PreferenceManager;
 
 import static com.eveningoutpost.dexdrip.services.Ob1G5CollectionService.getTransmitterID;
-import static com.eveningoutpost.dexdrip.utils.DexCollectionType.getBestCollectorHardwareName;
 
 
 /**
@@ -41,36 +39,24 @@ public class NavDrawerBuilder {
         final DexCollectionType collector = DexCollectionType.getDexCollectionType();
 
         final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        boolean IUnderstand = prefs.getBoolean("I_understand", false);
-        if (!IUnderstand) {
-            this.nav_drawer_options.add(context.getString(R.string.settings));
-            this.nav_drawer_intents.add(new Intent(context, Preferences.class));
-            return;
-        }
 
         this.nav_drawer_options.add(context.getString(R.string.home_screen));
         this.nav_drawer_intents.add(new Intent(context, Home.class));
 
-        if ((is_active_sensor) && (last_two_calibrations != null) && (last_two_calibrations.size() > 0)) {
-            this.nav_drawer_options.add(context.getString(R.string.calibration_graph));
-            this.nav_drawer_intents.add(new Intent(context, CalibrationGraph.class));
-        }
+//        if (is_active_sensor && last_two_calibrations != null && !last_two_calibrations.isEmpty()) {
+//            this.nav_drawer_options.add(context.getString(R.string.calibration_graph));
+//            this.nav_drawer_intents.add(new Intent(context, CalibrationGraph.class));
+//        }
 
-//        if (prefs.getBoolean("show_data_tables", false)) {
             this.nav_drawer_options.add(context.getString(R.string.bg_data_table));
             this.nav_drawer_intents.add(new Intent(context, BgReadingTable.class));
             this.nav_drawer_options.add(context.getString(R.string.calibration_data_table));
             this.nav_drawer_intents.add(new Intent(context, CalibrationDataTable.class));
-//        }
 
-        if (DexCollectionType.isAlwaysNativeCal()) {
-            this.nav_drawer_options.add(context.getString(R.string.add_calibration));
-            this.nav_drawer_intents.add(new Intent(context, AddCalibration.class));
-        } else if (!collector.canNotStartStopOrCal()) {
+        if (!collector.canNotStartStopOrCal()) {
             // Only if the collector can start/stop sensor and submit calibrations (is not passive)
 
             if (is_active_sensor) {
-                if (!CollectionServiceStarter.isBTShare(context)) {
                     if (last_two_bgReadings.size() > 1 || Ob1G5CollectionService.isG5WantingCalibration()) {
                         if ((last_two_calibrations.size() > 1) && !Ob1G5CollectionService.isG5WantingInitialCalibration()) { // After two successful initial calibrations
                             // TODO tighten this time limit
@@ -100,8 +86,7 @@ public class NavDrawerBuilder {
                             }
                         }
                     }
-                }
-                if (!getBestCollectorHardwareName().equals("G7")) { // If we are using G7, there will be no stop sensor option in the menu.
+                if (!DexCollectionType.isG7()) { // If we are using G7, there will be no stop sensor option in the menu.
                     this.nav_drawer_options.add(context.getString(R.string.stop_sensor));
                     this.nav_drawer_intents.add(new Intent(context, StopSensor.class));
                 }
@@ -120,9 +105,7 @@ public class NavDrawerBuilder {
         if (Experience.gotData()) {
             this.nav_drawer_options.add(context.getString(R.string.snooze_alert));
             this.nav_drawer_intents.add(new Intent(context, SnoozeActivity.class));
-        }
 
-        if (Experience.gotData()) {
             this.nav_drawer_options.add(context.getString(R.string.history));
             this.nav_drawer_intents.add(new Intent(context, BGHistory.class));
         }

@@ -15,8 +15,6 @@ import android.text.SpannableString;
 import android.util.Log;
 
 import com.eveningoutpost.dexdrip.BuildConfig;
-import com.eveningoutpost.dexdrip.Home;
-import com.eveningoutpost.dexdrip.adapters.SpannableSerializer;
 import com.eveningoutpost.dexdrip.g5model.SensorDays;
 import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.utils.DexCollectionType;
@@ -28,17 +26,13 @@ import androidx.databinding.ObservableField;
 import lombok.Setter;
 import lombok.val;
 
-import static com.eveningoutpost.dexdrip.models.JoH.emptyString;
-
 
 public class NanoStatus {
 
     private static final String TAG = "NanoStatus";
-    private static final String REMOTE_COLLECTOR_STATUS_STORE = "REMOTE_COLLECTOR_STATUS_STORE";
     private static final HashMap<Class<?>, Method> cache = new HashMap<>();
     private static final boolean D = false;
 
-    private final String parameter;
     private final int freqMs;
     private final SpannableString empty = new SpannableString("");
     private volatile boolean running = false;
@@ -54,9 +48,7 @@ public class NanoStatus {
     private static String lastException = "";
 
     public NanoStatus(final String parameter, final int freqMs) {
-        this.parameter = parameter;
         this.freqMs = freqMs;
-        updateWatch();
         if (freqMs > 0) {
             running = true;
             startRefresh();
@@ -96,7 +88,6 @@ public class NanoStatus {
                         return;
                     }
                     if (D) UserError.Log.d(TAG, "Updating");
-                    updateWatch();
                     if (doveTail != null) {
                         doveTail.run();
                     }
@@ -107,12 +98,6 @@ public class NanoStatus {
         myThread.setPriority(Thread.NORM_PRIORITY - 1);
         myThread.start();
 
-    }
-
-    private void updateWatch() {
-        final SpannableString result = nanoStatusColor(parameter);
-        color_watch.set(result != null ? result : empty);
-        watch.set(result != null ? result.toString() : "");
     }
 
 
@@ -129,17 +114,10 @@ public class NanoStatus {
                 return collectorNano(getClassByName(".utilitymodels.MtpConfigure"));
             case "sensor-expiry":
             case "s-expiry":
-                return getLocalOrRemoteSensorExpiry();
+                return SensorDays.get().getSpannable();
             default:
                 return new SpannableString("Invalid module type");
         }
-    }
-
-    private static SpannableString getLocalOrRemoteSensorExpiry() {
-        if (Home.get_follower()) {
-            return getRemote("s-expiry");
-        }
-        return SensorDays.get().getSpannable();
     }
 
 
@@ -168,39 +146,6 @@ public class NanoStatus {
         return null;
     }
 
-
-    public static void keepFollowerUpdated() {
-    }
-
-    public static void keepFollowerUpdated(final boolean ratelimits) {
-    }
-
-    public static void setRemote(final String json) {
-        setRemote("", json);
-    }
-
-    public static void setRemote(final String prefix, final String json) {
-        PersistentStore.setString(REMOTE_COLLECTOR_STATUS_STORE + prefix, json);
-    }
-
-    public static SpannableString getRemote() {
-        return getRemote("");
-    }
-
-    public static SpannableString getRemote(final String prefix) {
-        if (debugStringStatic != null) {
-            return new SpannableString(debugStringStatic + " " + prefix);
-        }
-
-        // TODO apply timeout?
-        try {
-            val result = PersistentStore.getString(REMOTE_COLLECTOR_STATUS_STORE + prefix);
-            if (emptyString(result)) return new SpannableString("");
-            return SpannableSerializer.unserializeSpannableString(result);
-        } catch (Exception e) {
-            return new SpannableString("");
-        }
-    }
 
     private static Class<?> getClassByName(final String name) {
         try {

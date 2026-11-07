@@ -12,7 +12,6 @@ import com.eveningoutpost.dexdrip.models.Calibration;
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.Sensor;
 import com.eveningoutpost.dexdrip.models.UserError.Log;
-import com.eveningoutpost.dexdrip.utilitymodels.CollectionServiceStarter;
 import com.eveningoutpost.dexdrip.utilitymodels.UndoRedo;
 import com.eveningoutpost.dexdrip.utils.ActivityWithMenu;
 
@@ -26,11 +25,6 @@ public class CalibrationOverride extends ActivityWithMenu {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if(CollectionServiceStarter.isBTShare(getApplicationContext())) {
-            Intent intent = new Intent(this, Home.class);
-            startActivity(intent);
-            finish();
-        }
         setContentView(R.layout.activity_calibration_override);
         addListenerOnButton();
     }

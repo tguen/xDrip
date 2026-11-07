@@ -14,7 +14,6 @@ import com.eveningoutpost.dexdrip.alert.Poller;
 import com.eveningoutpost.dexdrip.calibrations.PluggableCalibration;
 import com.eveningoutpost.dexdrip.models.AlertType;
 import com.eveningoutpost.dexdrip.models.JoH;
-import com.eveningoutpost.dexdrip.models.Reminder;
 import com.eveningoutpost.dexdrip.services.MissedReadingService;
 import com.eveningoutpost.dexdrip.services.broadcastservice.BroadcastEntry;
 import com.eveningoutpost.dexdrip.utilitymodels.BgGraphBuilder;
@@ -99,7 +98,6 @@ public class xdrip extends Application {
             CollectionServiceStarter.restartCollectionServiceBackground();
             BroadcastEntry.initialStartIfEnabled();
         }
-        Reminder.firstInit(xdrip.getAppContext());
         PluggableCalibration.invalidateCache();
         Poller.init();
         BgGraphBuilder.setLogging();

@@ -12,14 +12,21 @@ import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.preference.*;
+import android.preference.EditTextPreference;
+import android.preference.ListPreference;
+import android.preference.Preference;
+import android.preference.PreferenceActivity;
+import android.preference.PreferenceCategory;
+import android.preference.PreferenceFragment;
+import android.preference.PreferenceManager;
+import android.preference.PreferenceScreen;
+import android.preference.RingtonePreference;
 import android.text.InputFilter;
 import android.text.TextUtils;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
 
-import com.eveningoutpost.dexdrip.BasePreferenceActivity;
 import com.eveningoutpost.dexdrip.R;
 import com.eveningoutpost.dexdrip.alert.Registry;
 import com.eveningoutpost.dexdrip.calibrations.PluggableCalibration;
@@ -65,7 +72,6 @@ import static com.eveningoutpost.dexdrip.models.JoH.showNotification;
 import static com.eveningoutpost.dexdrip.models.JoH.tolerantParseDouble;
 import static com.eveningoutpost.dexdrip.services.Ob1G5CollectionService.clearDataWhenTransmitterIdEntered;
 import static com.eveningoutpost.dexdrip.utilitymodels.Constants.OUT_OF_RANGE_GLUCOSE_ENTRY_ID;
-import static com.eveningoutpost.dexdrip.utils.DexCollectionType.getBestCollectorHardwareName;
 import static com.eveningoutpost.dexdrip.xdrip.gs;
 
 
@@ -80,7 +86,7 @@ import static com.eveningoutpost.dexdrip.xdrip.gs;
  * href="http://developer.android.com/guide/topics/ui/settings.html">Settings
  * API Guide</a> for more information on developing a Settings UI.
  */
-public class Preferences extends BasePreferenceActivity {
+public class Preferences extends PreferenceActivity {
     private static final String TAG = "jamorham PREFS";
     private volatile AllPrefsFragment preferenceFragment;
 
@@ -630,16 +636,17 @@ public class Preferences extends BasePreferenceActivity {
 
             Log.d(TAG, collectionType.name());
 
-            if (getBestCollectorHardwareName().equals("G7")) { // Remove battery options, from G5/G6/Dex1/G7 Debug Settings, if we are using G7 or One+
+            /*
+            if (DexCollectionType.isG7()) { // Remove battery options, from G5/G6/Dex1/G7 Debug Settings, if we are using G7 or One+
                 try {
-//                    PreferenceScreen screen = (PreferenceScreen) findPreference("xdrip_plus_g5_extra_settings");
-//                    Preference pref = getPreferenceManager().findPreference("dex_battery_category");
-//                    screen.removePreference(pref);
+                    PreferenceScreen screen = (PreferenceScreen) findPreference("xdrip_plus_g5_extra_settings");
+                    Preference pref = getPreferenceManager().findPreference("dex_battery_category");
+                    screen.removePreference(pref);
                 } catch (Exception e) {
                     UserError.Log.wtf(TAG, "Failed to remove G7 battery options");
                 }
             }
-
+            */
 
             final boolean engineering_mode = this.prefs.getBoolean("engineering_mode",false);
 

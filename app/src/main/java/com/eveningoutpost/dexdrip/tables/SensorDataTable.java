@@ -1,28 +1,21 @@
 package com.eveningoutpost.dexdrip.tables;
 
+import android.app.ListActivity;
 import android.database.Cursor;
 import android.os.Bundle;
-
-
-import android.view.View;
 import android.widget.SimpleCursorAdapter;
 
-import androidx.drawerlayout.widget.DrawerLayout;
-
 import com.activeandroid.Cache;
-import com.eveningoutpost.dexdrip.BaseListActivity;
 import com.eveningoutpost.dexdrip.NavigationDrawerFragment;
 import com.eveningoutpost.dexdrip.R;
 
-import java.util.ArrayList;
+import androidx.drawerlayout.widget.DrawerLayout;
 
 
-public class SensorDataTable extends BaseListActivity implements NavigationDrawerFragment.NavigationDrawerCallbacks {
+public class SensorDataTable extends ListActivity implements NavigationDrawerFragment.NavigationDrawerCallbacks {
     private String menu_name = "Sensor Data Table";
     private NavigationDrawerFragment mNavigationDrawerFragment;
 
-    private ArrayList<String> results = new ArrayList<String>();
-    private View mRootView;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {

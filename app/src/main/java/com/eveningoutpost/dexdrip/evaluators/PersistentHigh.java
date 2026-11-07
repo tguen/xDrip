@@ -123,7 +123,7 @@ public class PersistentHigh {
             return false;
         }
 
-        final List<BgReading> readings = BgReading.latestForSensorAsc(2000, since, JoH.tsl(), Home.get_follower());
+        final List<BgReading> readings = BgReading.latestForSensorAsc(2000, since, JoH.tsl(), false);
         if (readings == null) {
             Log.e(TAG, "Cannot raise persistent high alert as there are no readings for this sensor!");
             return false;

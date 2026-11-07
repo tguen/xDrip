@@ -1,12 +1,12 @@
 package com.eveningoutpost.dexdrip;
 
 import android.content.SharedPreferences;
-import androidx.preference.PreferenceManager;
 import android.text.SpannableString;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.StrikethroughSpan;
 import android.util.Log;
 
+import com.eveningoutpost.dexdrip.calibrations.CalibrationAbstract;
 import com.eveningoutpost.dexdrip.models.BgReading;
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.SensorSanity;
@@ -14,13 +14,15 @@ import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.utilitymodels.BgGraphBuilder;
 import com.eveningoutpost.dexdrip.utilitymodels.ColorCache;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.eveningoutpost.dexdrip.calibrations.CalibrationAbstract;
 import com.eveningoutpost.dexdrip.utils.DexCollectionType;
 
 import java.util.List;
 
-import static com.eveningoutpost.dexdrip.utilitymodels.ColorCache.getCol;
+import androidx.preference.PreferenceManager;
+
 import static com.eveningoutpost.dexdrip.calibrations.PluggableCalibration.getCalibrationPluginFromPreferences;
+import static com.eveningoutpost.dexdrip.utilitymodels.ColorCache.getCol;
+
 
 /**
  * Created by jamorham on 17/10/2016.
@@ -150,13 +152,12 @@ public class BestGlucose {
             prefs = PreferenceManager.getDefaultSharedPreferences(xdrip.getAppContext());
         final DisplayGlucose dg = new DisplayGlucose(); // return value
         final boolean doMgdl = (prefs.getString("units", "mgdl").equals("mgdl"));
-        final boolean is_follower = Home.get_follower();
 
         dg.doMgDl = doMgdl;
 
         List<BgReading> last_2 = BgReading.latest(2);
 
-        final BgReading lastBgReading = BgReading.last(is_follower);
+        final BgReading lastBgReading = BgReading.last(false);
         if (lastBgReading == null) return null;
 
         final CalibrationAbstract.CalibrationData pcalibration;

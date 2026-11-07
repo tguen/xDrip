@@ -94,29 +94,6 @@ public class CollectionServiceStarter {
         }
     }
 
-    public static boolean isLibre2App(Context context) {
-        return false;
-    }
-
-    public static boolean isWifiandBTWixel(Context context) {
-        return false;
-    }
-
-    public static boolean isWifiandBTLibre(Context context) {
-        return false;
-    }
-
-    public static boolean isDexBridgeOrWifiandDexBridge() {
-        return false;
-    }
-
-    public static boolean isBTWixelOrLimiTTer(Context context) {
-        return false;
-    }
-
-    public static boolean isBTShare(Context context) {
-        return false;
-    }
 
     public static boolean isBTG5(Context context) {
 
@@ -128,23 +105,6 @@ public class CollectionServiceStarter {
         return collection_method.equals("DexcomG5");
     }
 
-    public static boolean isWifiWixel(Context context) {
-        return false;
-    }
-
-    public static boolean isWifiLibre(Context context) {
-        return false;
-    }
-
-    /*
-     * LimiTTer emulates a BT-Wixel and works with the BT-Wixel service.
-     * It would work without any changes but in some cases knowing that the data does not
-     * come from a Dexcom sensor but from a Libre sensor might enhance the performance.
-     * */
-
-    public static boolean isLimitter() {
-        return false;
-    }
 
     private void stopAll() {
         Log.d(TAG, "stop all");

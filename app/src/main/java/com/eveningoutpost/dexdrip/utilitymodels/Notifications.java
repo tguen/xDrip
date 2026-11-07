@@ -11,8 +11,6 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Icon;
 import android.media.AudioAttributes;
-import android.media.AudioManager;
-import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -21,8 +19,6 @@ import android.os.Looper;
 import android.os.PowerManager;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
 import android.text.SpannableString;
 import android.widget.RemoteViews;
 
@@ -31,6 +27,8 @@ import com.eveningoutpost.dexdrip.BestGlucose;
 import com.eveningoutpost.dexdrip.DoubleCalibrationActivity;
 import com.eveningoutpost.dexdrip.EditAlertActivity;
 import com.eveningoutpost.dexdrip.Home;
+import com.eveningoutpost.dexdrip.R;
+import com.eveningoutpost.dexdrip.evaluators.PersistentHigh;
 import com.eveningoutpost.dexdrip.models.ActiveBgAlert;
 import com.eveningoutpost.dexdrip.models.AlertType;
 import com.eveningoutpost.dexdrip.models.BgReading;
@@ -41,17 +39,19 @@ import com.eveningoutpost.dexdrip.models.Sensor;
 import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.models.UserError.Log;
 import com.eveningoutpost.dexdrip.models.UserNotification;
-import com.eveningoutpost.dexdrip.R;
 import com.eveningoutpost.dexdrip.services.MissedReadingService;
 import com.eveningoutpost.dexdrip.services.SnoozeOnNotificationDismissService;
-import com.eveningoutpost.dexdrip.evaluators.PersistentHigh;
+import com.eveningoutpost.dexdrip.services.broadcastservice.BroadcastEntry;
 import com.eveningoutpost.dexdrip.ui.NumberGraphic;
 import com.eveningoutpost.dexdrip.utils.DexCollectionType;
-import com.eveningoutpost.dexdrip.services.broadcastservice.BroadcastEntry;
 import com.eveningoutpost.dexdrip.xdrip;
 
 import java.util.Date;
 import java.util.List;
+
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
+import lombok.val;
 
 import static com.eveningoutpost.dexdrip.utilitymodels.ColorCache.X;
 import static com.eveningoutpost.dexdrip.utilitymodels.ColorCache.getCol;
@@ -59,7 +59,6 @@ import static com.eveningoutpost.dexdrip.utilitymodels.Constants.MIN_ALARM_VOLUM
 import static com.eveningoutpost.dexdrip.utilitymodels.Constants.MIN_ALERT_VOLUME;
 import static com.eveningoutpost.dexdrip.utilitymodels.NotificationChannels.OTHER_ALERTS_CHANNEL;
 
-import lombok.val;
 
 /**
  * Created by Emma Black on 11/28/14.
@@ -207,7 +206,7 @@ public class Notifications extends IntentService {
         // If the last reading does not have a sensor, or that sensor was stopped.
         // or the sensor was started, but the 2 hours did not still pass? or there is no calibrations.
         // In all this cases, bgReading.calculated_value should be 0.
-        if (((sensor != null) || (Home.get_follower())) && calculated_value != 0) {
+        if (sensor != null && calculated_value != 0) {
             AlertType newAlert = AlertType.get_highest_active_alert(context, calculated_value);
 
             if (newAlert == null) {
@@ -314,8 +313,7 @@ public class Notifications extends IntentService {
 
         boolean unclearReading = BgReading.getAndRaiseUnclearReading(context);
 
-        boolean forced_wear = Home.get_forced_wear();
-        Log.d(TAG, "forced_wear=" + forced_wear + " bg_notifications_watch=" + bg_notifications_watch + " persistent_high_alert_enabled_watch=" + bg_persistent_high_alert_enabled_watch);
+        Log.d(TAG, "bg_notifications_watch=" + bg_notifications_watch + " persistent_high_alert_enabled_watch=" + bg_persistent_high_alert_enabled_watch);
 
         //boolean watchAlert = (Home.get_forced_wear() && bg_notifications_watch);
         if (unclearReading) {
@@ -925,12 +923,6 @@ public class Notifications extends IntentService {
             }
             UserNotification.create(message, type, new Date().getTime() + reraiseSec * 1000);
 
-
-            boolean localOnly =false;
-            if (notificatioId == persistentHighAlertNotificationId) {
-                localOnly = (Home.get_forced_wear() && bg_notifications_watch && bg_persistent_high_alert_enabled_watch);
-            }
-            Log.d(TAG,"OtherAlert forced_wear localOnly=" + localOnly);
             Intent intent = new Intent(context, Home.class);
             NotificationCompat.Builder mBuilder =
                     new NotificationCompat.Builder(context, OTHER_ALERTS_CHANNEL)
@@ -940,7 +932,6 @@ public class Notifications extends IntentService {
                             .setSmallIcon(R.drawable.ic_action_communication_invert_colors_on)
                             .setContentTitle(title)
                             .setContentText(message)
-                            .setLocalOnly(localOnly)
                             .setStyle(new NotificationCompat.BigTextStyle().bigText(message))
                             .setContentIntent(PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT));
             if (addDeleteIntent) {

@@ -1,33 +1,32 @@
 package com.eveningoutpost.dexdrip.tables;
 
 import android.app.AlertDialog;
+import android.app.ListActivity;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.graphics.Color;
 import android.os.Bundle;
-
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.TextView;
 
-import com.eveningoutpost.dexdrip.BaseListActivity;
-import com.eveningoutpost.dexdrip.models.Calibration;
-import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.NavigationDrawerFragment;
 import com.eveningoutpost.dexdrip.R;
+import com.eveningoutpost.dexdrip.models.Calibration;
+import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.utilitymodels.BgGraphBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.eveningoutpost.dexdrip.xdrip.gs;
-
 import androidx.drawerlayout.widget.DrawerLayout;
 
+import static com.eveningoutpost.dexdrip.xdrip.gs;
 
-public class CalibrationDataTable extends BaseListActivity implements NavigationDrawerFragment.NavigationDrawerCallbacks {
+
+public class CalibrationDataTable extends ListActivity implements NavigationDrawerFragment.NavigationDrawerCallbacks {
     private static final String menu_name = "Calibration Data Table";
     private NavigationDrawerFragment mNavigationDrawerFragment;
 

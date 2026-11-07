@@ -9,14 +9,12 @@ import android.graphics.DashPathEffect;
 import android.text.format.DateFormat;
 import android.util.Log;
 import android.view.View;
-import android.widget.Toast;
 
 import com.eveningoutpost.dexdrip.AddCalibration;
 import com.eveningoutpost.dexdrip.Home;
 import com.eveningoutpost.dexdrip.R;
 import com.eveningoutpost.dexdrip.calibrations.CalibrationAbstract;
 import com.eveningoutpost.dexdrip.calibrations.PluggableCalibration;
-import com.eveningoutpost.dexdrip.models.APStatus;
 import com.eveningoutpost.dexdrip.models.BgReading;
 import com.eveningoutpost.dexdrip.models.BloodTest;
 import com.eveningoutpost.dexdrip.models.Calibration;
@@ -333,12 +331,6 @@ public class BgGraphBuilder {
         panCompensationOffset = (float) (v.top - defaultMaxY); // Delta between the top of the auto-panned glucose viewport and the chosen top by the user
     }
 
-    private float clampNonGlucoseY(float y) {
-        // Prevent drawing outside the glucose chart range
-        y = Math.max(0f, y); // 0 is the smallest acceptable value for the vertical position of a non-glucose item.
-        y = Math.min(y, BgReading.BG_READING_MAXIMUM_VALUE); // BG_READING_MAXIMUM_VALUE is the largest acceptable value for the vertical position of a non-glucose item.
-        return y;
-    }
 
     static public boolean isXLargeTablet(Context context) {
         if (Pref.getBooleanDefaultFalse("enlarge_fonts_on_large_screens")) {
@@ -397,97 +389,6 @@ public class BgGraphBuilder {
         }
 
         return lines;
-    }
-
-
-    private List<Line> basalLines() {
-        final List<Line> basalLines = new ArrayList<>();
-        if (prefs.getBoolean("show_basal_line", false)) {
-
-            final float yscale = doMgdl ? (float) Constants.MMOLL_TO_MGDL : 1f;
-
-            final List<APStatus> aplist = APStatus.latestForGraph(2000, loaded_start, loaded_end);
-
-            if (!aplist.isEmpty()) {
-
-                // divider line
-
-                final Line dividerLine = new Line();
-                dividerLine.setTag("tbr"); // not quite true
-                dividerLine.setHasPoints(false);
-                dividerLine.setHasLines(true);
-                dividerLine.setStrokeWidth(1);
-                dividerLine.setColor(getCol(X.color_basal_tbr));
-                dividerLine.setPathEffect(new DashPathEffect(new float[]{10.0f, 10.0f}, 0));
-                dividerLine.setReverseYAxis(true);
-                dividerLine.setHasPoints(false);
-
-                final float one_hundred_percent = (100 * yscale) / 100f;
-                final List<PointValue> divider_points = new ArrayList<>(2);
-                divider_points.add(new HPointValue((double) loaded_start / FUZZER, one_hundred_percent));
-                dividerLine.setPointRadius(0);
-                divider_points.add(new HPointValue((double) loaded_end / FUZZER, one_hundred_percent));
-                dividerLine.setValues(divider_points);
-                basalLines.add(dividerLine);
-
-                final List<PointValue> points = new ArrayList<>(aplist.size());
-
-                int last_percent = -1;
-                double last_timestamp = Double.MIN_VALUE;
-
-                int count = aplist.size();
-                for (APStatus item : aplist) {
-                    val sanitized_percent = Math.min(BgReading.BG_READING_MAXIMUM_VALUE, Math.max(0, item.basal_percent)); // percent value plotted on glucose axis; capped to prevent Y-axis growth
-                    if (--count == 0 || (sanitized_percent != last_percent)) {
-                        float this_ypos = (sanitized_percent * yscale) / 100f;
-                        this_ypos = clampNonGlucoseY(this_ypos + panCompensationOffset);
-                        final double fuzzedT = (double) item.timestamp / FUZZER;
-                        if (fuzzedT != last_timestamp) {
-                            points.add(new HPointValue(fuzzedT, this_ypos));
-                            last_timestamp = fuzzedT;
-                            last_percent = sanitized_percent;
-                        } else {
-                            UserError.Log.d(TAG, "EXCLUDING APSTAT: " + fuzzedT + " " + this_ypos);
-                        }
-                    }
-                }
-
-                final Line line = new Line(points);
-                line.setFilled(true);
-                line.setFillFlipped(true);
-                line.setHasGradientToTransparent(true);
-                line.setHasPoints(false);
-                line.setStrokeWidth(1);
-                line.setHasLines(true);
-                line.setSquare(true);
-                line.setPointRadius(1);
-                line.setReverseYAxis(true);
-                line.setBackgroundUnclipped(true);
-                line.setGradientDivider(10f);
-                line.setColor(getCol(X.color_basal_tbr));
-                basalLines.add(line);
-            }
-        }
-
-        return basalLines;
-    }
-
-    // line illustrating result from step counter
-    private List<Line> stepsLines() {
-        final List<Line> stepsLines = new ArrayList<>();
-        return stepsLines;
-    }
-
-    // line illustrating result from heartrate monitor
-    private List<Line> heartLines() {
-        final List<Line> heartLines = new ArrayList<>();
-        return heartLines;
-    }
-
-
-    private List<Line> motionLine() {
-        final ArrayList<Line> line_array = new ArrayList<>();
-        return line_array;
     }
 
 
@@ -570,13 +471,6 @@ public class BgGraphBuilder {
             addBgReadingValues(simple);
 
             if (!simple) {
-                // motion lines
-                if (Pref.getBoolean("motion_tracking_enabled", false) && Pref.getBoolean("plot_motion", false)) {
-                    lines.addAll(motionLine());
-                }
-                lines.addAll(basalLines());
-                lines.addAll(heartLines());
-                lines.addAll(stepsLines());
                 lines.addAll(predictiveLines());
             }
 
@@ -713,12 +607,6 @@ public class BgGraphBuilder {
         line.setPointRadius(pointSize + 4);
         line.setHasPoints(true);
         return line;
-    }
-
-    public void debugPrintPoints(List<PointValue> mypoints) {
-        for (PointValue thispoint : mypoints) {
-            UserError.Log.i(TAG, "Debug Points: " + thispoint.toString());
-        }
     }
 
     // auto split a line - jump thresh in minutes
@@ -926,10 +814,6 @@ public class BgGraphBuilder {
         return lines;
     }
 
-    private void addBgReadingValues() {
-        addBgReadingValues(true);
-    }
-
     private synchronized void addBgReadingValues(final boolean simple) {
         if (readings_lock.isLocked()) {
             Log.d(TAG, "BgReadings lock is currently held");
@@ -974,7 +858,6 @@ public class BgGraphBuilder {
                 smoother_adjusted = true;
             }
 
-            final double bgScale = bgScale();
             final long now = JoH.tsl();
 
             final boolean show_pseudo_filtered = prefs.getBoolean("show_pseudo_filtered", false);
@@ -1079,7 +962,6 @@ public class BgGraphBuilder {
             }
 
             final boolean has_filtered = DexCollectionType.hasFiltered();
-            final boolean predict_use_momentum = prefs.getBoolean("predict_use_momentum", true);
             final boolean show_moment_working_line = prefs.getBoolean("show_momentum_working_line", false);
             final boolean interpret_raw = prefs.getBoolean("interpret_raw", false);
             final boolean show_filtered = prefs.getBoolean("show_filtered_curve", false) && has_filtered;
@@ -1591,10 +1473,6 @@ public class BgGraphBuilder {
         return minShowLine;
     }
 
-    private Line libreTrendLine() {
-        return new Line();
-    }
-
     private List<Line> smbLines() {
         final List<Line> lines = new LinkedList<>();
         final Line line = new Line(smbValues);
@@ -1756,17 +1634,6 @@ public class BgGraphBuilder {
         return unitized_string(value, domgdl) + " " + (domgdl ? "mgdl" : "mmol");
     }
 
-    public static String unitized_string_static_no_interpretation_short(double value) {
-        final boolean domgdl = Pref.getString("units", "mgdl").equals("mgdl");
-        final DecimalFormat df = new DecimalFormat("#");
-        if (domgdl) {
-            df.setMaximumFractionDigits(0);
-        } else {
-            df.setMaximumFractionDigits(1);
-        }
-        return df.format(unitized(value, domgdl)) + " " + (domgdl ? "mgdl" : "mmol");
-    }
-
     public static String unitized_string(double value, boolean doMgdl) {
         final DecimalFormat df = new DecimalFormat("#");
         if (value >= 400) {
@@ -1813,7 +1680,7 @@ public class BgGraphBuilder {
     }
 
     public String unitizedDeltaString(boolean showUnit, boolean highGranularity) {
-        return unitizedDeltaString(showUnit, highGranularity, Home.get_follower());
+        return unitizedDeltaString(showUnit, highGranularity, false);
     }
 
     public String unitizedDeltaString(boolean showUnit, boolean highGranularity, boolean is_follower) {
@@ -1828,7 +1695,7 @@ public class BgGraphBuilder {
             return "???";
         }
 
-        double value = BgReading.currentSlope(is_follower) * 5 * 60 * 1000;
+        double value = BgReading.currentSlope() * 5 * 60 * 1000;
 
         return unitizedDeltaStringRaw(showUnit, highGranularity, value, doMgdl);
     }
@@ -1892,7 +1759,6 @@ public class BgGraphBuilder {
 
     public class OnValueSelectTooltipListener implements LineChartOnValueSelectListener {
 
-        private Toast tooltip;
         private Activity callerActivity;
 
         public OnValueSelectTooltipListener(Activity callerActivity) {
@@ -1932,11 +1798,10 @@ public class BgGraphBuilder {
             final java.text.DateFormat timeFormat = DateFormat.getTimeFormat(context);
             //Won't give the exact time of the reading but the time on the grid: close enough.
             final Long time = (real_timestamp > 0) ? real_timestamp : ((long) pointValue.getX()) * FUZZER; // TODO last clause should never be used now
-            final double ypos = pointValue.getY();
 
             final String message;
 
-            if (alternate.length() > 0) {
+            if (!alternate.isEmpty()) {
                 message = timeFormat.format(time) + "    " + alternate;
             } else {
                 message = timeFormat.format(time) + "      " + (Math.round(pointValue.getY() * 10) / 10d) + " " + unit() + filtered;

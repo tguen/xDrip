@@ -9,7 +9,6 @@ import com.activeandroid.ActiveAndroid;
 import com.activeandroid.Model;
 import com.activeandroid.annotation.Column;
 import com.activeandroid.annotation.Table;
-import com.activeandroid.query.Delete;
 import com.activeandroid.query.Select;
 import com.eveningoutpost.dexdrip.Home;
 import com.eveningoutpost.dexdrip.R;
@@ -20,7 +19,6 @@ import com.eveningoutpost.dexdrip.importedlibraries.dexcom.records.CalRecord;
 import com.eveningoutpost.dexdrip.importedlibraries.dexcom.records.CalSubrecord;
 import com.eveningoutpost.dexdrip.models.UserError.Log;
 import com.eveningoutpost.dexdrip.services.Ob1G5CollectionService;
-import com.eveningoutpost.dexdrip.utilitymodels.CollectionServiceStarter;
 import com.eveningoutpost.dexdrip.utilitymodels.Constants;
 import com.eveningoutpost.dexdrip.utilitymodels.Notifications;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
@@ -40,7 +38,6 @@ import androidx.preference.PreferenceManager;
 
 import static com.eveningoutpost.dexdrip.calibrations.PluggableCalibration.newFingerStickData;
 import static com.eveningoutpost.dexdrip.models.BgReading.isDataSuitableForDoubleCalibration;
-import static com.eveningoutpost.dexdrip.utils.DexCollectionType.getBestCollectorHardwareName;
 
 
 class DexParameters extends SlopeParameters {
@@ -635,7 +632,7 @@ public class Calibration extends Model {
                     } else {
                         Log.d(TAG, "Follower mode or note so not processing calibration deeply");
                     }
-                } else if (!getBestCollectorHardwareName().equals("G7")) {
+                } else if (!DexCollectionType.isG7()) {
                     // Only if we are not using newer devices, which are limited to native behavior
                     final String msg = "Sensor data fails sanity test - Cannot Calibrate! raw:" + bgReading.raw_data;
                     UserError.Log.e(TAG, msg);
@@ -651,21 +648,6 @@ public class Calibration extends Model {
             Log.d("CALIBRATION", "No sensor, cant save!");
         }
         return Calibration.last();
-    }
-
-    public static List<Calibration> allForSensorInLastFiveDays() {
-        Sensor sensor = Sensor.currentSensor();
-        if (sensor == null) {
-            return null;
-        }
-        return new Select()
-                .from(Calibration.class)
-                .where("Sensor = ? ", sensor.getId())
-                .where("slope_confidence != 0")
-                .where("sensor_confidence != 0")
-                .where("timestamp > ?", (new Date().getTime() - (60000 * 60 * 24 * 5)))
-                .orderBy("timestamp desc")
-                .execute();
     }
 
     private synchronized static void calculate_w_l_s() {
@@ -802,25 +784,6 @@ public class Calibration extends Model {
 
     @NonNull
     private static SlopeParameters getSlopeParameters() {
-
-        if (CollectionServiceStarter.isLibre2App((Context)null)) {
-            return new Li2AppParameters();
-        }
-
-        if (CollectionServiceStarter.isLimitter()) {
-            if (Pref.getBooleanDefaultFalse("use_non_fixed_li_parameters")) {
-                return new LiParametersNonFixed();
-            } else {
-                return new LiParameters();
-            }
-        }
-        // open question about parameters used with LibreAlarm
-
-        if (Pref.getBooleanDefaultFalse("engineering_mode") && Pref.getBooleanDefaultFalse("old_school_calibration_mode")) {
-            JoH.static_toast_long("Using old pre-2017 calibration mode!");
-            return new DexOldSchoolParameters();
-        }
-
         return new DexParameters();
     }
 
@@ -989,16 +952,6 @@ public class Calibration extends Model {
         return JoH.msSince(calibration.timestamp);
     }
 
-    public static void clearLastCalibration() {
-        CalibrationRequest.clearAll();
-        Log.d(TAG, "Trying to clear last calibration");
-        Calibration calibration = Calibration.last();
-        if (calibration != null) {
-            calibration.invalidate();
-            newFingerStickData();
-        }
-    }
-
 
     public String toS() {
         Gson gson = new GsonBuilder()
@@ -1139,9 +1092,6 @@ public class Calibration extends Model {
                 .execute();
     }
 
-    public static List<Calibration> latestForGraph(int number, long startTime) {
-        return latestForGraph(number, startTime, (long)JoH.ts());
-    }
 
     public static List<Calibration> latestForGraph(int number, long startTime, long endTime) {
         return new Select()
@@ -1154,21 +1104,6 @@ public class Calibration extends Model {
                 .execute();
     }
 
-    public static List<Calibration> latestForGraphSensor(int number, long startTime, long endTime) {
-        Sensor sensor = Sensor.currentSensor();
-        if (sensor == null) {
-            return null;
-        }
-        return new Select()
-                .from(Calibration.class)
-                .where("Sensor = ? ", sensor.getId())
-                .where("timestamp >= " + Math.max(startTime, 0))
-                .where("timestamp <= " + endTime)
-                .where("(slope != 0 or slope_confidence = ?)", note_only_marker)
-                .orderBy("timestamp desc")
-                .limit(number)
-                .execute();
-    }
 
     public static List<Calibration> allForSensor() {
         Sensor sensor = Sensor.currentSensor();
@@ -1214,23 +1149,6 @@ public class Calibration extends Model {
                 .execute();
     }
 
-    public static List<Calibration> getCalibrationsForSensor(Sensor sensor, int limit) {
-        return new Select()
-                .from(Calibration.class)
-                .where("sensor_uuid = ? ", sensor.uuid)
-                 .orderBy("timestamp desc")
-                 .limit(limit)
-                .execute();
-    }
-
-    public static List<Calibration> futureCalibrations() {
-        double timestamp = new Date().getTime();
-        return new Select()
-                .from(Calibration.class)
-                .where("timestamp > " + timestamp)
-                .orderBy("timestamp desc")
-                .execute();
-    }
 
     public boolean isNote() {
         Calibration calibration = this;
@@ -1276,12 +1194,6 @@ public class Calibration extends Model {
         String msg = "Deleted all calibrations for sensor";
         Log.ueh(TAG, msg);
         JoH.static_toast_long(msg);
-    }
-
-    public static void deleteAll() {
-        new Delete()
-                .from(Calibration.class)
-                .execute();
     }
 
 }

@@ -29,9 +29,6 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.Expose;
 import com.google.gson.internal.bind.DateTypeAdapter;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.text.DecimalFormat;
 import java.util.Collections;
 import java.util.Date;
@@ -284,11 +281,7 @@ public class BgReading extends Model {
     }
 
     public static double currentSlope() {
-        return currentSlope(Home.get_follower());
-    }
-
-    public static double currentSlope(boolean is_follower) {
-        List<BgReading> last_2 = BgReading.latest(2, is_follower);
+        List<BgReading> last_2 = BgReading.latest(2, false);
         if ((last_2 != null) && (last_2.size() == 2)) {
             double slope = calculateSlope(last_2.get(0), last_2.get(1));
             return slope;
@@ -704,9 +697,8 @@ public class BgReading extends Model {
         return !within_millis(Home.stale_data_millis());
     }
 
-    public static BgReading last()
-    {
-        return BgReading.last(Home.get_follower());
+    public static BgReading last() {
+        return BgReading.last(false);
     }
 
     public static BgReading last(boolean is_follower) {
@@ -757,7 +749,7 @@ public class BgReading extends Model {
     }
 
     public static List<BgReading> latest(int number) {
-        return latest(number, Home.get_follower());
+        return latest(number, false);
     }
 
     public static List<BgReading> latest(int number, boolean is_follower) {
@@ -1058,64 +1050,6 @@ public class BgReading extends Model {
     }
 
 
-    public static BgReading fromJSON(String json) {
-        if (json.length()==0)
-        {
-            Log.d(TAG,"Empty json received in bgreading fromJson");
-            return null;
-        }
-        try {
-            Log.d(TAG, "Processing incoming json: " + json);
-           return new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create().fromJson(json,BgReading.class);
-        } catch (Exception e) {
-            Log.d(TAG, "Got exception parsing BgReading json: " + e.toString());
-            Home.toaststaticnext("Error on BGReading sync, probably decryption key mismatch");
-            return null;
-        }
-    }
-
-
-    public String toJSON(boolean sendCalibration) {
-        final JSONObject jsonObject = new JSONObject();
-        try {
-            jsonObject.put("uuid", uuid);
-            jsonObject.put("a", a); // how much of this do we actually need?
-            jsonObject.put("b", b);
-            jsonObject.put("c", c);
-            jsonObject.put("timestamp", timestamp);
-            jsonObject.put("age_adjusted_raw_value", age_adjusted_raw_value);
-            jsonObject.put("calculated_value", calculated_value);
-            jsonObject.put("filtered_calculated_value", filtered_calculated_value);
-            jsonObject.put("calibration_flag", calibration_flag);
-            jsonObject.put("filtered_data", filtered_data);
-            jsonObject.put("raw_calculated", raw_calculated);
-            jsonObject.put("raw_data", raw_data);
-            try {
-                jsonObject.put("calculated_value_slope", calculated_value_slope);
-            } catch (JSONException e) {
-                jsonObject.put("hide_slope", true); // calculated value slope is NaN - hide slope should already be true locally too
-            }
-            if (sendCalibration) {
-                jsonObject.put("calibration_uuid", calibration_uuid);
-            }
-            //   jsonObject.put("sensor", sensor);
-            return jsonObject.toString();
-        } catch (JSONException e) {
-            UserError.Log.wtf(TAG, "Error producing in toJSON: " + e);
-            if (Double.isNaN(a)) Log.e(TAG, "a is NaN");
-            if (Double.isNaN(b)) Log.e(TAG, "b is NaN");
-            if (Double.isNaN(c)) Log.e(TAG, "c is NaN");
-            if (Double.isNaN(age_adjusted_raw_value)) Log.e(TAG, "age_adjusted_raw_value is NaN");
-            if (Double.isNaN(calculated_value)) Log.e(TAG, "calculated_value is NaN");
-            if (Double.isNaN(filtered_calculated_value)) Log.e(TAG, "filtered_calculated_value is NaN");
-            if (Double.isNaN(filtered_data)) Log.e(TAG, "filtered_data is NaN");
-            if (Double.isNaN(raw_calculated)) Log.e(TAG, "raw_calculated is NaN");
-            if (Double.isNaN(raw_data)) Log.e(TAG, "raw_data is NaN");
-            if (Double.isNaN(calculated_value_slope)) Log.e(TAG, "calculated_value_slope is NaN");
-            return "";
-        }
-    }
-
     public static void deleteALL() {
         try {
             SQLiteUtils.execSql("delete from BgSendQueue");
@@ -1213,7 +1147,7 @@ public class BgReading extends Model {
     public void calculateAgeAdjustedRawValue(){
         boolean is_g6 = Ob1G5CollectionService.usingG6();
         final double adjust_for = (is_g6 ? AGE_ADJUSTMENT_TIME_G6 : AGE_ADJUSTMENT_TIME) - time_since_sensor_started;
-        if ((adjust_for > 0) && (!DexCollectionType.hasLibre())) {
+        if (adjust_for > 0) {
             age_adjusted_raw_value = (((is_g6 ? AGE_ADJUSTMENT_FACTOR_G6 : AGE_ADJUSTMENT_FACTOR) * (adjust_for / (is_g6 ? AGE_ADJUSTMENT_TIME_G6 : AGE_ADJUSTMENT_TIME))) * raw_data) + raw_data;
             Log.i(TAG, "calculateAgeAdjustedRawValue: RAW VALUE ADJUSTMENT FROM:" + raw_data + " TO: " + age_adjusted_raw_value);
         } else {

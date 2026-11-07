@@ -54,7 +54,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import static com.eveningoutpost.dexdrip.Home.startWatchUpdaterService;
 import static com.eveningoutpost.dexdrip.xdrip.gs;
 
 import lombok.val;

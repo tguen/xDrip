@@ -2091,13 +2091,7 @@ public class Ob1G5CollectionService extends G5BaseService {
     }
 
     public static boolean onlyUsingNativeMode() {
-        return (usingNativeMode() && !fallbackToXdripAlgorithm())
-                || usingMockPreCalibrated();
-    }
-
-    public static boolean usingMockPreCalibrated() {
-        return Pref.getBooleanDefaultFalse("fake_data_pre_calibrated")
-                && DexCollectionType.getDexCollectionType() == DexCollectionType.Mock;
+        return usingNativeMode() && !fallbackToXdripAlgorithm();
     }
 
     public static boolean isProvidingNativeGlucoseData() {
@@ -2119,19 +2113,6 @@ public class Ob1G5CollectionService extends G5BaseService {
         }
     }
 
-    /* public static void setWatchStatus(DataMap dataMap) {
-         lastStateWatch = dataMap.getString("lastState", "");
-         static_last_timestamp_watch = dataMap.getLong("timestamp", 0);
-     }
-
-     public static DataMap getWatchStatus() {
-         DataMap dataMap = new DataMap();
-         dataMap.putString("lastState", lastState);
-         dataMap.putLong("timestamp", static_last_timestamp);
-         return dataMap;
-     }
-
- */
     // data for NanoStatus
     public static SpannableString nanoStatus() {
         if (android_wear) {
@@ -2267,13 +2248,6 @@ public class Ob1G5CollectionService extends G5BaseService {
 
         final String tx_id = getTransmitterID();
 
-        if (Pref.getBooleanDefaultFalse("wear_sync") &&
-                Pref.getBooleanDefaultFalse("enable_wearG5")) {
-            l.add(new StatusItem("Watch Service State", lastStateWatch));
-            if (static_last_timestamp_watch > 0) {
-                l.add(new StatusItem("Watch got Glucose", JoH.niceTimeSince(static_last_timestamp_watch) + " ago"));
-            }
-        }
         final String sensorCode = getCurrentSensorCode();
         if (sensorCode != null) {
             if (usingG6() && FirmwareCapability.isTransmitterG6(getTransmitterID())) {

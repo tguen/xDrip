@@ -5,10 +5,10 @@ import android.util.Log;
 import com.eveningoutpost.dexdrip.models.Calibration;
 import com.eveningoutpost.dexdrip.models.Forecast.PolyTrendLine;
 import com.eveningoutpost.dexdrip.models.Forecast.TrendLine;
-import com.eveningoutpost.dexdrip.utils.DexCollectionType;
 
 import java.util.ArrayList;
 import java.util.List;
+
 
 /**
  * This is an example calibration algorithm which takes the last 7 calibrations
@@ -65,7 +65,7 @@ public class LastSevenUnweightedA extends CalibrationAbstract {
 
                 final List<Double> raws = new ArrayList<>();
                 final List<Double> bgs = new ArrayList<>();
-                final boolean adjust_raw = !DexCollectionType.hasLibre();
+                final boolean adjust_raw = true; //!DexCollectionType.hasLibre();
                 for (Calibration calibration : calibrations) {
                     // sanity check?
                     // weighting!

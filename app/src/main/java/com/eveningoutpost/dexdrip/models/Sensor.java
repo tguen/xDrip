@@ -8,15 +8,11 @@ import com.activeandroid.annotation.Table;
 import com.activeandroid.query.Select;
 import com.eveningoutpost.dexdrip.models.UserError.Log;
 import com.eveningoutpost.dexdrip.utilitymodels.Constants;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.Expose;
-import com.google.gson.internal.bind.DateTypeAdapter;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.Date;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -122,16 +118,6 @@ public class Sensor extends Model {
 
     }
 
-    public String toS() {//KS
-        Gson gson = new GsonBuilder()
-                .excludeFieldsWithoutExposeAnnotation()
-                .registerTypeAdapter(Date.class, new DateTypeAdapter())
-                .serializeSpecialFloatingPointValues()
-                .create();
-        Log.d("SENSOR", "Sensor toS uuid=" + this.uuid + " started_at=" + this.started_at + " active=" + this.isActive() + " battery=" + this.latest_battery_level + " location=" + this.sensor_location + " stopped_at=" + this.stopped_at);
-        return gson.toJson(this);
-    }
-
     public static Sensor lastStopped() {
         Sensor sensor = new Select()
                 .from(Sensor.class)
@@ -167,19 +153,6 @@ public class Sensor extends Model {
 
     public static boolean isActive() {
         return currentSensor() != null;
-    }
-
-    public static Sensor getByUuid(String xDrip_sensor_uuid) {
-        if(xDrip_sensor_uuid == null) {
-            Log.e("SENSOR", "xDrip_sensor_uuid is null");
-            return null;
-        }
-        Log.d("SENSOR", "xDrip_sensor_uuid is " + xDrip_sensor_uuid);
-
-        return new Select()
-                .from(Sensor.class)
-                .where("uuid = ?", xDrip_sensor_uuid)
-                .executeSingle();
     }
 
     public static void updateBatteryLevel(Sensor sensor, int sensorBatteryLevel) {

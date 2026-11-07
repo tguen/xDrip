@@ -1,12 +1,5 @@
 package com.eveningoutpost.dexdrip.utilitymodels;
 
-import static com.eveningoutpost.dexdrip.models.JoH.dateTimeText;
-import static com.eveningoutpost.dexdrip.models.JoH.msSince;
-import static com.eveningoutpost.dexdrip.services.Ob1G5CollectionService.getTransmitterID;
-import static com.eveningoutpost.dexdrip.utilitymodels.Constants.MINUTE_IN_MS;
-import static com.eveningoutpost.dexdrip.utilitymodels.Unitized.usingMgDl;
-import static com.eveningoutpost.dexdrip.utils.DexCollectionType.getBestCollectorHardwareName;
-
 import android.content.Intent;
 import android.os.Bundle;
 
@@ -23,6 +16,13 @@ import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.utils.DexCollectionType;
 
 import lombok.val;
+
+import static com.eveningoutpost.dexdrip.models.JoH.dateTimeText;
+import static com.eveningoutpost.dexdrip.models.JoH.msSince;
+import static com.eveningoutpost.dexdrip.services.Ob1G5CollectionService.getTransmitterID;
+import static com.eveningoutpost.dexdrip.utilitymodels.Constants.MINUTE_IN_MS;
+import static com.eveningoutpost.dexdrip.utilitymodels.Unitized.usingMgDl;
+import static com.eveningoutpost.dexdrip.utils.DexCollectionType.getBestCollectorHardwareName;
 
 // created by jamorham
 
@@ -119,9 +119,8 @@ public class BroadcastGlucose {
                             bundle.putString(Intents.EXTRA_BG_SLOPE_NAME, dg.delta_name);
                         }
 
-                        final boolean is_oop = DexCollectionType.isLibreOOPNonCalibratebleAlgorithm(null);
-                        if (dg.from_plugin || is_oop) {
-                            bundle.putString(Intents.XDRIP_CALIBRATION_PLUGIN, (is_oop ? "OOP " : "") + dg.plugin_name);
+                        if (dg.from_plugin) {
+                            bundle.putString(Intents.XDRIP_CALIBRATION_PLUGIN, dg.plugin_name);
                         }
 
 
@@ -155,10 +154,10 @@ public class BroadcastGlucose {
                 }
 
                 bundle.putInt(Intents.EXTRA_SENSOR_BATTERY, BridgeBattery.getBestBridgeBattery());
-                if (getBestCollectorHardwareName().equals("G7") || getBestCollectorHardwareName().equals("G6 Native")) { // If we are using G7 or One+, or G6 in native mode
+                if (DexCollectionType.isG7() || getBestCollectorHardwareName().equals("G6 Native")) { // If we are using G7 or One+, or G6 in native mode
                     usingG6OrG7 = true;
                 }
-                if (getBestCollectorHardwareName().equals("G7") && FirmwareCapability.isDeviceAltOrAlt2OrAlt3(getTransmitterID())) { // If we are using G7 or One+ and there is connectivity
+                if (DexCollectionType.isG7() && FirmwareCapability.isDeviceAltOrAlt2OrAlt3(getTransmitterID())) { // If we are using G7 or One+ and there is connectivity
                     connectedToG7 = true;
                 }
                 if (getBestCollectorHardwareName().equals("G6 Native") && FirmwareCapability.isTransmitterG6(getTransmitterID())) { // If we are using a G6 in native mode and there is connectivity

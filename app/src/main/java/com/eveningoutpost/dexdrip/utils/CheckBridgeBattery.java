@@ -20,7 +20,6 @@ import static com.eveningoutpost.dexdrip.models.JoH.showNotification;
 public class CheckBridgeBattery {
 
     private static final String TAG = CheckBridgeBattery.class.getSimpleName();
-    private static final String PREFS_ITEM = "bridge_battery";
     private static final int NOTIFICATION_ITEM = 541;
     private static final int repeat_seconds = 1200;
     private static int last_level = -1;
@@ -71,39 +70,5 @@ public class CheckBridgeBattery {
         }
         return lowbattery;
     }
-
-    public static boolean checkForceWearBridgeBattery() {
-
-        boolean lowbattery = false;
-
-        if (!Pref.getBooleanDefaultFalse("bridge_battery_alerts")) return false;
-        if (!Pref.getBooleanDefaultFalse("disable_wearG5_on_lowbattery")) return false;
-
-        try {
-            threshold = Integer.parseInt(Pref.getString("bridge_battery_alert_level", "30"));
-            if (threshold > 5)//give user 5% leeway to begin charging wear device
-                threshold = threshold - 5;
-        } catch (NumberFormatException e) {
-            UserError.Log.e(TAG, "Got error parsing alert level");
-        }
-
-        final int this_level = Pref.getInt("bridge_battery", -1);
-        UserError.Log.d(TAG, "checkForceWearBridgeBattery threshold:" + threshold + " this_level:" + this_level);
-        if ((this_level > 0) && (threshold > 0)) {
-            if (this_level < threshold) {
-                lowbattery = true;
-            }
-        }
-        return lowbattery;
-    }
-
-    public static void testHarness() {
-        if (Pref.getInt(PREFS_ITEM, -1) < 1)
-            Pref.setInt(PREFS_ITEM, 60);
-        Pref.setInt(PREFS_ITEM, Pref.getInt(PREFS_ITEM, 0) - (int) (JoH.tsl() % 15));
-        UserError.Log.d(TAG, "Bridge battery: " + Pref.getInt(PREFS_ITEM, 0));
-        checkBridgeBattery();
-    }
-
 
 }

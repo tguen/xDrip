@@ -16,7 +16,6 @@ import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.Sensor;
 import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.models.UserError.Log;
-import com.eveningoutpost.dexdrip.utilitymodels.CollectionServiceStarter;
 import com.eveningoutpost.dexdrip.utilitymodels.Constants;
 import com.eveningoutpost.dexdrip.utilitymodels.PersistentStore;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
@@ -43,11 +42,6 @@ public class AddCalibration extends AppCompatActivity implements NavigationDrawe
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (CollectionServiceStarter.isBTShare(getApplicationContext())) {
-            Intent intent = new Intent(this, Home.class);
-            startActivity(intent);
-            finish();
-        }
         setContentView(R.layout.activity_add_calibration);
         JoH.fixActionBar(this);
         addListenerOnButton();
@@ -90,7 +84,7 @@ public class AddCalibration extends AppCompatActivity implements NavigationDrawe
                     return;
                 }
 
-                if ((Sensor.isActive() || Home.get_follower())) {
+                if (Sensor.isActive()) {
 
                     if (!TextUtils.isEmpty(string_value)) {
                         if (!TextUtils.isEmpty(bg_age)) {
@@ -120,7 +114,7 @@ public class AddCalibration extends AppCompatActivity implements NavigationDrawe
                                             }
                                             if (calValue != lastExternalCalibrationValue) {
 
-                                                if (!Home.get_follower()) {
+                                                {
                                                     lastExternalCalibrationValue = calValue;
                                                     PersistentStore.setDouble(LAST_EXTERNAL_CALIBRATION, calValue);
                                                     UserError.Log.uel(TAG, "Creating auto calibration from: " + calValue + " requested: " + JoH.dateTimeText(timestamp) + " from source: " + cal_source);
@@ -142,14 +136,6 @@ public class AddCalibration extends AppCompatActivity implements NavigationDrawe
                                                         NativeCalibrationPipe.addCalibration((int) calibration.bg, calibration.timestamp);
                                                     }
                                                     //startWatchUpdaterService(getApplicationContext(), WatchUpdaterService.ACTION_SYNC_CALIBRATION, TAG);
-                                                } else {
-                                                    // follower sends the calibration data onwards only if sourced from interactive request
-                                                    if (from_interactive.equals("true")) {
-                                                        Log.d(TAG, "Interactive calibration and we are follower so sending to master");
-                                                        sendFollowerCalibration(calValue, bgAgeNumber);
-                                                    } else {
-                                                        Log.d(TAG, "Not an interactive calibration so not sending to master");
-                                                    }
                                                 }
 
                                             } else {
@@ -194,7 +180,7 @@ public class AddCalibration extends AppCompatActivity implements NavigationDrawe
         button.setOnClickListener(new View.OnClickListener() {
             public void onClick(final View v) {
 
-                if ((Sensor.isActive() || Home.get_follower())) {
+                if (Sensor.isActive()) {
                     final EditText value = (EditText) findViewById(R.id.bg_value);
                     final String string_value = value.getText().toString();
                     if (!TextUtils.isEmpty(string_value)) {
@@ -202,17 +188,14 @@ public class AddCalibration extends AppCompatActivity implements NavigationDrawe
                         try {
                             final double calValue = JoH.tolerantParseDouble(string_value);
 
-                            if (!Home.get_follower()) {
+                            {
                                 double bg = calValue;
                                 if (unit.compareTo("mgdl") != 0) {
                                     bg = bg * Constants.MMOLL_TO_MGDL;
                                 }
                                 BloodTest.create(JoH.tsl() - (Constants.SECOND_IN_MS * 30), bg, "Add Calibration");
                                 if (DexCollectionType.hasDexcomRaw() && FirmwareCapability.isTransmitterRawIncapable(getTransmitterID())) { // Firefly only
-
                                     JoH.clearCache();
-                                    final Calibration Calibration = new Calibration();
-                                    final Sensor sensor = Sensor.currentSensor();
                                     JoH.static_toast_long("Sending Blood Test to Transmitter");
 
                                     if (!Pref.getBooleanDefaultFalse("bluetooth_meter_for_calibrations_auto")) {
@@ -231,9 +214,6 @@ public class AddCalibration extends AppCompatActivity implements NavigationDrawe
                                         // TODO probably follower must ensure it has a valid sensor regardless..
                                     }
                                 }
-                            } else if (Home.get_follower()) {
-                                // Sending the data for the master to update the main tables.
-                                sendFollowerCalibration(calValue, 0); // default offset is 0
                             }
                             Intent tableIntent = new Intent(v.getContext(), Home.class);
                             startActivity(tableIntent);

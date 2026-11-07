@@ -45,11 +45,9 @@ import com.activeandroid.ActiveAndroid;
 import com.eveningoutpost.dexdrip.BuildConfig;
 import com.eveningoutpost.dexdrip.Home;
 import com.eveningoutpost.dexdrip.R;
-import com.eveningoutpost.dexdrip.Reminders;
 import com.eveningoutpost.dexdrip.utilitymodels.AlertPlayer;
 import com.eveningoutpost.dexdrip.utilitymodels.Constants;
 import com.eveningoutpost.dexdrip.utilitymodels.PersistentStore;
-import com.eveningoutpost.dexdrip.utilitymodels.Pref;
 import com.eveningoutpost.dexdrip.utilitymodels.XdripNotificationCompat;
 import com.eveningoutpost.dexdrip.utils.BestGZIPOutputStream;
 import com.eveningoutpost.dexdrip.xdrip;
@@ -1163,12 +1161,13 @@ public class JoH {
     }
 
     public static void showNotification(String title, String content, PendingIntent intent, int notificationId, String channelId, boolean sound, boolean vibrate, PendingIntent deleteIntent, Uri sound_uri, String bigmsg, boolean highPriority) {
+        final int Reminders_NOTIFICATION_ID = 765;
         if (channelId == null) {
             channelId = GENERAL_CHANNEL;
         }
         String type = "general_notification";
         switch (notificationId) {
-            case Reminders.NOTIFICATION_ID:
+            case Reminders_NOTIFICATION_ID:
                 type = "reminder";
                 break;
             case SENSORY_EXPIRY_NOTIFICATION_ID:

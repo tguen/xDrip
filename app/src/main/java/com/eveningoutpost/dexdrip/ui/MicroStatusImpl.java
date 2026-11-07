@@ -3,14 +3,14 @@ package com.eveningoutpost.dexdrip.ui;
 /**
  * Created by jamorham on 29/09/2017.
  */
+import com.eveningoutpost.dexdrip.g5model.FirmwareCapability;
+import com.eveningoutpost.dexdrip.utils.DexCollectionType;
+
+import androidx.databinding.BaseObservable;
 
 import static com.eveningoutpost.dexdrip.services.Ob1G5CollectionService.getTransmitterID;
 import static com.eveningoutpost.dexdrip.utils.DexCollectionType.getBestCollectorHardwareName;
 
-import androidx.databinding.BaseObservable;
-
-import com.eveningoutpost.dexdrip.g5model.FirmwareCapability;
-import com.eveningoutpost.dexdrip.utils.DexCollectionType;
 
 public class MicroStatusImpl extends BaseObservable implements MicroStatus {
 
@@ -33,17 +33,17 @@ public class MicroStatusImpl extends BaseObservable implements MicroStatus {
 
     @Override
     public boolean bluetooth() { // Dexcom with Bluetooth except G7
-        return DexCollectionType.hasBluetooth() && !getBestCollectorHardwareName().equals("G7");
+        return DexCollectionType.hasBluetooth() && !DexCollectionType.isG7();
     }
 
     @Override
     public boolean sessionStartTime() { // This is false only if we are using G7
-        return !getBestCollectorHardwareName().equals("G7");
+        return !DexCollectionType.isG7();
     }
 
     @Override
     public boolean xmitterBattery() {
-        return DexCollectionType.usesClassicTransmitterBattery();
+        return false;
     }
 
     @Override

@@ -1,7 +1,5 @@
 package com.eveningoutpost.dexdrip;
 
-import android.annotation.SuppressLint;
-import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -21,16 +19,19 @@ import android.os.Bundle;
 import android.os.PowerManager;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
-import android.speech.RecognizerIntent;
-import android.text.InputType;
 import android.util.DisplayMetrics;
 import android.util.Log;
-import android.view.*;
+import android.view.GestureDetector;
+import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.Button;
-import android.widget.CheckBox;
-import android.widget.EditText;
-import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -45,7 +46,6 @@ import com.eveningoutpost.dexdrip.g5model.DexTimeKeeper;
 import com.eveningoutpost.dexdrip.g5model.Ob1G5StateMachine;
 import com.eveningoutpost.dexdrip.g5model.SensorDays;
 import com.eveningoutpost.dexdrip.models.ActiveBgAlert;
-import com.eveningoutpost.dexdrip.models.ActiveBluetoothDevice;
 import com.eveningoutpost.dexdrip.models.BgReading;
 import com.eveningoutpost.dexdrip.models.BloodTest;
 import com.eveningoutpost.dexdrip.models.Calibration;
@@ -70,15 +70,10 @@ import com.eveningoutpost.dexdrip.utils.Preferences;
 import com.eveningoutpost.dexdrip.utils.SdcardImportExport;
 import com.google.android.material.snackbar.Snackbar;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.text.DecimalFormat;
 import java.text.MessageFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -96,140 +91,73 @@ import lecho.lib.hellocharts.listener.ViewportChangeListener;
 import lecho.lib.hellocharts.model.Viewport;
 import lecho.lib.hellocharts.view.LineChartView;
 import lecho.lib.hellocharts.view.PreviewLineChartView;
-import lombok.Getter;
 import lombok.val;
 
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 import static com.eveningoutpost.dexdrip.g5model.Ob1G5StateMachine.shortTxId;
 import static com.eveningoutpost.dexdrip.models.JoH.msSince;
 import static com.eveningoutpost.dexdrip.models.JoH.quietratelimit;
-import static com.eveningoutpost.dexdrip.models.JoH.static_toast_long;
 import static com.eveningoutpost.dexdrip.models.JoH.tsl;
 import static com.eveningoutpost.dexdrip.services.Ob1G5CollectionService.getTransmitterID;
 import static com.eveningoutpost.dexdrip.utilitymodels.ColorCache.X;
 import static com.eveningoutpost.dexdrip.utilitymodels.ColorCache.getCol;
-import static com.eveningoutpost.dexdrip.utilitymodels.Constants.DAY_IN_MS;
 import static com.eveningoutpost.dexdrip.utilitymodels.Constants.HOUR_IN_MS;
 import static com.eveningoutpost.dexdrip.utilitymodels.Constants.MINUTE_IN_MS;
 import static com.eveningoutpost.dexdrip.utilitymodels.Constants.SECOND_IN_MS;
 import static com.eveningoutpost.dexdrip.utils.DexCollectionType.DexcomG5;
-import static com.eveningoutpost.dexdrip.utils.DexCollectionType.GluPro;
-import static com.eveningoutpost.dexdrip.utils.DexCollectionType.LibreAlarm;
-import static com.eveningoutpost.dexdrip.utils.DexCollectionType.Medtrum;
 import static com.eveningoutpost.dexdrip.xdrip.gs;
 
 
 public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPermissionsResultCallback {
-    private final static String TAG = "jamorham " + Home.class.getSimpleName();
-    private final static boolean d = false;
-    private static final int MAX_INSULIN_PROFILES = 3;
-    public final int maxInsulinProfiles = 0;
-    public final static String START_SPEECH_RECOGNITION = "START_APP_SPEECH_RECOGNITION";
-    public final static String START_TEXT_RECOGNITION = "START_APP_TEXT_RECOGNITION";
-    public final static String CREATE_TREATMENT_NOTE = "CREATE_TREATMENT_NOTE";
-    public final static String BLOOD_TEST_ACTION = "BLOOD_TEST_ACTION";
-    public final static String HOME_FULL_WAKEUP = "HOME_FULL_WAKEUP";
-    public final static String SHOW_NOTIFICATION = "SHOW_NOTIFICATION";
-    public final static String BLUETOOTH_METER_CALIBRATION = "BLUETOOTH_METER_CALIBRATION";
-    public final static String ACTIVITY_SHOWCASE_INFO = "ACTIVITY_SHOWCASE_INFO";
-    public final static int SENSOR_READY_ID = 4912;
-    private final UiPing ui = new UiPing();
+    public static final String CREATE_TREATMENT_NOTE = "CREATE_TREATMENT_NOTE";
+    public static final String BLOOD_TEST_ACTION = "BLOOD_TEST_ACTION";
+    public static final String HOME_FULL_WAKEUP = "HOME_FULL_WAKEUP";
+    public static final String SHOW_NOTIFICATION = "SHOW_NOTIFICATION";
+    public static final String BLUETOOTH_METER_CALIBRATION = "BLUETOOTH_METER_CALIBRATION";
+    public static final int SENSOR_READY_ID = 4912;
+    private static final int REQ_CODE_BATTERY_OPTIMIZATION = 1996;
+    private static final float DEFAULT_CHART_HOURS = 2.5f;
+    private static final String TAG = Home.class.getSimpleName();
+    private static final boolean d = false;
+
     public static boolean activityVisible = false;
     public static boolean blockTouches = false;
-    private static boolean is_follower = false;
-    private static boolean is_follower_set = false;
+    private static float hours = DEFAULT_CHART_HOURS;
     private static boolean is_holo = true;
     private static boolean reset_viewport = false;
+    private static String nexttoast;
+    private static Activity mActivity;
+
+    public BgGraphBuilder bgGraphBuilder;
+    public Viewport holdViewport = new Viewport();
+    public LineChartView chart;
+    public AlertDialog dialog;
     private boolean updateStuff;
     private boolean updatingPreviewViewport = false;
     private boolean updatingChartViewport = false;
     private long lastViewPortPan;
     private long lastDataTick;
     private boolean screen_forced_on = false;
-    public BgGraphBuilder bgGraphBuilder;
-    private Viewport tempViewport = new Viewport();
-    public Viewport holdViewport = new Viewport();
-    private boolean isBTShare;
     private boolean isG5Share;
     private BroadcastReceiver _broadcastReceiver;
     private BroadcastReceiver newDataReceiver;
-    private BroadcastReceiver statusReceiver;
-    public LineChartView chart;
-    private ImageButton btnSpeak;
-    private ImageButton btnNote;
-    private ImageButton btnApprove;
-    private ImageButton btnCancel;
-    private ImageButton btnCarbohydrates;
-    private ImageButton btnBloodGlucose;
-    private ImageButton buttonInsulinSingleDose;
-    private ImageButton[] btnInsulinDose = new ImageButton[MAX_INSULIN_PROFILES];
-    private ImageButton btnTime;
-    private ImageButton btnUndo;
-    private ImageButton btnRedo;
-    private ImageButton btnVehicleMode;
-    private TextView voiceRecognitionText;
-    private TextView textCarbohydrates;
-    private TextView textBloodGlucose;
-    private TextView textInsulinSumDose;
-    private TextView[] textInsulinDose = new TextView[MAX_INSULIN_PROFILES];
-    private TextView textTime;
-    private static final int REQ_CODE_SPEECH_INPUT = 1994;
-    private static final int REQ_CODE_SPEECH_NOTE_INPUT = 1995;
-    private static final int REQ_CODE_BATTERY_OPTIMIZATION = 1996;
-    private static final int SHOWCASE_UNDO = 4;
-    private static final int SHOWCASE_REDO = 5;
-    private static final int SHOWCASE_NOTE_LONG = 6;
-    private static final int SHOWCASE_VARIANT = 7;
-    public static final int SHOWCASE_MOTION_DETECTION = 11;
-    public static final int SHOWCASE_REMINDER1 = 14;
-    public static final int SHOWCASE_REMINDER2 = 15;
-    public static final int SHOWCASE_REMINDER3 = 16;
-    public static final int SHOWCASE_REMINDER4 = 17;
-    public static final int SHOWCASE_REMINDER5 = 19;
-    public static final int SHOWCASE_REMINDER6 = 20;
-    private static final float DEFAULT_CHART_HOURS = 2.5f;
-    private static double last_speech_time = 0;
-    private static float hours = DEFAULT_CHART_HOURS;
     private PreviewLineChartView previewChart;
-    private Button stepsButton;
-    private Button bpmButton;
     private TextView dexbridgeBattery;
     private TextView uploaderBattery;
     private TextView sensorAge;
     private TextView currentBgValueText;
     private TextView notificationText;
-    private TextView extraStatusLineText;
     private boolean alreadyDisplayedBgInfoCommon = false;
-    private boolean recognitionRunning = false;
     private String display_delta = "";
     private boolean small_width = false;
     private boolean small_height = false;
     private boolean small_screen = false;
-    double thisnumber = -1;
-    double thisglucosenumber = 0;
-    double thiscarbsnumber = 0;
-    double thisInsulinSumNumber = 0;
-    double[] thisinsulinnumber = new double[MAX_INSULIN_PROFILES];
-    double thistimeoffset = 0;
-    String thisword = "";
-    String thisuuid = "";
-    private static String nexttoast;
-    boolean carbsset = false;
-    boolean[] insulinset = new boolean[MAX_INSULIN_PROFILES];
-    boolean insulinsumset = false;
-    boolean glucoseset = false;
-    boolean timeset = false;
-    boolean watchkeypad = false;
-    boolean watchkeypadset = false;
-    long watchkeypad_timestamp = -1;
-    private wordDataWrapper searchWords = null;
-    public AlertDialog dialog;
     private AlertDialog helper_dialog;
     private AlertDialog status_helper_dialog;
     private PopupInitialStatusHelperBinding initial_status_binding;
     private ActivityHomeBinding binding;
-    private boolean is_newbie;
-    private boolean checkedeula;
+    private ITrendArrow itr;
+    private final UiPing ui = new UiPing();
 
     @Inject
     BaseShelf homeShelf;
@@ -239,18 +167,9 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     NanoStatus nanoStatus;
     NanoStatus expiryStatus;
 
-    private ITrendArrow itr;
-
     private ProcessInitialDataQuality.InitialDataQuality initialDataQuality;
 
-    private static Activity mActivity;
 
-    @Getter
-    private volatile static String statusIOB = "";
-    private volatile static String statusBWP = "";
-
-
-    @SuppressLint("ObsoleteSdkInt")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         mActivity = this;
@@ -287,7 +206,7 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         binding.setExpiry(expiryStatus);
         setContentView(binding.getRoot());
 
-        Toolbar mToolbar = (Toolbar) findViewById(R.id.my_toolbar);
+        Toolbar mToolbar = binding.myToolbar;
         setSupportActionBar(mToolbar);
 
         final Home home = this;
@@ -305,149 +224,30 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
             return false;
         });
 
-        //findViewById(R.id.home_layout_holder).setBackgroundColor(getCol(X.color_home_chart_background));
-        this.dexbridgeBattery = (TextView) findViewById(R.id.textBridgeBattery);
-        this.uploaderBattery = (TextView) findViewById(R.id.uploaderbattery);
-        this.sensorAge = (TextView) findViewById(R.id.libstatus);
-        this.extraStatusLineText = (TextView) findViewById(R.id.extraStatusLine);
-        this.currentBgValueText = (TextView) findViewById(R.id.currentBgValueRealTime);
-        this.bpmButton = (Button) findViewById(R.id.bpmButton);
-        this.stepsButton = (Button) findViewById(R.id.walkButton);
+        this.dexbridgeBattery = binding.textBridgeBattery;
+        this.uploaderBattery = binding.uploaderbattery;
+        this.sensorAge = binding.libstatus;
+        this.currentBgValueText = binding.currentBgValueRealTime;
 
-        extraStatusLineText.setText("");
-        dexbridgeBattery.setText("");
         uploaderBattery.setText("");
         sensorAge.setText("");
 
         if (BgGraphBuilder.isXLargeTablet(getApplicationContext())) {
             this.currentBgValueText.setTextSize(100);
         }
-        this.notificationText = (TextView) findViewById(R.id.notices);
+        this.notificationText = binding.notices;
         if (BgGraphBuilder.isXLargeTablet(getApplicationContext())) {
             this.notificationText.setTextSize(40);
         }
 
-        is_newbie = Experience.isNewbie();
-
-        if ((Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) && checkedeula) {
             if (Experience.installedForAtLeast(5 * Constants.MINUTE_IN_MS)) {
                 checkBatteryOptimization();
             }
-        }
-
-
-        // jamorham voice input et al
-        this.voiceRecognitionText = (TextView) findViewById(R.id.treatmentTextView);
-        this.textBloodGlucose = (TextView) findViewById(R.id.textBloodGlucose);
-        this.textCarbohydrates = (TextView) findViewById(R.id.textCarbohydrate);
-        this.textInsulinSumDose = (TextView) findViewById(R.id.textInsulinSumUnits);
-        this.textTime = (TextView) findViewById(R.id.textTimeButton);
-        this.btnBloodGlucose = (ImageButton) findViewById(R.id.bloodTestButton);
-        this.btnCarbohydrates = (ImageButton) findViewById(R.id.buttonCarbs);
-        this.textInsulinDose[0] = (TextView) findViewById(R.id.textInsulin1Units);
-        this.buttonInsulinSingleDose = (ImageButton) findViewById(R.id.buttonInsulin0);
-        this.btnInsulinDose[0] = (ImageButton) findViewById(R.id.buttonInsulin1);
-        this.textInsulinDose[1] = (TextView) findViewById(R.id.textInsulin2Units);
-        this.btnInsulinDose[1] = (ImageButton) findViewById(R.id.buttonInsulin2);
-        this.textInsulinDose[2] = (TextView) findViewById(R.id.textInsulin3Units);
-        this.btnInsulinDose[2] = (ImageButton) findViewById(R.id.buttonInsulin3);
-        this.btnCancel = (ImageButton) findViewById(R.id.cancelTreatment);
-        this.btnApprove = (ImageButton) findViewById(R.id.approveTreatment);
-        this.btnTime = (ImageButton) findViewById(R.id.timeButton);
-        this.btnUndo = (ImageButton) findViewById(R.id.btnUndo);
-        this.btnRedo = (ImageButton) findViewById(R.id.btnRedo);
-        this.btnVehicleMode = (ImageButton) findViewById(R.id.vehicleModeButton);
-
-        hideAllTreatmentButtons();
-
-        this.btnSpeak = (ImageButton) findViewById(R.id.btnTreatment);
-
-        this.btnNote = (ImageButton) findViewById(R.id.btnNote);
-        btnNote.setOnLongClickListener(v -> {
-            if (Pref.getBooleanDefaultFalse("default_to_voice_notes")) {
-                showNoteTextInputDialog(v, 0);
-            } else {
-                promptSpeechNoteInput(v);
-            }
-            return false;
-        });
-        btnNote.setOnClickListener(v -> {
-            if (!Pref.getBooleanDefaultFalse("default_to_voice_notes")) {
-                showNoteTextInputDialog(v, 0);
-            } else {
-                promptSpeechNoteInput(v);
-            }
-        });
-
-        btnCancel.setOnClickListener(v -> cancelTreatment());
-
-        // handle single insulin button (non multiples)
-        buttonInsulinSingleDose.setOnClickListener(v -> {
-            // proccess and approve treatment
-            textInsulinSumDose.setVisibility(View.INVISIBLE);
-            buttonInsulinSingleDose.setVisibility(View.INVISIBLE);
-            thisInsulinSumNumber = 0;
-            reset_viewport = true;
-            if (hideTreatmentButtonsIfAllDone()) {
-                updateCurrentBgInfo("insulin button");
-            }
-        });
-
-        for (int i = 0; i < maxInsulinProfiles; i++) {
-            int finalI = i;
-            btnInsulinDose[i].setOnClickListener(new View.OnClickListener() {
-
-                @Override
-                public void onClick(View v) {
-                    // proccess and approve treatment
-                    textInsulinDose[finalI].setVisibility(View.INVISIBLE);
-                    btnInsulinDose[finalI].setVisibility(View.INVISIBLE);
-                    // create individual treatment just for this entry
-
-                    thisinsulinnumber[finalI] = 0;
-                    insulinset[finalI] = false;
-                    textInsulinDose[finalI].setText("");
-                    reset_viewport = true;
-
-                    if (hideTreatmentButtonsIfAllDone()) {
-                        updateCurrentBgInfo("insulin button");
-                    }
-                }
-            });
-        }
-        btnApprove.setOnClickListener(v -> processAndApproveTreatment());
-
-        btnCarbohydrates.setOnClickListener(v -> {
-            // proccess and approve treatment
-            textCarbohydrates.setVisibility(View.INVISIBLE);
-            btnCarbohydrates.setVisibility(View.INVISIBLE);
-            reset_viewport = true;
-            thiscarbsnumber = 0;
-            if (hideTreatmentButtonsIfAllDone()) {
-                updateCurrentBgInfo("carbs button");
-            }
-        });
-
-        btnBloodGlucose.setOnClickListener(v -> {
-            reset_viewport = true;
-            processCalibration();
-        });
-
-        btnTime.setOnClickListener(v -> {
-            // clears time if clicked
-            textTime.setVisibility(View.INVISIBLE);
-            btnTime.setVisibility(View.INVISIBLE);
-            if (hideTreatmentButtonsIfAllDone()) {
-                updateCurrentBgInfo("time button");
-            }
-        });
 
         final DisplayMetrics dm = new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getMetrics(dm);
         int screen_width = dm.widthPixels;
         int screen_height = dm.heightPixels;
-
-
         if (screen_width <= 320) {
             small_width = true;
             small_screen = true;
@@ -459,7 +259,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         //final int refdpi = 320;
         Log.d(TAG, "Width height: " + screen_width + " " + screen_height + " DPI:" + dm.densityDpi);
 
-
         JoH.fixActionBar(this);
         try {
             getSupportActionBar().setTitle(R.string.app_name);
@@ -468,25 +267,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         }
         activityVisible = true;
 
-
-        statusReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-
-                final String bwp = intent.getStringExtra("bwp");
-                if (bwp != null) {
-                    statusBWP = bwp;
-                    refreshStatusLine();
-                } else {
-                    final String iob = intent.getStringExtra("iob");
-                    if (iob != null) {
-                        statusIOB = iob;
-                        refreshStatusLine();
-                    }
-                }
-            }
-        };
-
         // handle incoming extras
         final Bundle bundle = getIntent().getExtras();
         processIncomingBundle(bundle);
@@ -494,22 +274,7 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         checkBadSettings();
         // lower priority
 
-        if (checkedeula && (!getString(R.string.app_name).equals("xDrip"))) {
-            showcasemenu(SHOWCASE_VARIANT);
-        }
-
         currentBgValueText.setText(""); // clear any design prototyping default
-    }
-
-    private boolean firstRunDialogs(final boolean checkedeula) {
-
-        if (checkedeula && is_newbie && ((dialog == null) || !dialog.isShowing())) {
-
-            if (Experience.processSteps(this)) {
-
-            }
-        }
-        return true; // not sure about this
     }
 
     private boolean checkBatteryOptimization() {
@@ -554,19 +319,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
 
     ////
 
-    private void refreshStatusLine() {
-        try {
-            final String status = ((statusIOB.length() > 0) ? ("IoB: " + statusIOB) : "")
-                    + ((statusBWP.length() > 0) ? (" " + statusBWP) : "");
-            Log.d(TAG, "Refresh Status Line: " + status);
-            //if (status.length() > 0) {
-            getSupportActionBar().setSubtitle(status);
-            // }
-        } catch (NullPointerException e) {
-            Log.e(TAG, "Could not set subtitle due to null pointer exception: " + e);
-        }
-    }
-
     public static void updateStatusLine(String key, String value) {
         final Intent homeStatus = new Intent(Intents.HOME_STATUS_ACTION);
         homeStatus.putExtra(key, value);
@@ -593,206 +345,10 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         }
     }
 
-    // handle sending the intent
-    private synchronized void processFingerStickCalibration(final double glucosenumber, final double timeoffset, boolean dontask) {
-        JoH.clearCache();
-        UserError.Log.uel(TAG, "Processing Finger stick Calibration with values: glucose: " + glucosenumber + " timeoffset: " + timeoffset + " full auto: " + dontask);
-        if (glucosenumber > 0) {
-
-            if (timeoffset < 0) {
-                toaststaticnext(gs(R.string.got_calibration_in_the_future__cannot_process));
-                return;
-            }
-
-            final Intent calintent = new Intent(getApplicationContext(), AddCalibration.class);
-            calintent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            calintent.putExtra("timestamp", tsl());
-            calintent.putExtra("bg_string", JoH.qs(glucosenumber));
-            calintent.putExtra("bg_age", Long.toString((long) (timeoffset / 1000)));
-            calintent.putExtra("allow_undo", "true");
-            calintent.putExtra("cal_source", "processFingerStringCalibration");
-            Log.d(TAG, "processFingerStickCalibration number: " + glucosenumber + " offset: " + timeoffset);
-
-            if (dontask) {
-                if (PersistentStore.getDouble("last-auto-calibration-value") == glucosenumber) {
-                    UserError.Log.wtf(TAG, "Rejecting auto calibration as it is the same as last: " + glucosenumber);
-                } else {
-                    PersistentStore.setDouble("last-auto-calibration-value", glucosenumber);
-                    Log.d(TAG, "Proceeding with calibration intent without asking");
-                    startIntentThreadWithDelayedRefresh(calintent);
-                }
-            } else {
-                AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setTitle(String.format(gs(R.string.use_for_calibration), JoH.qs(glucosenumber, 1)));
-                builder.setMessage(gs(R.string.do_you_want_to_use_this_synced_fingerstick_blood_glucose_result_to_calibrate_with__you_can_change_when_this_dialog_is_displayed_in_settings));
-
-                builder.setPositiveButton(gs(R.string.yes_calibrate), (dialog, which) -> {
-                    calintent.putExtra("note_only", "false");
-                    calintent.putExtra("from_interactive", "true");
-                    startIntentThreadWithDelayedRefresh(calintent);
-                    dialog.dismiss();
-                });
-
-                builder.setNegativeButton(gs(R.string.no), (dialog, which) -> dialog.dismiss());
-
-                AlertDialog alert = builder.create();
-                alert.show();
-            }
-        }
-    }
-
-    // handle sending the intent
-    private void processCalibrationNoUI(final double glucosenumber, final double timeoffset) {
-        if (glucosenumber > 0) {
-
-            if (timeoffset < 0) {
-                toaststaticnext(gs(R.string.got_calibration_in_the_future__cannot_process));
-                return;
-            }
-
-            final Intent calintent = new Intent(getApplicationContext(), AddCalibration.class);
-
-            calintent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            calintent.putExtra("timestamp", tsl());
-            calintent.putExtra("bg_string", JoH.qs(glucosenumber));
-            calintent.putExtra("bg_age", Long.toString((long) (timeoffset / 1000)));
-            calintent.putExtra("allow_undo", "true");
-            calintent.putExtra("cal_source", "processCalibrationNoUi");
-            Log.d(TAG, "ProcessCalibrationNoUI number: " + glucosenumber + " offset: " + timeoffset);
-
-            final String calibration_type = Pref.getString("treatment_fingerstick_calibration_usage", "ask");
-            Log.d(TAG, "Creating blood test record from input data");
-            BloodTest.createFromCal(glucosenumber, timeoffset, "Manual Entry");
-            if (!Pref.getBooleanDefaultFalse("bluetooth_meter_for_calibrations_auto")) { // If automatic calibration is disabled
-                if (calibration_type.equals("ask")) {
-                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                    builder.setTitle(gs(R.string.use_bg_for_calibration));
-                    builder.setMessage(gs(R.string.do_you_want_to_use_this_entered_fingerstick_blood_glucose_test_to_calibrate_with__you_can_change_when_this_dialog_is_displayed_in_settings));
-
-                    builder.setPositiveButton(gs(R.string.yes_calibrate), (dialog, which) -> {
-                        calintent.putExtra("note_only", "false");
-                        calintent.putExtra("from_interactive", "true");
-                        startIntentThreadWithDelayedRefresh(calintent);
-                        dialog.dismiss();
-                    });
-
-                    builder.setNegativeButton(gs(R.string.no), (dialog, which) -> {
-                        dialog.dismiss();
-                    });
-
-                    AlertDialog alert = builder.create();
-                    alert.show();
-
-                } else if (calibration_type.equals("auto")) {
-                    if ((!Pref.getBooleanDefaultFalse("bluetooth_meter_for_calibrations_auto"))
-                            && (DexCollectionType.getDexCollectionType() != DexCollectionType.Follower)
-                            && (JoH.pratelimit("ask_about_auto_calibration", 86400 * 30))) {
-                        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                        builder.setTitle(gs(R.string.enable_automatic_calibration));
-                        builder.setMessage(gs(R.string.entered_blood_tests_which_occur_during_flat_trend_periods_can_automatically_be_used_to_recalibrate_after_20_minutes_this_should_provide_the_most_accurate_method_to_calibrate_with__do_you_want_to_enable_this_feature));
-
-                        builder.setPositiveButton(gs(R.string.yes_enable), (dialog, which) -> {
-                            Pref.setBoolean("bluetooth_meter_for_calibrations_auto", true);
-                            JoH.static_toast_long(gs(R.string.automated_calibration_enabled));
-                            dialog.dismiss();
-                        });
-
-                        builder.setNegativeButton(gs(R.string.no), (dialog, which) -> dialog.dismiss());
-
-                        final AlertDialog alert = builder.create();
-                        alert.show();
-                    }
-                    // offer choice to enable auto-calibration mode if not already enabled on pratelimit
-                } else if (calibration_type.equals("never")) {
-                } else {
-                    // if use for calibration == "no" then this is a "note_only" type, otherwise it isn't
-                    calintent.putExtra("note_only", calibration_type.equals("never") ? "true" : "false");
-                    startIntentThreadWithDelayedRefresh(calintent);
-                }
-            }
-        }
-    }
-
-    static void startIntentThreadWithDelayedRefresh(final Intent intent) {
-        new Thread() {
-            @Override
-            public void run() {
-                xdrip.getAppContext().startActivity(intent);
-                staticRefreshBGCharts();
-            }
-        }.start();
-
-        JoH.runOnUiThreadDelayed(Home::staticRefreshBGCharts, 4000);
-    }
-
-    private void processCalibration() {
-        // TODO BG Tests to be possible without being calibrations
-        // TODO Offer Choice? Reject calibrations under various circumstances
-        // This should be wrapped up in a generic method
-        processCalibrationNoUI(thisglucosenumber, thistimeoffset);
-
-        textBloodGlucose.setVisibility(View.INVISIBLE);
-        btnBloodGlucose.setVisibility(View.INVISIBLE);
-        if (hideTreatmentButtonsIfAllDone()) {
-            updateCurrentBgInfo("bg button");
-        }
-    }
-
-    private void cancelTreatment() {
-        hideAllTreatmentButtons();
-    }
-
-    private void processAndApproveTreatment() {
-        // preserve globals before threading off
-        final double myglucosenumber = thisglucosenumber;
-        double mytimeoffset = thistimeoffset;
-        // proccess and approve all treatments
-        // TODO Handle BG Tests here also
-        if (watchkeypad) {
-            // calculate absolute offset
-            long treatment_timestamp = watchkeypad_timestamp - (long) mytimeoffset;
-            mytimeoffset = tsl() - treatment_timestamp;
-            Log.d(TAG, "Watch Keypad timestamp is: " + JoH.dateTimeText(treatment_timestamp) + " Original offset: " + JoH.qs(thistimeoffset) + " New: " + JoH.qs(mytimeoffset));
-            if ((mytimeoffset > (DAY_IN_MS * 3)) || (mytimeoffset < -HOUR_IN_MS * 3)) {
-                Log.e(TAG, "Treatment timestamp out of range: " + mytimeoffset);
-                JoH.static_toast_long(gs(R.string.treatment_time_wrong));
-            } else {
-                JoH.static_toast_long(gs(R.string.treatment_processed));
-            }
-        }
-        hideAllTreatmentButtons();
-
-        if (hideTreatmentButtonsIfAllDone()) {
-            updateCurrentBgInfo("approve button");
-        }
-        if (watchkeypad) {
-            if (myglucosenumber > 0) {
-                if ((mytimeoffset > (DAY_IN_MS * 3)) || (mytimeoffset < -HOUR_IN_MS * 3)) {
-                    Log.e(TAG, "Treatment bloodtest timestamp out of range: " + mytimeoffset);
-                } else {
-                    BloodTest.createFromCal(myglucosenumber, mytimeoffset, "Manual Entry", thisuuid);
-                }
-            }
-            watchkeypad = false;
-            watchkeypadset = false;
-            watchkeypad_timestamp = -1;
-        } else
-            processCalibrationNoUI(myglucosenumber, mytimeoffset);
-        staticRefreshBGCharts();
-    }
-
     private void processIncomingBundle(Bundle bundle) {
         Log.d(TAG, "Processing incoming bundle");
         if (bundle != null) {
-            if (bundle.getString(Home.CREATE_TREATMENT_NOTE) != null) {
-                try {
-                    showNoteTextInputDialog(null, Long.parseLong(bundle.getString(Home.CREATE_TREATMENT_NOTE)), JoH.tolerantParseDouble(bundle.getString(Home.CREATE_TREATMENT_NOTE + "2"), 0));
-                } catch (NullPointerException e) {
-                    Log.d(TAG, "Got null point exception during CREATE_TREATMENT_NOTE Intent");
-                } catch (NumberFormatException e) {
-                    JoH.static_toast_long(gs(R.string.number_error_) + e);
-                }
-            } else if (bundle.getString(Home.HOME_FULL_WAKEUP) != null) {
+            if (bundle.getString(Home.HOME_FULL_WAKEUP) != null) {
                 if (!JoH.isScreenOn()) {
                     final int timeout = 60000;
                     final PowerManager.WakeLock wl = JoH.getWakeLock("full-wakeup", timeout + 1000);
@@ -819,16 +375,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
                 final PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
                 JoH.showNotification(bundle.getString(SHOW_NOTIFICATION), bundle.getString("notification_body"), pendingIntent, notification_id, true, true, true);
                 UserError.Log.uel(TAG, bundle.getString("notification_body"));
-            } else if (bundle.getString(Home.BLUETOOTH_METER_CALIBRATION) != null) {
-                try {
-                    processFingerStickCalibration(JoH.tolerantParseDouble(bundle.getString(Home.BLUETOOTH_METER_CALIBRATION), 0d),
-                            JoH.tolerantParseDouble(bundle.getString(Home.BLUETOOTH_METER_CALIBRATION + "2"), -1d),
-                            bundle.getString(Home.BLUETOOTH_METER_CALIBRATION + "3") != null && bundle.getString(Home.BLUETOOTH_METER_CALIBRATION + "3").equals("auto"));
-                } catch (NumberFormatException e) {
-                    JoH.static_toast_long(gs(R.string.number_error_) + e);
-                }
-            } else if (bundle.getString(Home.ACTIVITY_SHOWCASE_INFO) != null) {
-                showcasemenu(SHOWCASE_MOTION_DETECTION);
             } else if (bundle.getString("numberIconTest") != null) {
                 JoH.show_ok_dialog(
                         this,
@@ -889,6 +435,7 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         }
     }
 
+
     private static final int screenAlwaysOnFlags = WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
             WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD |
             WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON |
@@ -904,6 +451,7 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         JoH.runOnUiThread(() -> getWindow().clearFlags(screenAlwaysOnFlags));
         screen_forced_on = false;
     }
+
 
     public static void startHomeWithExtra(Context context, String extra, String text) {
         startHomeWithExtra(context, extra, text, "");
@@ -928,142 +476,8 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         return Pref.getBoolean("auto_y_pan", true);
     }
 
-    public void cloudBackup(MenuItem x) {
-    }
-
-    public void crowdTranslate(MenuItem x) {
-        val url = "https://crowdin.com/project/xdrip";
-        try {
-            // startActivity(new Intent(this, LanguageEditor.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-        } catch (Exception e) {
-            static_toast_long("Unable to open web browser for " + url);
-        }
-    }
-
-    public void testFeature(MenuItem x) {
-    }
-
     public void viewEventLog(MenuItem x) {
         startActivity(new Intent(this, EventLogActivity.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra("events", ""));
-    }
-
-    public void ShowLibreTrend(MenuItem x) {
-    }
-
-    private boolean hideTreatmentButtonsIfAllDone() {
-
-        // check if any active buttons are visible;
-        boolean byTypeInvisible = true;
-        for (int i = 0; i < maxInsulinProfiles; i++) {
-            if (btnInsulinDose[i].getVisibility() != View.INVISIBLE) {
-                byTypeInvisible = false;
-                break;
-            }
-        }
-
-        if ((btnBloodGlucose.getVisibility() == View.INVISIBLE) &&
-                (btnCarbohydrates.getVisibility() == View.INVISIBLE) &&
-                byTypeInvisible) {
-            hideAllTreatmentButtons(); // we clear values here also
-            //send toast to wear - closes the confirmation activity on the watch
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    private void hideAllTreatmentButtons() {
-        textBloodGlucose.setVisibility(View.INVISIBLE);
-        textCarbohydrates.setVisibility(View.INVISIBLE);
-        btnApprove.setVisibility(View.INVISIBLE);
-        btnCancel.setVisibility(View.INVISIBLE);
-        btnCarbohydrates.setVisibility(View.INVISIBLE);
-        textInsulinSumDose.setVisibility(View.INVISIBLE);
-        for (int i = 0; i < MAX_INSULIN_PROFILES; i++) {
-            textInsulinDose[i].setVisibility(View.INVISIBLE);
-            btnInsulinDose[i].setVisibility(View.INVISIBLE);
-        }
-        buttonInsulinSingleDose.setVisibility(View.INVISIBLE);
-        btnBloodGlucose.setVisibility(View.INVISIBLE);
-        voiceRecognitionText.setVisibility(View.INVISIBLE);
-        textTime.setVisibility(View.INVISIBLE);
-        btnTime.setVisibility(View.INVISIBLE);
-
-        // zeroing code could be functionalized
-        thiscarbsnumber = 0;
-        thisInsulinSumNumber = 0;
-        insulinsumset = false;
-        for (int i = 0; i < MAX_INSULIN_PROFILES; i++)
-        {
-            Log.d(TAG,"INSULINSET: "+i+" "+thisinsulinnumber.length+" "+insulinset.length);
-            thisinsulinnumber[i] = 0;
-            insulinset[i] = false;
-        }
-        thistimeoffset = 0;
-        thisglucosenumber = 0;
-        carbsset = false;
-        glucoseset = false;
-        timeset = false;
-
-        if (chart != null) {
-            chart.setAlpha((float) 1);
-        }
-    }
-    // jamorham voiceinput methods
-
-    public String readTextFile(InputStream inputStream) {
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-
-        byte buf[] = new byte[1024];
-        int len;
-        try {
-            while ((len = inputStream.read(buf)) != -1) {
-                outputStream.write(buf, 0, len);
-            }
-            outputStream.close();
-            inputStream.close();
-        } catch (IOException e) {
-
-        }
-        return outputStream.toString();
-    }
-
-    private void initializeSearchWords(String jstring) {
-    }
-
-    public void promptSpeechNoteInput(View abc) {
-
-        if (recognitionRunning) return;
-        recognitionRunning = true;
-
-        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
-        // intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US"); // debug voice
-        intent.putExtra(RecognizerIntent.EXTRA_PROMPT,
-                getString(R.string.speak_your_note_text));
-
-        try {
-            startActivityForResult(intent, REQ_CODE_SPEECH_NOTE_INPUT);
-        } catch (ActivityNotFoundException a) {
-            Toast.makeText(getApplicationContext(),
-                    getString(R.string.speech_recognition_is_not_supported),
-                    Toast.LENGTH_LONG).show();
-        }
-
-    }
-
-    private void promptKeypadInput() {
-    }
-
-    private void promptTextInput() {
-
-        //if (recognitionRunning) return;
-        //recognitionRunning = true;
-
-        promptKeypadInput();
     }
 
 
@@ -1096,39 +510,19 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         }
     }
 
-    /**
-     * Receiving speech input
-     */
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-
-        switch (requestCode) {
-            case REQ_CODE_BATTERY_OPTIMIZATION:
-                staticRefreshBGCharts();
-                break;
+        if (requestCode == REQ_CODE_BATTERY_OPTIMIZATION) {
+            staticRefreshBGCharts();
         }
     }
-
-    class wordDataWrapper {
-        public ArrayList<wordData> entries;
-
-        wordDataWrapper() {
-            entries = new ArrayList<>();
-        }
-    }
-
-    class wordData {
-        public String lexicon;
-        public ArrayList<String> matchWords;
-    }
-
-    /// jamorham end voiceinput methods
 
     @Override
     public String getMenuName() {
         return getString(R.string.home_screen);
     }
+
 
     public static void staticRefreshBGCharts() {
         staticRefreshBGCharts(false);
@@ -1137,7 +531,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     public static void staticRefreshBGChartsOnIdle() {
         Inevitable.task("refresh-home-charts", 1000, () -> staticRefreshBGCharts(false));
     }
-
 
     public static void staticRefreshBGCharts(boolean override) {
         reset_viewport = true;
@@ -1149,39 +542,20 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         }
     }
 
-    @TargetApi(21)
-    private void handleFlairColors() {
-        if ((Build.VERSION.SDK_INT >= 21)) {
-            try {
-                if (Pref.getBooleanDefaultFalse("use_flair_colors")) {
-                    getWindow().setNavigationBarColor(getCol(X.color_lower_flair_bar));
-                    getWindow().setStatusBarColor(getCol(X.color_upper_flair_bar));
-                }
-            } catch (Exception e) {
-                //
-            }
-        }
-    }
 
     @Override
     protected void onResume() {
         super.onResume();
-        handleFlairColors();
         // status line must only have current bwp/iob data
-        statusIOB = "";
-        statusBWP = "";
-        refreshStatusLine();
         nanoStatus.setRunning(true);
         expiryStatus.setRunning(true);
 
         if (BgGraphBuilder.isXLargeTablet(getApplicationContext())) {
             this.currentBgValueText.setTextSize(100);
             this.notificationText.setTextSize(40);
-            this.extraStatusLineText.setTextSize(40);
         } else if (BgGraphBuilder.isLargeTablet(getApplicationContext())) {
             this.currentBgValueText.setTextSize(70);
             this.notificationText.setTextSize(34); // 35 too big 33 works
-            this.extraStatusLineText.setTextSize(35);
         }
 
         _broadcastReceiver = new BroadcastReceiver() {
@@ -1191,7 +565,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
                     if (msSince(lastDataTick) > SECOND_IN_MS * 30) {
                         Inevitable.task("process-time-tick", 300, () -> runOnUiThread(() -> {
                             updateCurrentBgInfo("time tick");
-                            updateHealthInfo("time_tick");
                         }));
                     }
                 }
@@ -1202,19 +575,14 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
             public void onReceive(Context ctx, Intent intent) {
                 lastDataTick = tsl();
                 updateCurrentBgInfo("new data");
-                updateHealthInfo("new_data");
             }
         };
 
         registerReceiver(_broadcastReceiver, new IntentFilter(Intent.ACTION_TIME_TICK));
         registerReceiver(newDataReceiver, new IntentFilter(Intents.ACTION_NEW_BG_ESTIMATE_NO_DATA));
 
-        LocalBroadcastManager.getInstance(this).registerReceiver(statusReceiver,
-                new IntentFilter(Intents.HOME_STATUS_ACTION));
-
         activityVisible = true;
         updateCurrentBgInfo("generic on resume");
-        updateHealthInfo("generic on resume");
 
         if (homeShelf.getDefaultFalse("source_wizard_auto")) {
             if (Experience.gotData()) {
@@ -1246,8 +614,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
             }
             return originalDetector.onTouchEvent(ev);
         }
-
-
     }
 
 
@@ -1289,49 +655,7 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         }
 
         chart.getChartData().setAxisXTop(null);
-/*
-        //Transmitter Battery Level
-        final Sensor sensor = Sensor.currentSensor();
 
-       //????????? what about tomato here ????? TODO this sucks - removed Feb 2020
-        if (sensor != null && sensor.latest_battery_level != 0 && !DexCollectionService.getBestLimitterHardwareName().equalsIgnoreCase("BlueReader") && sensor.latest_battery_level <= Dex_Constants.TRANSMITTER_BATTERY_LOW && !Pref.getBoolean("disable_battery_warning", false)) {
-            Drawable background = new Drawable() {
-
-                @Override
-                public void draw(Canvas canvas) {
-
-                    DisplayMetrics metrics = getApplicationContext().getResources().getDisplayMetrics();
-                    int px = (int) (30 * (metrics.densityDpi / 160f));
-                    Paint paint = new Paint();
-                    paint.setTextSize(px);
-                    paint.setAntiAlias(true);
-                    paint.setColor(Color.parseColor("#FFFFAA"));
-                    paint.setStyle(Paint.Style.STROKE);
-                    paint.setAlpha(100);
-                    canvas.drawText(getString(R.string.transmitter_battery), 10, chart.getHeight() / 3 - (int) (1.2 * px), paint);
-                    if (sensor.latest_battery_level <= Dex_Constants.TRANSMITTER_BATTERY_EMPTY) {
-                        paint.setTextSize((int) (px * 1.5));
-                        canvas.drawText(getString(R.string.very_low), 10, chart.getHeight() / 3, paint);
-                    } else {
-                        canvas.drawText(getString(R.string.low), 10, chart.getHeight() / 3, paint);
-                    }
-                }
-
-                @Override
-                public void setAlpha(int alpha) {
-                }
-
-                @Override
-                public void setColorFilter(ColorFilter cf) {
-                }
-
-                @Override
-                public int getOpacity() {
-                    return 0; // TODO Which pixel format should this be?
-                }
-            };
-            chart.setBackground(background);
-        }*/
         previewChart = findViewById(R.id.chart_preview);
 
         chart.setLineChartData(bgGraphBuilder.lineData());
@@ -1381,13 +705,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
             }
             previewChart.setVisibility(homeShelf.get("chart_preview") ? View.VISIBLE : View.GONE);
         }
-
-        if (insulinsumset || glucoseset || carbsset || timeset) {
-            if (chart != null) {
-                chart.setAlpha((float) 0.10);
-                // TODO also set buttons alpha
-            }
-        }
     }
 
 
@@ -1411,65 +728,15 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
                 UserError.Log.e(TAG, "newDataReceiver not registered", e);
             }
         }
-
-        try {
-            LocalBroadcastManager.getInstance(this).unregisterReceiver(statusReceiver);
-        } catch (Exception e) {
-            Log.e(TAG, "Exception unregistering broadcast receiver: " + e);
-        }
     }
 
-    public static boolean get_follower() {
-        return false;
-    }
 
     public static boolean get_engineering_mode() {
         return Pref.getBooleanDefaultFalse("engineering_mode");
     }
 
-    public static boolean get_master() {
-        return false;
-    }
-
-    public static boolean get_forced_wear() {
-        return false;
-    }
-
-    public static void startWatchUpdaterService(Context context, String action, String logTag) {
-    }
-
-    public static void startWatchUpdaterService(Context context, String action, String logTag, String key, String value) {
-    }
-
-    public static void startWatchUpdaterService(Context context, String action, String logTag, String key, boolean value) {
-    }
-
     public static boolean get_holo() {
         return Home.is_holo;
-    }
-
-    public void toggleStepsVisibility(View v) {
-        Pref.setBoolean("show_pebble_movement_line", !Pref.getBoolean("show_pebble_movement_line", true));
-        staticRefreshBGCharts();
-    }
-
-    public void sourceWizardButtonClick(View v) {
-    }
-
-    private long whichTimeLocked() {
-        return PersistentStore.getLong("home-locked-hours");
-    }
-
-    private void setHourLocked(float value) {
-        PersistentStore.setLong("home-locked-hours", (long) value);
-    }
-
-    public boolean isHourLocked(long hour) {
-        return (whichTimeLocked() == hour);
-    }
-
-    public boolean isHourLocked(long hour, int ping) {
-        return isHourLocked(hour);
     }
 
     private void setHoursViewPort(final String source) {
@@ -1537,53 +804,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
 
     }
 
-    // set the chart viewport to whatever the button push represents
-    public void timeButtonClick(View v) {
-        hours = getButtonHours(v);
-        setHoursViewPort("timeButtonClick");
-    }
-
-    private long getButtonHours(View v) {
-        long this_button_hours = 3;
-        switch (v.getId()) {
-            case R.id.hourbutton3:
-                this_button_hours = 3;
-                break;
-            case R.id.hourbutton6:
-                this_button_hours = 6;
-                break;
-            case R.id.hourbutton12:
-                this_button_hours = 12;
-                break;
-            case R.id.hourbutton24:
-                this_button_hours = 24;
-                break;
-        }
-        return this_button_hours;
-    }
-
-    // set the chart viewport to whatever the button push represents
-    public boolean timeButtonLongClick(View v) {
-        final long this_button_hours = getButtonHours(v);
-        if (isHourLocked(this_button_hours)) {
-            // unlock
-            setHourLocked(0);
-            hours = DEFAULT_CHART_HOURS;
-        } else {
-            hours = this_button_hours;
-            setHourLocked(hours);
-            setHoursViewPort("timeButtonLongClick");
-        }
-
-        ui.bump();
-        return false;
-    }
-
-    private void updateHealthInfo(String caller) {
-	    stepsButton.setVisibility(View.INVISIBLE);
-	    bpmButton.setVisibility(View.INVISIBLE);
-    }
-
     private void updateCurrentBgInfo(final String source) {
         Log.d(TAG, "updateCurrentBgInfo from: " + source);
 
@@ -1608,63 +828,21 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         notificationText.setText("");
         notificationText.setTextColor(Color.RED);
 
-        UndoRedo.purgeQueues();
-
-        if (UndoRedo.undoListHasItems()) {
-            btnUndo.setVisibility(View.VISIBLE);
-            showcasemenu(SHOWCASE_UNDO);
-        } else {
-            btnUndo.setVisibility(View.INVISIBLE);
-        }
-
-        if (UndoRedo.redoListHasItems()) {
-            btnRedo.setVisibility(View.VISIBLE);
-            showcasemenu(SHOWCASE_REDO);
-        } else {
-            btnRedo.setVisibility(View.INVISIBLE);
-        }
-
         final DexCollectionType collector = DexCollectionType.getDexCollectionType();
         // TODO unify code using DexCollectionType methods
-        boolean isBTWixelOrLimiTTer = CollectionServiceStarter.isBTWixelOrLimiTTer(getApplicationContext());
-        // port this lot to DexCollectionType to avoid multiple lookups of the same preference
-        boolean isDexbridgeWixel = CollectionServiceStarter.isDexBridgeOrWifiandDexBridge();
-        boolean isWifiBluetoothWixel = CollectionServiceStarter.isWifiandBTWixel(getApplicationContext());
-        boolean isWifiandBTLibre = CollectionServiceStarter.isWifiandBTLibre(getApplicationContext());
 
-        isBTShare = CollectionServiceStarter.isBTShare(getApplicationContext());
         isG5Share = CollectionServiceStarter.isBTG5(getApplicationContext());
-        boolean isWifiWixel = CollectionServiceStarter.isWifiWixel(getApplicationContext());
-        boolean isWifiLibre = CollectionServiceStarter.isWifiLibre(getApplicationContext());
         alreadyDisplayedBgInfoCommon = false; // reset flag
-        if (isBTShare) {
-            updateCurrentBgInfoForBtShare(notificationText);
-        }
         if (isG5Share) {
             updateCurrentBgInfoCommon(collector, notificationText);
         }
-        if (isBTWixelOrLimiTTer || isDexbridgeWixel || isWifiBluetoothWixel || isWifiandBTLibre) {
-            updateCurrentBgInfoForBtBasedWixel(collector, notificationText);
-        }
-        if (isWifiWixel || isWifiBluetoothWixel || isWifiandBTLibre || isWifiLibre || collector.equals(DexCollectionType.Mock)) {
-            updateCurrentBgInfoForWifiWixel(collector, notificationText);
-        } else if (is_follower || collector.isPassive()) {
+        if (collector.isPassive()) {
             displayCurrentInfo();
             Inevitable.task("home-notifications-start", 5000, Notifications::start);
             // TODO add dexcollectiontype set handling for these
-        } else if (!alreadyDisplayedBgInfoCommon && (collector == LibreAlarm || collector == Medtrum || collector == GluPro)) {
-            updateCurrentBgInfoCommon(collector, notificationText);
         }
         if (collector.equals(DexCollectionType.Disabled)) {
             notificationText.append(getString(R.string.__data_source_disabled));
-        } else if (collector.equals(DexCollectionType.Mock)) {
-            notificationText.append("\n USING FAKE DATA SOURCE !!!");
-            if (MockDataSource.getDivisorScale() == 1500000) {
-                notificationText.append(" F");
-            }
-            if (MockDataSource.getAmplifyConst() == 330000) {
-                notificationText.append(" Amp");
-            }
         }
         if (Pref.getLong("alerts_disabled_until", 0) > new Date().getTime()) {
             notificationText.append("\n " + getString(R.string.all_alerts_currently_disabled));
@@ -1745,33 +923,8 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
             nexttoast = null;
         }
 
-        // hide the treatment recognition text after some seconds
-        if ((last_speech_time > 0) && ((JoH.ts() - last_speech_time) > 20000)) {
-            voiceRecognitionText.setVisibility(View.INVISIBLE);
-            last_speech_time = 0;
-        }
-
-	    btnVehicleMode.setVisibility(View.INVISIBLE);
-
 	    //if (isG5Share) showcasemenu(SHOWCASE_G5FIRMWARE); // nov 2016 firmware warning resolved 15/12/2016
         //showcasemenu(1); // 3 dot menu
-    }
-
-    private void updateCurrentBgInfoForWifiWixel(DexCollectionType collector, TextView notificationText) {
-        updateCurrentBgInfoCommon(collector, notificationText);
-    }
-
-    private void updateCurrentBgInfoForBtBasedWixel(DexCollectionType collector, TextView notificationText) {
-        if ((android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.JELLY_BEAN_MR2)) {
-            notificationText.setText(R.string.unfortunately_andoird_version_no_blueooth_low_energy);
-            return;
-        }
-
-        if (ActiveBluetoothDevice.first() == null) {
-            notificationText.setText(R.string.first_use_menu_to_scan);
-            return;
-        }
-        updateCurrentBgInfoCommon(collector, notificationText);
     }
 
     private void updateCurrentBgInfoCommon(DexCollectionType collector, TextView notificationText) {
@@ -1841,21 +994,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
                 showUncalibratedSlope();
                 return;
             }
-        }
-
-        if (DexCollectionType.isLibreOOPNonCalibratebleAlgorithm(collector)) {
-            // Rest of this function deals with initial calibration. Since we currently don't have a way to calibrate,
-            // And even once we will have, there is probably no need to force a calibration at start of sensor use.
-            displayCurrentInfo();
-            // JamorHam, should I put here something like:
-            // ?? if (screen_forced_on)  dontKeepScreenOn();
-            return;
-        }
-
-        // we can't use the Dex related code below so we handle things here
-        if (DexCollectionType.getDexCollectionType() == GluPro) {
-            displayCurrentInfo();
-            return;
         }
 
         // TODO this logic needed a rework even a year ago, now its a lot more confused with the additional complexity of native mode
@@ -1962,7 +1100,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         if ((status_helper_dialog != null) && (status_helper_dialog.isShowing()))
             status_helper_dialog.dismiss();
         if ((helper_dialog != null) && (helper_dialog.isShowing())) return;
-        if (btnApprove.getVisibility() == View.VISIBLE) return;
         if (JoH.ratelimit("calibrate-sensor_prompt", 10)) {
             final AlertDialog.Builder builder = new AlertDialog.Builder(this);
             final Context context = this;
@@ -1997,31 +1134,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         currentBgValueText.setTextColor(getCol(X.color_predictive));
     }
 
-    private void updateCurrentBgInfoForBtShare(TextView notificationText) {
-        String receiverSn = Pref.getString("share_key", "SM00000000").toUpperCase();
-        if (receiverSn.compareTo("SM00000000") == 0 || receiverSn.length() == 0) {
-            notificationText.setText(R.string.please_set_dex_receiver_serial_number);
-            return;
-        }
-
-        if (receiverSn.length() < 10) {
-            notificationText.setText(R.string.double_check_dex_receiver_serial_number);
-            return;
-        }
-
-        if (ActiveBluetoothDevice.first() == null) {
-            notificationText.setText(R.string.now_pair_with_your_dexcom_share);
-            return;
-        }
-
-        if (!Sensor.isActive()) {
-            notificationText.setText(R.string.now_choose_start_sensor_in_settings);
-            return;
-        }
-
-        displayCurrentInfo();
-    }
-
     private void displayCurrentInfo() {
         DecimalFormat df = new DecimalFormat("#");
         df.setMaximumFractionDigits(0);
@@ -2043,56 +1155,14 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
             dexbridgeBattery.setVisibility(View.INVISIBLE);
         }
 
-        if (DexCollectionType.hasWifi()) {
-            final int uploaderBatteryLevel = Pref.getInt("parakeet_battery", 0);
-            if (uploaderBatteryLevel > 0) {
-                if (uploaderBatteryLevel < 50) {
-                    uploaderBattery.setText(getString(R.string.uploader_battery) + ": " + uploaderBatteryLevel + "%");
-
-                    if (uploaderBatteryLevel < 40) {
-                        uploaderBattery.setTextColor(Color.RED);
-                    } else {
-                        uploaderBattery.setTextColor(Color.YELLOW);
-                    }
-                    uploaderBattery.setVisibility(View.VISIBLE);
-                } else {
-                    uploaderBattery.setVisibility(View.INVISIBLE);
-                }
-            }
-        } else {
             uploaderBattery.setVisibility(View.INVISIBLE);
-        }
 
         if (!Pref.getBoolean("display_bridge_battery", true)) {
             dexbridgeBattery.setVisibility(View.INVISIBLE);
             uploaderBattery.setVisibility(View.INVISIBLE);
         }
 
-        final int sensor_age = Pref.getInt("nfc_sensor_age", 0);
-        if (sensor_age > 0 && (DexCollectionType.hasLibre())) {
-            final String age_problem = (Pref.getBooleanDefaultFalse("nfc_age_problem") ? " \u26A0\u26A0\u26A0" : "");
-            if (Pref.getBoolean("nfc_show_age", true)) {
-                sensorAge.setText(getResources().getQuantityString(R.plurals.sensor_age, sensor_age / 1440, JoH.qs(((double) sensor_age) / 1440, 1)) + age_problem);
-            } else {
-                try {
-                    final double expires = JoH.tolerantParseDouble(Pref.getString("nfc_expiry_days", "14.5"), 14.5d) - ((double) sensor_age) / 1440;
-                    sensorAge.setText(((expires >= 0) ? getResources().getQuantityString(R.plurals.sensor_expires, (int) expires, JoH.qs(expires, 1)) : getString(R.string.sensor_expired)) + age_problem);
-                } catch (Exception e) {
-                    Log.e(TAG, "expiry calculation: " + e);
-                    sensorAge.setText(getString(R.string.expires_unknown));
-                }
-            }
-            sensorAge.setVisibility(View.VISIBLE);
-            if (sensor_age < 1440) {
-                sensorAge.setTextColor(Color.YELLOW);
-            } else if (sensor_age < (1440 * 12)) {
-                sensorAge.setTextColor(Color.GREEN);
-            } else {
-                sensorAge.setTextColor(Color.RED);
-            }
-        } else {
             sensorAge.setVisibility(View.GONE);
-        }
         if (blockTouches) {
             sensorAge.setText("SCANNING.. DISPLAY LOCKED!");
             sensorAge.setVisibility(View.VISIBLE);
@@ -2105,9 +1175,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         }
         final BgReading lastBgReading = BgReading.lastNoSenssor();
         boolean predictive = PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).getBoolean("predictive_bg", false);
-        if (isBTShare) {
-            predictive = false;
-        }
         if (lastBgReading != null) {
 
             // detect broken data from G5 or other sources
@@ -2129,20 +1196,10 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
             currentBgValueText.setText(""); // clear value if no reading
             display_delta = "";
         }
-
-        if (Pref.getBoolean("extra_status_line", false)) {
-//            extraStatusLineText.setText(StatusLine.extraStatusLine());
-//            extraStatusLineText.setVisibility(View.VISIBLE);
-        } else {
-            extraStatusLineText.setText("");
-            extraStatusLineText.setVisibility(View.GONE);
-        }
     }
 
     // TODO consider moving this out of Home
     public static long stale_data_millis() {
-        if (DexCollectionType.getDexCollectionType() == LibreAlarm)
-            return (60000 * 13);
         return (60000 * 11);
     }
 
@@ -2241,7 +1298,7 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         }
 
         // do we actually need to do this query here if we again do it in unitizedDeltaString
-        List<BgReading> bgReadingList = BgReading.latest(2, is_follower);
+        List<BgReading> bgReadingList = BgReading.latest(2, false);
         if (bgReadingList != null && bgReadingList.size() == 2) {
             // same logic as in xDripWidget (refactor that to BGReadings to avoid redundancy / later inconsistencies)?
 
@@ -2309,74 +1366,8 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         processIncomingBundle(bundle);
     }
 
-    private synchronized void showcasemenu(int option) {
-    }
-
     public void settingsSDcardExport(MenuItem myitem) {
         startActivity(new Intent(getApplicationContext(), SdcardImportExport.class));
-    }
-
-    public void undoButtonClick(View myitem) {
-        if (UndoRedo.undoNextItem()) staticRefreshBGCharts();
-    }
-
-    public void redoButtonClick(View myitem) {
-        if (UndoRedo.redoNextItem()) staticRefreshBGCharts();
-    }
-
-    public void noteDefaultMethodChanged(View myitem) {
-        Pref.setBoolean("default_to_voice_notes", !Pref.getBooleanDefaultFalse("default_to_voice_notes"));
-    }
-
-    public void showNoteTextInputDialog(View myitem) {
-        showNoteTextInputDialog(myitem, tsl(), -1);
-    }
-
-    public void showNoteTextInputDialog(View myitem, final long timestamp) {
-        showNoteTextInputDialog(myitem, timestamp, -1);
-    }
-
-    public void showNoteTextInputDialog(View myitem, final long timestamp, final double position) {
-        Log.d(TAG, "showNoteTextInputDialog: ts:" + timestamp + " pos:" + position);
-        AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
-        LayoutInflater inflater = this.getLayoutInflater();
-        final View dialogView = inflater.inflate(R.layout.note_dialog_phone, null);
-        dialogBuilder.setView(dialogView);
-
-        final EditText edt = (EditText) dialogView.findViewById(R.id.treatment_note_edit_text);
-        final CheckBox cbx = (CheckBox) dialogView.findViewById(R.id.default_to_voice_input);
-        cbx.setChecked(Pref.getBooleanDefaultFalse("default_to_voice_notes"));
-
-        dialogBuilder.setTitle(R.string.treatment_note);
-        //dialogBuilder.setMessage("Enter text below");
-        dialogBuilder.setPositiveButton(R.string.done, (dialog, whichButton) -> {
-            String treatment_text = edt.getText().toString().trim();
-            Log.d(TAG, "Got treatment note: " + treatment_text);
-            Home.staticRefreshBGCharts();
-
-            if (treatment_text.length() > 0) {
-                // display snackbar of the snackbar
-                final View.OnClickListener mOnClickListener = v -> Home.startHomeWithExtra(xdrip.getAppContext(), Home.CREATE_TREATMENT_NOTE, Long.toString(timestamp), "-1"); // Let's not enter a y position to avoid having to worry about BG units
-                Home.snackBar(R.string.add_note, getString(R.string.added) + ":    " + treatment_text, mOnClickListener, mActivity);
-            }
-
-            if (Pref.getBooleanDefaultFalse("default_to_voice_notes")) {
-                showcasemenu(SHOWCASE_NOTE_LONG);
-            }
-        });
-        dialogBuilder.setNegativeButton(getString(R.string.cancel), (dialog, whichButton) -> {
-            if (Pref.getBooleanDefaultFalse("default_to_voice_notes")) {
-                showcasemenu(SHOWCASE_NOTE_LONG);
-            }
-
-        });
-        dialog = dialogBuilder.create();
-        edt.setInputType(InputType.TYPE_CLASS_TEXT);
-        edt.setOnFocusChangeListener((v, hasFocus) -> {
-            if (hasFocus && dialog != null)
-                dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
-        });
-        dialog.show();
     }
 
     @Override
@@ -2403,17 +1394,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         }
         if (d) Log.d(TAG, "Keydown event: " + keyCode + " event: " + event.toString());
         return super.onKeyDown(keyCode, event);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        /*// jamorham additions
-        if (item.getItemId() == R.id.synctreatments) {
-            startActivity(new Intent(this, GoogleDriveInterface.class));
-            return true;
-
-        }*/
-        return super.onOptionsItemSelected(item);
     }
 
     public void initializeGraphicTrendArrow() {
@@ -2476,7 +1456,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
                 updatingPreviewViewport = true;
                 chart.setZoomType(ZoomType.HORIZONTAL);
                 chart.setCurrentViewport(newViewport);
-                tempViewport = newViewport;
                 updatingPreviewViewport = false;
             }
             if (updateStuff) {
@@ -2531,7 +1510,11 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     }
 
     public static PendingIntent getHomePendingIntent() {
-        return PendingIntent.getActivity(xdrip.getAppContext(), 0, new Intent(xdrip.getAppContext(), Home.class), android.app.PendingIntent.FLAG_UPDATE_CURRENT);
+        return PendingIntent.getActivity(
+            xdrip.getAppContext(),
+            0,
+            new Intent(xdrip.getAppContext(), Home.class),
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
     @Override

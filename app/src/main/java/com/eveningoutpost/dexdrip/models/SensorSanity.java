@@ -4,8 +4,6 @@ import com.eveningoutpost.dexdrip.services.TransmitterRereadHelper;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
 import com.eveningoutpost.dexdrip.utils.DexCollectionType;
 
-import static com.eveningoutpost.dexdrip.utils.DexCollectionType.getBestCollectorHardwareName;
-
 
 /**
  * Created by jamorham on 02/03/2018.
@@ -72,15 +70,9 @@ public class SensorSanity {
                     else if (raw_value > DEXCOM_MAX_RAW) state = false;
                 }
             }
-
-        } else if (DexCollectionType.hasLibre(type)) {
-            if (raw_value < LIBRE_MIN_RAW) state = false;
-        } else if (type == DexCollectionType.Medtrum) {
-            if (raw_value < DEXCOM_MIN_RAW) state = false;
-            else if (raw_value > DEXCOM_MAX_RAW) state = false;
         }
 
-        if (!state && !getBestCollectorHardwareName().equals("G7")) {
+        if (!state && !DexCollectionType.isG7()) {
             if (JoH.ratelimit("sanity-failure", 20)) {
                 final String msg = "Sensor Raw Data Sanity Failure: " + raw_value;
                 UserError.Log.e(TAG, msg);

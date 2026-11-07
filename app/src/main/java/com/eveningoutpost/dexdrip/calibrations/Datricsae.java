@@ -7,10 +7,10 @@ import com.eveningoutpost.dexdrip.models.Forecast;
 import com.eveningoutpost.dexdrip.models.Forecast.PolyTrendLine;
 import com.eveningoutpost.dexdrip.models.Forecast.TrendLine;
 import com.eveningoutpost.dexdrip.models.JoH;
-import com.eveningoutpost.dexdrip.utils.DexCollectionType;
 
 import java.util.ArrayList;
 import java.util.List;
+
 
 /**
  * Created by jamorham on 04/10/2016.
@@ -71,7 +71,7 @@ public class Datricsae extends CalibrationAbstract {
 
                 final List<Double> raws = new ArrayList<>();
                 final List<Double> bgs = new ArrayList<>();
-                final boolean adjust_raw = !DexCollectionType.hasLibre();
+                final boolean adjust_raw = true;//!DexCollectionType.hasLibre();
 
                 for (int i = 1; i < 3; i++) {
                     final List<Calibration> cweight = Calibration.latestValid(i, until);
