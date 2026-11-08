@@ -8,7 +8,6 @@ import android.graphics.Color;
 import android.graphics.DashPathEffect;
 import android.text.format.DateFormat;
 import android.util.Log;
-import android.view.View;
 
 import com.eveningoutpost.dexdrip.AddCalibration;
 import com.eveningoutpost.dexdrip.Home;
@@ -1320,8 +1319,8 @@ public class BgGraphBuilder {
 
                         String bwp_update = "";
                         keyStore.putL("bwp_last_insulin_timestamp", -1);
-                        if (d)
-                            Log.i(TAG, "Predictive BWP: Current prediction: " + JoH.qs(predictedbg) + " / carbs: " + JoH.qs(evaluation[0]) + " insulin: " + JoH.qs(evaluation[1]));
+//                        if (d)
+//                            Log.i(TAG, "Predictive BWP: Current prediction: " + JoH.qs(predictedbg) + " / carbs: " + JoH.qs(evaluation[0]) + " insulin: " + JoH.qs(evaluation[1]));
                         keyStore.putS("last_bwp", bwp_update);
                         keyStore.putL("last_bwp_timestamp", JoH.tsl());
                         Home.updateStatusLine("bwp", bwp_update); // always send so we can blank if needed
@@ -1767,10 +1766,8 @@ public class BgGraphBuilder {
 
         @Override
         public synchronized void onValueSelected(int i, int i1, PointValue pointValue) {
-
             String filtered = "";
             String alternate = "";
-            String uuid = "";
             int type = 0;
             long real_timestamp = 0;
             try {
@@ -1781,9 +1778,6 @@ public class BgGraphBuilder {
                 }
                 if (pve.note != null) {
                     alternate = pve.note;
-                }
-                if (pve.uuid != null) {
-                    uuid = pve.uuid;
                 }
                 real_timestamp = pve.real_timestamp;
                 if (real_timestamp == 0) real_timestamp = pve.getTimeStamp(); // fallback for HPointValue
@@ -1806,26 +1800,12 @@ public class BgGraphBuilder {
             } else {
                 message = timeFormat.format(time) + "      " + (Math.round(pointValue.getY() * 10) / 10d) + " " + unit() + filtered;
             }
-            final String fuuid = uuid;
             switch (type) {
                 case PointValueExtended.BloodTest:
-
-                    final View.OnClickListener mBtOnClickListener = new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            Home.startHomeWithExtra(xdrip.getAppContext(), Home.BLOOD_TEST_ACTION, time.toString(), fuuid);
-                        }
-                    };
-                    Home.snackBar(R.string.blood_test, message, mBtOnClickListener, callerActivity);
+                    Home.snackBar(R.string.blood_test, message, callerActivity);
                     break;
                 default:
-                    final View.OnClickListener mOnClickListener = new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            Home.startHomeWithExtra(xdrip.getAppContext(), Home.CREATE_TREATMENT_NOTE, time.toString(), "-1"); // Let's not enter a y position to avoid having to worry about the BG units
-                        }
-                    };
-                    Home.snackBar(R.string.add_note, message, mOnClickListener, callerActivity);
+                    Home.snackBar(R.string.add_note, message, callerActivity);
                     break;
             }
         }

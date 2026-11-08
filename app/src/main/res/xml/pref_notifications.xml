@@ -11,10 +11,10 @@
             <Preference
                 android:key="bg_level_alerts"
                 android:title="@string/glucose_level_alerts_list">
-                <intent
+                <!--<intent
                     android:action="android.intent.action.MAIN"
                     android:targetClass="com.eveningoutpost.dexdrip.AlertList"
-                    android:targetPackage="@string/local_target_package" />
+                    android:targetPackage="@string/local_target_package" />-->
             </Preference>
 
             <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
@@ -78,20 +78,6 @@
                     android:switchTextOff="@string/short_off_text_for_switches"
                     android:switchTextOn="@string/short_on_text_for_switches"
                     android:title="@string/wake_up_screen" />
-
-                <SwitchPreference
-                    android:defaultValue="false"
-                    android:key="flash_torch_alerts_charging"
-                    android:summary="@string/use_camera_light_summary"
-                    android:switchTextOff="@string/short_off_text_for_switches"
-                    android:switchTextOn="@string/short_on_text_for_switches"
-                    android:title="@string/use_camera_light" />
-
-                <CheckBoxPreference
-                    android:defaultValue="false"
-                    android:key="bg_alerts_from_main_menu"
-                    android:summary="@string/create_shortcut"
-                    android:title="@string/shortcut_to_bg_alerts" />
 
                 <PreferenceScreen
                     android:key="suppress_alerts_screen"
@@ -318,10 +304,10 @@
             <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
                 android:key="missed_readings_screen"
                 android:title="@string/missed_reading_alert">
-                <intent
+                <!--<intent
                     android:action="android.intent.action.MAIN"
                     android:targetClass="com.eveningoutpost.dexdrip.MissedReadingActivity"
-                    android:targetPackage="@string/local_target_package" />
+                    android:targetPackage="@string/local_target_package" />-->
             </PreferenceScreen>
 
             <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
@@ -408,5 +394,3 @@
         </PreferenceCategory>
     </PreferenceScreen>
 </PreferenceScreen>
-
-

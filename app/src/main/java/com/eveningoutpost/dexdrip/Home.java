@@ -23,15 +23,12 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.KeyEvent;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.AdapterView;
-import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -60,13 +57,11 @@ import com.eveningoutpost.dexdrip.ui.MicroStatusImpl;
 import com.eveningoutpost.dexdrip.ui.NumberGraphic;
 import com.eveningoutpost.dexdrip.ui.UiPing;
 import com.eveningoutpost.dexdrip.ui.dialog.DidYouCancelAlarm;
-import com.eveningoutpost.dexdrip.ui.dialog.QuickSettingsDialogs;
 import com.eveningoutpost.dexdrip.ui.graphic.ITrendArrow;
 import com.eveningoutpost.dexdrip.ui.graphic.TrendArrowFactory;
 import com.eveningoutpost.dexdrip.utilitymodels.*;
 import com.eveningoutpost.dexdrip.utils.ActivityWithMenu;
 import com.eveningoutpost.dexdrip.utils.DexCollectionType;
-import com.eveningoutpost.dexdrip.utils.Preferences;
 import com.eveningoutpost.dexdrip.utils.SdcardImportExport;
 import com.google.android.material.snackbar.Snackbar;
 
@@ -109,7 +104,6 @@ import static com.eveningoutpost.dexdrip.xdrip.gs;
 
 
 public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPermissionsResultCallback {
-    public static final String CREATE_TREATMENT_NOTE = "CREATE_TREATMENT_NOTE";
     public static final String BLOOD_TEST_ACTION = "BLOOD_TEST_ACTION";
     public static final String HOME_FULL_WAKEUP = "HOME_FULL_WAKEUP";
     public static final String SHOW_NOTIFICATION = "SHOW_NOTIFICATION";
@@ -474,10 +468,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     private boolean isAutoYPanEnabled() {
         // When true, xDrip auto-pans the Y-axis instead of extending the range for out-of-range readings.
         return Pref.getBoolean("auto_y_pan", true);
-    }
-
-    public void viewEventLog(MenuItem x) {
-        startActivity(new Intent(this, EventLogActivity.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra("events", ""));
     }
 
 
@@ -951,6 +941,7 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
 
             displayCurrentInfo(); // update the display even with no sensor to clear old data
 
+            /*
             if ((dialog == null) || (!dialog.isShowing())) {
                 if (!Experience.gotData() && Experience.backupAvailable() && JoH.ratelimit("restore-backup-prompt", 10)) {
 
@@ -974,6 +965,7 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
                     }
                 }
             }
+            */
             return;
         }
 
@@ -1354,20 +1346,10 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_home, menu);
-        return super.onCreateOptionsMenu(menu);
-    }
-
-    @Override
     public void onNewIntent(Intent intent) {
 	    super.onNewIntent(intent);
 	    Bundle bundle = intent.getExtras();
         processIncomingBundle(bundle);
-    }
-
-    public void settingsSDcardExport(MenuItem myitem) {
-        startActivity(new Intent(getApplicationContext(), SdcardImportExport.class));
     }
 
     @Override
@@ -1417,17 +1399,12 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         }
     }
 
-    public static void snackBar(int buttonString, String message, View.OnClickListener mOnClickListener, Activity activity) {
-
+    public static void snackBar(int buttonString, String message, Activity activity) {
         // Store Snackbar in a variable
         Snackbar snackbar = Snackbar.make(
-                        activity.findViewById(android.R.id.content),
-                        message, Snackbar.LENGTH_LONG)
-                .setAction(buttonString, mOnClickListener);
-
-        // Disable ALL CAPS on the action button
-        Button b = snackbar.getView().findViewById(com.google.android.material.R.id.snackbar_action);
-        if (b != null) b.setAllCaps(false);
+            activity.findViewById(android.R.id.content),
+            message,
+            Snackbar.LENGTH_LONG);
 
         // Maximum number of lines to wrap into
         TextView t = snackbar.getView().findViewById(com.google.android.material.R.id.snackbar_text);

@@ -2,24 +2,19 @@ package com.eveningoutpost.dexdrip;
 
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 
 import com.eveningoutpost.dexdrip.g5model.FirmwareCapability;
 import com.eveningoutpost.dexdrip.models.BgReading;
 import com.eveningoutpost.dexdrip.models.Calibration;
-import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.Sensor;
 import com.eveningoutpost.dexdrip.services.Ob1G5CollectionService;
 import com.eveningoutpost.dexdrip.tables.BgReadingTable;
-import com.eveningoutpost.dexdrip.tables.CalibrationDataTable;
 import com.eveningoutpost.dexdrip.utilitymodels.Experience;
 import com.eveningoutpost.dexdrip.utils.DexCollectionType;
 import com.eveningoutpost.dexdrip.utils.Preferences;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import androidx.preference.PreferenceManager;
 
 import static com.eveningoutpost.dexdrip.services.Ob1G5CollectionService.getTransmitterID;
 
@@ -41,7 +36,7 @@ public class NavDrawerBuilder {
 //        }
 
         addOption(context, R.string.bg_data_table, BgReadingTable.class);
-        addOption(context, R.string.calibration_data_table, CalibrationDataTable.class);
+//        addOption(context, R.string.calibration_data_table, CalibrationDataTable.class);
 
         if (!collector.canNotStartStopOrCal()) {
             // Only if the collector can start/stop sensor and submit calibrations (is not passive)
@@ -53,6 +48,7 @@ public class NavDrawerBuilder {
 
                     if ((last_two_calibrations.size() > 1) && !Ob1G5CollectionService.isG5WantingInitialCalibration()) { // After two successful initial calibrations
                         // TODO tighten this time limit
+                        /* isG5WantingInitialCalibration probably never true
                         if (BgReading.last30Minutes().size() >= 2) {
                             long time_now = JoH.tsl();
                             if ((time_now - last_two_calibrations.get(0).timestamp < (1000 * 60 * 60))
@@ -64,6 +60,7 @@ public class NavDrawerBuilder {
                         } else {  // G5, old G6 or Firefly in no-code mode, not long after a calibration
                             addOption(context, R.string.cannot_calibrate_right_now, Home.class);
                         }
+                        */
                     } else { // If there haven't been two initial calibrations
                         if (BgReading.isDataSuitableForDoubleCalibration() || Ob1G5CollectionService.isG5WantingInitialCalibration()) {
                             if ((FirmwareCapability.isTransmitterRawIncapable(getTransmitterID()) && last_two_bgReadings.size() > 1) || FirmwareCapability.isDeviceAltOrAlt2OrAlt3(getTransmitterID()) ) { //A Firefly G6 after third reading or a G7
@@ -74,18 +71,7 @@ public class NavDrawerBuilder {
                         }
                     }
                 }
-                if (!DexCollectionType.isG7()) { // If we are using G7, there will be no stop sensor option in the menu.
-                    addOption(context, R.string.stop_sensor, StopSensor.class);
-                }
-            } else {
-                addOption(context, R.string.start_sensor, StartNewSensor.class);
             }
-        }
-
-        final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        boolean bg_alerts = prefs.getBoolean("bg_alerts_from_main_menu", false);
-        if (bg_alerts) {
-            addOption(context, R.string.level_alerts, AlertList.class);
         }
 
         if (Experience.gotData()) {
@@ -93,6 +79,8 @@ public class NavDrawerBuilder {
             addOption(context, R.string.history, BGHistory.class);
         }
 
+        addOption(context, R.string.level_alerts, AlertList.class);
+        addOption(context, R.string.event_logs, EventLogActivity.class);
         addOption(context, R.string.settings, Preferences.class);
     }
 

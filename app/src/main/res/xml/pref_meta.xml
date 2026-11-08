@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        android:key="xdrip_plus_move_settings"
+        android:title="@string/copying_settings">
+        <Preference
+            android:icon="@drawable/ic_content_save_grey600_48dp"
+            android:key="show_external_save"
+            android:title="@string/load_save_settings_to_sdcard"
+            />
+        <PreferenceScreen
+            android:key="auto_configure"
+            android:icon="@drawable/ic_qrcode_grey600_48dp"
+            android:summary="@string/auto_config_cam_summary"
+            android:title="@string/prefs_auto_config_summary" />
+    </PreferenceCategory>
+
+</PreferenceScreen>

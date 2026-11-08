@@ -10,7 +10,6 @@ import android.graphics.BitmapFactory;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.preference.EditTextPreference;
 import android.preference.ListPreference;
@@ -23,10 +22,11 @@ import android.preference.PreferenceScreen;
 import android.preference.RingtonePreference;
 import android.text.InputFilter;
 import android.text.TextUtils;
-import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
 
+import com.eveningoutpost.dexdrip.AlertList;
+import com.eveningoutpost.dexdrip.MissedReadingActivity;
 import com.eveningoutpost.dexdrip.R;
 import com.eveningoutpost.dexdrip.alert.Registry;
 import com.eveningoutpost.dexdrip.calibrations.PluggableCalibration;
@@ -275,14 +275,6 @@ public class Preferences extends PreferenceActivity {
         }
     }
 
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            getMenuInflater().inflate(R.menu.menu_preferences, menu);
-        }
-        return super.onCreateOptionsMenu(menu);
-    }
 
     public void showSearch(MenuItem item) {
     }
@@ -578,10 +570,37 @@ public class Preferences extends PreferenceActivity {
             bindPreferenceSummaryToUnitizedValueAndEnsureNumeric(findPreference("forecast_low_threshold"));
 
             addPreferencesFromResource(R.xml.pref_data_source);
-            addPreferencesFromResource(R.xml.pref_data_sync);
+//            addPreferencesFromResource(R.xml.pref_data_sync);
             addPreferencesFromResource(R.xml.pref_advanced_settings);
-            addPreferencesFromResource(R.xml.xdrip_plus_prefs);
+            addPreferencesFromResource(R.xml.pref_meta);
             setupBarcodeConfigScanner();
+
+
+            try {
+                findPreference("bg_level_alerts").setOnPreferenceClickListener(preference -> {
+                    startActivity(new Intent(getContext(), AlertList.class));
+                    return true;
+                });
+            } catch (NullPointerException e) {
+                UserError.Log.e(TAG, "bg_level_alerts is null");
+            }
+            try {
+                findPreference("missed_readings_screen").setOnPreferenceClickListener(preference -> {
+                    startActivity(new Intent(getContext(), MissedReadingActivity.class));
+                    return true;
+                });
+            } catch (NullPointerException e) {
+                UserError.Log.e(TAG, "missed_readings_screen is null");
+            }
+            try {
+                findPreference("show_external_save").setOnPreferenceClickListener(preference -> {
+                    startActivity(new Intent(getContext(), SdcardImportExport.class));
+                    return true;
+                });
+            } catch (NullPointerException e) {
+                UserError.Log.e(TAG, "show_external_save is null");
+            }
+
 
             bindPreferenceSummaryToValue(findPreference("persistent_high_threshold_mins"));
             bindPreferenceSummaryToValue(findPreference("persistent_high_repeat_mins"));

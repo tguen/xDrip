@@ -4,7 +4,6 @@ import android.annotation.SuppressLint;
 import android.app.Application;
 import android.content.Context;
 import android.content.ContextWrapper;
-import android.content.IntentFilter;
 import android.content.res.Configuration;
 import android.os.Build;
 import android.preference.PreferenceManager;
@@ -72,22 +71,22 @@ public class xdrip extends Application {
         executor = new PlusAsyncExecutor();
 
         PreferenceManager.setDefaultValues(this, R.xml.pref_general, true);
-        PreferenceManager.setDefaultValues(this, R.xml.pref_data_sync, true);
+//        PreferenceManager.setDefaultValues(this, R.xml.pref_data_sync, true);
         PreferenceManager.setDefaultValues(this, R.xml.pref_advanced_settings, true);
         PreferenceManager.setDefaultValues(this, R.xml.pref_notifications, true);
         PreferenceManager.setDefaultValues(this, R.xml.pref_data_source, true);
-        PreferenceManager.setDefaultValues(this, R.xml.xdrip_plus_defaults, true);
-        PreferenceManager.setDefaultValues(this, R.xml.xdrip_plus_prefs, true);
+//        PreferenceManager.setDefaultValues(this, R.xml.xdrip_plus_defaults, true);
+        PreferenceManager.setDefaultValues(this, R.xml.pref_meta, true);
         ColorCache.setDefaultsLoaded();
 
         JoH.ratelimit("policy-never", 3600); // don't on first load
         new IdempotentMigrations(getApplicationContext()).performAll();
 
-        IntentFilter bgFilter = new IntentFilter();
-        bgFilter.addAction("com.eveningoutpost.dexdrip.NS_EMULATOR");
-        bgFilter.addAction("com.eveningoutpost.dexdrip.OOP2_DECODE_FARM_RESULT");
-        bgFilter.addAction("com.eveningoutpost.dexdrip.OOP2_DECODE_BLE_RESULT");
-        bgFilter.addAction("com.eveningoutpost.dexdrip.OOP2_BLUETOOTH_ENABLE_RESULT");
+//        IntentFilter bgFilter = new IntentFilter();
+//        bgFilter.addAction("com.eveningoutpost.dexdrip.NS_EMULATOR");
+//        bgFilter.addAction("com.eveningoutpost.dexdrip.OOP2_DECODE_FARM_RESULT");
+//        bgFilter.addAction("com.eveningoutpost.dexdrip.OOP2_DECODE_BLE_RESULT");
+//        bgFilter.addAction("com.eveningoutpost.dexdrip.OOP2_BLUETOOTH_ENABLE_RESULT");
 
         JobManager.create(this).addJobCreator(new XDripJobCreator());
         DailyJob.schedule();
