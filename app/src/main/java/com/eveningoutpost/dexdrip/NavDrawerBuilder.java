@@ -5,7 +5,6 @@ import android.content.Intent;
 
 import com.eveningoutpost.dexdrip.g5model.FirmwareCapability;
 import com.eveningoutpost.dexdrip.models.BgReading;
-import com.eveningoutpost.dexdrip.models.Calibration;
 import com.eveningoutpost.dexdrip.models.Sensor;
 import com.eveningoutpost.dexdrip.services.Ob1G5CollectionService;
 import com.eveningoutpost.dexdrip.tables.BgReadingTable;
@@ -44,11 +43,11 @@ public class NavDrawerBuilder {
 	            final List<BgReading> last_two_bgReadings = BgReading.latestUnCalculated(2);
 
 	            if (last_two_bgReadings.size() > 1 || Ob1G5CollectionService.isG5WantingCalibration()) {
+                    /* isG5WantingInitialCalibration probably never true
                     final List<Calibration> last_two_calibrations = Calibration.latestValid(2);
 
                     if ((last_two_calibrations.size() > 1) && !Ob1G5CollectionService.isG5WantingInitialCalibration()) { // After two successful initial calibrations
                         // TODO tighten this time limit
-                        /* isG5WantingInitialCalibration probably never true
                         if (BgReading.last30Minutes().size() >= 2) {
                             long time_now = JoH.tsl();
                             if ((time_now - last_two_calibrations.get(0).timestamp < (1000 * 60 * 60))
@@ -60,12 +59,13 @@ public class NavDrawerBuilder {
                         } else {  // G5, old G6 or Firefly in no-code mode, not long after a calibration
                             addOption(context, R.string.cannot_calibrate_right_now, Home.class);
                         }
-                        */
-                    } else { // If there haven't been two initial calibrations
+                    } else */ {
                         if (BgReading.isDataSuitableForDoubleCalibration() || Ob1G5CollectionService.isG5WantingInitialCalibration()) {
-                            if ((FirmwareCapability.isTransmitterRawIncapable(getTransmitterID()) && last_two_bgReadings.size() > 1) || FirmwareCapability.isDeviceAltOrAlt2OrAlt3(getTransmitterID()) ) { //A Firefly G6 after third reading or a G7
+                            if ((FirmwareCapability.isTransmitterRawIncapable(getTransmitterID()) && last_two_bgReadings.size() > 1) || FirmwareCapability.isDeviceAltOrAlt2OrAlt3(getTransmitterID()) ) {
+                                //A Firefly G6 after third reading or a G7
                                 addOption(context, R.string.add_calibration, AddCalibration.class);
-                            } else { // G5 or non-Firefly G6 or Firefly G6 in no-code mode, after warm-up before initial calibration
+                            } else {
+                                // G5 or non-Firefly G6 or Firefly G6 in no-code mode, after warm-up before initial calibration
                                 addOption(context, R.string.initial_calibration, DoubleCalibrationActivity.class);
                             }
                         }

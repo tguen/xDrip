@@ -22,7 +22,6 @@ import android.preference.PreferenceScreen;
 import android.preference.RingtonePreference;
 import android.text.InputFilter;
 import android.text.TextUtils;
-import android.view.MenuItem;
 import android.widget.Toast;
 
 import com.eveningoutpost.dexdrip.AlertList;
@@ -276,10 +275,6 @@ public class Preferences extends PreferenceActivity {
     }
 
 
-    public void showSearch(MenuItem item) {
-    }
-
-
     private final SharedPreferences.OnSharedPreferenceChangeListener uiPrefListener = UiBasedCollector.getListener(this);
 
 
@@ -511,6 +506,7 @@ public class Preferences extends PreferenceActivity {
         Preferences parent;
         SharedPreferences prefs;
 
+
         // default constructor is required in addition on some platforms
         public AllPrefsFragment() {
             this(null);
@@ -575,7 +571,6 @@ public class Preferences extends PreferenceActivity {
             addPreferencesFromResource(R.xml.pref_meta);
             setupBarcodeConfigScanner();
 
-
             try {
                 findPreference("bg_level_alerts").setOnPreferenceClickListener(preference -> {
                     startActivity(new Intent(getContext(), AlertList.class));
@@ -601,7 +596,6 @@ public class Preferences extends PreferenceActivity {
                 UserError.Log.e(TAG, "show_external_save is null");
             }
 
-
             bindPreferenceSummaryToValue(findPreference("persistent_high_threshold_mins"));
             bindPreferenceSummaryToValue(findPreference("persistent_high_repeat_mins"));
 
@@ -609,7 +603,6 @@ public class Preferences extends PreferenceActivity {
 
             final ListPreference currentCalibrationPlugin = (ListPreference)findPreference("current_calibration_plugin");
             final PreferenceCategory collectionCategory = (PreferenceCategory) findPreference("collection_category");
-
 
             final EditTextPreference transmitterId = (EditTextPreference) findPreference("dex_txid");
            // final Preference closeGatt = findPreference("close_gatt_on_ble_disconnect");
@@ -619,7 +612,6 @@ public class Preferences extends PreferenceActivity {
             final Preference old_school_calibration_mode = findPreference("old_school_calibration_mode");
             final Preference extraTagsForLogs = findPreference("extra_tags_for_logging");
             final PreferenceCategory displayCategory = (PreferenceCategory) findPreference("xdrip_plus_display_category");
-
 
             disableAlertsStaleDataMinutes.setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
                 @Override
@@ -637,7 +629,6 @@ public class Preferences extends PreferenceActivity {
                 }
             });
 
-
             units_pref.setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
                 @Override
                 public boolean onPreferenceChange(Preference preference, Object newValue) {
@@ -649,7 +640,6 @@ public class Preferences extends PreferenceActivity {
             bindPreferenceSummaryToValue(findPreference("low_predict_alarm_level"));
 //            Profile.validateTargetRange();
 //            bindPreferenceSummaryToValue(findPreference("plus_target_range"));
-
 
             Log.d(TAG, collectionType.name());
 
@@ -873,7 +863,7 @@ public class Preferences extends PreferenceActivity {
     public static void handleUnitsChange(Preference preference, Object newValue, AllPrefsFragment allPrefsFragment) {
         try {
             SharedPreferences preferences;
-            if (preference!= null) {
+            if (preference != null) {
                 preferences = preference.getSharedPreferences();
             } else {
                 preferences = PreferenceManager.getDefaultSharedPreferences(xdrip.getAppContext());
@@ -884,7 +874,6 @@ public class Preferences extends PreferenceActivity {
             final Double default_target_glucose = Double.parseDouble(preferences.getString("plus_target_range", "100"));
             final Double persistent_high_Val = Double.parseDouble(preferences.getString("persistent_high_threshold", "0"));
             final Double forecast_low_Val = Double.parseDouble(preferences.getString("forecast_low_threshold", "0"));
-
 
             static_units = newValue.toString();
             if (newValue.toString().equals("mgdl")) {

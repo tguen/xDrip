@@ -147,25 +147,9 @@
             android:configChanges="orientation|screenSize"
             android:label="@string/bg_readings_table" />
         <activity
-            android:name=".tables.SensorDataTable"
-            android:configChanges="orientation|screenSize"
-            android:label="@string/sensor_table" />
-        <activity
             android:name=".AddCalibration"
             android:configChanges="orientation|screenSize"
             android:label="@string/add_calibration" />
-        <activity
-            android:name=".StartNewSensor"
-            android:configChanges="orientation|screenSize"
-            android:label="@string/title_activity_start_new_sensor" />
-        <activity
-            android:name=".NewSensorLocation"
-            android:configChanges="orientation|screenSize"
-            android:label="@string/title_activity_new_sensor_location" />
-        <activity
-            android:name=".StopSensor"
-            android:configChanges="orientation|screenSize"
-            android:label="@string/title_activity_stop_sensor" />
         <activity
             android:name=".BGHistory"
             android:configChanges="orientation|screenSize"
@@ -235,10 +219,6 @@
             android:configChanges="orientation|screenSize"
             android:label="@string/settings"
             android:theme="@style/OldAppTheme" />
-
-        <meta-data
-            android:name="io.fabric.ApiKey"
-            android:value="913d7bd9c0b910d315c3bc0e057056daf73b698e" />
 
         <activity
             android:name=".AlertList"
