@@ -133,11 +133,6 @@
         </activity>
 
         <service
-            android:name=".services.DexCollectionService"
-            android:enabled="true"
-            android:exported="true"
-            android:foregroundServiceType="connectedDevice|location" />
-        <service
             android:name=".services.broadcastservice.BroadcastService"
             android:enabled="true"
             android:exported="true" />
@@ -218,7 +213,7 @@
             android:name=".utils.Preferences"
             android:configChanges="orientation|screenSize"
             android:label="@string/settings"
-            android:theme="@style/OldAppTheme" />
+            />
 
         <activity
             android:name=".AlertList"

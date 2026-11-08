@@ -1705,7 +1705,7 @@ public class Ob1G5StateMachine {
             lastGlucoseBgReading.calculateAgeAdjustedRawValue();
             lastGlucoseBgReading.save();
         } else {
-            if (!Ob1G5CollectionService.usingNativeMode() || Ob1G5CollectionService.fallbackToXdripAlgorithm() || BgReading.latest(3).size() < 3) {
+            if (!Ob1G5CollectionService.usingNativeMode() || BgReading.latest(3).size() < 3) {
                 final BgReading bgreading = BgReading.create(transmitterData.raw_data, transmitterData.filtered_data, xdrip.getAppContext(), transmitterData.timestamp);
                 UserError.Log.d(TAG, "BgReading created: " + bgreading.uuid + " " + JoH.dateTimeText(bgreading.timestamp));
             }

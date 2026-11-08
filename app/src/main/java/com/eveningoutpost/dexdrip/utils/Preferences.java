@@ -85,7 +85,7 @@ import static com.eveningoutpost.dexdrip.xdrip.gs;
  * API Guide</a> for more information on developing a Settings UI.
  */
 public class Preferences extends PreferenceActivity {
-    private static final String TAG = "jamorham PREFS";
+    private static final String TAG = "xdrip Preferences";
     private volatile AllPrefsFragment preferenceFragment;
 
     private static Preference units_pref;
@@ -246,11 +246,6 @@ public class Preferences extends PreferenceActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        try {
-            setTheme(R.style.OldAppTheme);
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to set theme");
-        }
         super.onCreate(savedInstanceState);
 
         refreshFragments(getIntent() != null ? getIntent().getAction() : null);
@@ -806,18 +801,8 @@ public class Preferences extends PreferenceActivity {
                     return true;
                 }
             });
-            removeLegacyPreferences();
             jumpToScreen(jumpTo);
         }
-
-        private void removeLegacyPreferences() {
-           //  removePreferenceFromCategory("use_ob1_g5_collector_service", "ob1_options");
-           //  removePreferenceFromCategory("ob1_g5_fallback_to_xdrip", "ob1_options");
-           //  removePreferenceFromCategory("always_unbond_G5", "ob1_options");
-           //  removePreferenceFromCategory("always_get_new_keys", "ob1_options");
-           // removePreferenceFromCategory("run_ble_scan_constantly", "ob1_options");
-           // removePreferenceFromCategory("run_G5_ble_tasks_on_uithread", "ob1_options");
-       }
 
         private void setupBarcodeConfigScanner() {
             findPreference("auto_configure").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {

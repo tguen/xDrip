@@ -1,17 +1,9 @@
 package com.eveningoutpost.dexdrip;
 
-import java.text.DateFormat;
-import java.util.Date;
-
 import android.app.Dialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import androidx.preference.PreferenceManager;
-
-import com.eveningoutpost.dexdrip.models.JoH;
-import com.eveningoutpost.dexdrip.models.UserError.Log;
-
 import android.util.TypedValue;
 import android.view.View;
 import android.widget.Button;
@@ -20,6 +12,8 @@ import android.widget.TextView;
 
 import com.eveningoutpost.dexdrip.models.ActiveBgAlert;
 import com.eveningoutpost.dexdrip.models.AlertType;
+import com.eveningoutpost.dexdrip.models.JoH;
+import com.eveningoutpost.dexdrip.models.UserError.Log;
 import com.eveningoutpost.dexdrip.services.MissedReadingService;
 import com.eveningoutpost.dexdrip.utilitymodels.AlertPlayer;
 import com.eveningoutpost.dexdrip.utilitymodels.BgGraphBuilder;
@@ -27,7 +21,13 @@ import com.eveningoutpost.dexdrip.utilitymodels.Notifications;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
 import com.eveningoutpost.dexdrip.utils.ActivityWithMenu;
 
+import java.text.DateFormat;
+import java.util.Date;
+
+import androidx.preference.PreferenceManager;
+
 import static com.eveningoutpost.dexdrip.xdrip.gs;
+
 
 public class SnoozeActivity extends ActivityWithMenu {
     //public static String menu_name = "Snooze Alert";
@@ -157,7 +157,6 @@ public class SnoozeActivity extends ActivityWithMenu {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (Home.get_holo()) { setTheme(R.style.OldAppThemeNoTitleBar); }
         JoH.fixActionBar(this);
         setContentView(R.layout.activity_snooze);
         alertStatus = (TextView) findViewById(R.id.alert_status);

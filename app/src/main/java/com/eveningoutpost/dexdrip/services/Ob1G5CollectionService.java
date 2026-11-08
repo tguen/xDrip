@@ -800,10 +800,7 @@ public class Ob1G5CollectionService extends G5BaseService {
 
     // should this service be running? Used to decide when to shut down
     private static boolean shouldServiceRun() {
-        if (!Pref.getBooleanDefaultFalse(OB1G5_PREFS)) return false;
-        if (!(DexCollectionType.getDexCollectionType() == DexcomG5)) return false;
-
-        return true;
+        return DexCollectionType.getDexCollectionType() == DexcomG5;
     }
 
     // check required permissions and warn the user if they are wrong
@@ -2087,21 +2084,17 @@ public class Ob1G5CollectionService extends G5BaseService {
     public static boolean usingNativeMode() {
         return usingCollector()
                 && Pref.getBooleanDefaultFalse("ob1_g5_use_transmitter_alg")
-                && Pref.getBooleanDefaultFalse(OB1G5_PREFS);
+                ;
     }
 
     public static boolean onlyUsingNativeMode() {
-        return usingNativeMode() && !fallbackToXdripAlgorithm();
+        return usingNativeMode();
     }
 
     public static boolean isProvidingNativeGlucoseData() {
         // TODO check age of data?
         loadCalibrationStateAsRequired();
         return usingNativeMode() && lastSensorState != null && lastSensorState.usableGlucose();
-    }
-
-    public static boolean fallbackToXdripAlgorithm() {
-        return Pref.getBooleanDefaultFalse("ob1_g5_fallback_to_xdrip");
     }
 
     public static void msg(String msg) {
@@ -2515,7 +2508,7 @@ public class Ob1G5CollectionService extends G5BaseService {
     }
 
     public static boolean usingCollector() {
-        return Pref.getBooleanDefaultFalse(OB1G5_PREFS) && DexCollectionType.getDexCollectionType() == DexcomG5;
+        return DexCollectionType.getDexCollectionType() == DexcomG5;
     }
 
     // TODO may want to move this to utility method in the future

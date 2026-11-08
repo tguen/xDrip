@@ -1028,7 +1028,7 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
                     }
                 } else {
                     UserError.Log.d(TAG, "NOT ENOUGH CALCULATED READINGS: " + calculatedBgReadingsCount);
-                    if (!BgReading.isDataSuitableForDoubleCalibration() && (!Ob1G5CollectionService.usingNativeMode() || Ob1G5CollectionService.fallbackToXdripAlgorithm())) {
+                    if (!BgReading.isDataSuitableForDoubleCalibration() && !Ob1G5CollectionService.usingNativeMode()) {
                         notificationText.setText(R.string.please_wait_need_two_readings_first);
                         showInitialStatusHelper();
                     } else {

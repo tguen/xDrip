@@ -1,6 +1,5 @@
 package com.eveningoutpost.dexdrip.utils;
 
-import com.eveningoutpost.dexdrip.services.DexCollectionService;
 import com.eveningoutpost.dexdrip.services.Ob1G5CollectionService;
 import com.eveningoutpost.dexdrip.services.UiBasedCollector;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
@@ -71,7 +70,7 @@ public enum DexCollectionType {
     }
 
     public static DexCollectionType getDexCollectionType() {
-        return getType(Pref.getString(DEX_COLLECTION_METHOD, "BluetoothWixel"));
+        return getType(Pref.getString(DEX_COLLECTION_METHOD, ""));
     }
 
     public static void setDexCollectionType(DexCollectionType t) {
@@ -122,7 +121,7 @@ public enum DexCollectionType {
             case UiBased:
                 return UiBasedCollector.class;
             default:
-                return DexCollectionService.class;
+                return null;
         }
     }
 

@@ -1,6 +1,5 @@
 package com.eveningoutpost.dexdrip;
 
-import android.annotation.SuppressLint;
 import android.app.Application;
 import android.content.Context;
 import android.content.ContextWrapper;
@@ -36,16 +35,12 @@ import androidx.annotation.StringRes;
 /**
  * Created by Emma Black on 3/21/15.
  */
-
 public class xdrip extends Application {
 
     private static final String TAG = "xdrip.java";
-    @SuppressLint("StaticFieldLeak")
     private static volatile Context context;
-    private static boolean bfInited = false;
     private static Locale LOCALE;
     public static PlusAsyncExecutor executor;
-    public static boolean useBF = false;
     private static Boolean isRunningTestCache;
 
     public static void setContext(final Context context) {
@@ -82,12 +77,6 @@ public class xdrip extends Application {
         JoH.ratelimit("policy-never", 3600); // don't on first load
         new IdempotentMigrations(getApplicationContext()).performAll();
 
-//        IntentFilter bgFilter = new IntentFilter();
-//        bgFilter.addAction("com.eveningoutpost.dexdrip.NS_EMULATOR");
-//        bgFilter.addAction("com.eveningoutpost.dexdrip.OOP2_DECODE_FARM_RESULT");
-//        bgFilter.addAction("com.eveningoutpost.dexdrip.OOP2_DECODE_BLE_RESULT");
-//        bgFilter.addAction("com.eveningoutpost.dexdrip.OOP2_BLUETOOTH_ENABLE_RESULT");
-
         JobManager.create(this).addJobCreator(new XDripJobCreator());
         DailyJob.schedule();
 
@@ -120,30 +109,6 @@ public class xdrip extends Application {
             }
         }
         return isRunningTestCache;
-    }
-
-    public synchronized static void initBF() {
-        try {
-            if (PreferenceManager.getDefaultSharedPreferences(xdrip.context).getBoolean("enable_bugfender", false)) {
-                new Thread() {
-                    @Override
-                    public void run() {
-                        String app_id = PreferenceManager.getDefaultSharedPreferences(xdrip.context).getString("bugfender_appid", "").trim();
-                        if (!useBF && (app_id.length() > 10)) {
-                            if (!bfInited) {
-                                //Bugfender.init(xdrip.context, app_id, BuildConfig.DEBUG);
-                                bfInited = true;
-                            }
-                            useBF = true;
-                        }
-                    }
-                }.start();
-            } else {
-                useBF = false;
-            }
-        } catch (Exception e) {
-            //
-        }
     }
 
 

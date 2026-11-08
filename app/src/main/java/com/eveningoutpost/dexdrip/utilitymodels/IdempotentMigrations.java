@@ -16,7 +16,6 @@ import com.eveningoutpost.dexdrip.utils.Preferences;
 
 import androidx.preference.PreferenceManager;
 
-import static com.eveningoutpost.dexdrip.services.DexCollectionService.MAX_BT_WDG;
 import static com.eveningoutpost.dexdrip.utils.Preferences.MAX_GLUCOSE_INPUT;
 import static com.eveningoutpost.dexdrip.utils.Preferences.MIN_GLUCOSE_INPUT;
 
@@ -76,12 +75,6 @@ public class IdempotentMigrations {
 
     // Force legacy settings to be at their recommended values
     private static void legacySettingsFix() {
-        Pref.setBoolean("use_ob1_g5_collector_service", true);
-        Pref.setBoolean("ob1_g5_fallback_to_xdrip", false);
-        Pref.setBoolean("always_unbond_G5", false);
-        Pref.setBoolean("always_get_new_keys", true);
-        Pref.setBoolean("run_ble_scan_constantly", false);
-        Pref.setBoolean("run_G5_ble_tasks_on_uithread", false);
         Pref.setBoolean("ob1_initiate_bonding_flag", true);
         Pref.setBoolean("store_sensor_location", false);
         Pref.setBoolean("using_g6", true);
@@ -99,13 +92,13 @@ public class IdempotentMigrations {
         Pref.setBoolean("notification_channels_grouping", false);
         Pref.setBoolean("use_number_icon_large", false);
         Pref.setBoolean("number_icon_large_arrow", false);
-        Pref.setBoolean("ongoing_notification_channel", true);
         Pref.setString("bg_notification_sound", "default"); // We need this along with a detector in the playFile method to handle the default mp3 option with SDK 26.
 
     }
 
     // Required adjustments/conversions to settings after an update
     private static void settingsFix() {
+        final int MAX_BT_WDG = 20; // Bluetooth watchdog timer default (max)
 
         try { // Use the closest list value for the Bluetooth watchdog timer
             int oldValue = JoH.parseIntWithDefault(Pref.getString("bluetooth_watchdog_timer", Integer.toString(MAX_BT_WDG)), 10, MAX_BT_WDG);
