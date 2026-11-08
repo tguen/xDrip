@@ -129,16 +129,21 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     private static Activity mActivity;
 
     public BgGraphBuilder bgGraphBuilder;
+    public AlertDialog dialog;
     public Viewport holdViewport = new Viewport();
     public LineChartView chart;
-    public AlertDialog dialog;
     private boolean updateStuff;
     private boolean updatingPreviewViewport = false;
     private boolean updatingChartViewport = false;
-    private long lastViewPortPan;
-    private long lastDataTick;
     private boolean screen_forced_on = false;
     private boolean isG5Share;
+    private boolean alreadyDisplayedBgInfoCommon = false;
+    private boolean small_width = false;
+    private boolean small_height = false;
+    private boolean small_screen = false;
+    private long lastViewPortPan;
+    private long lastDataTick;
+    private String display_delta = "";
     private BroadcastReceiver _broadcastReceiver;
     private BroadcastReceiver newDataReceiver;
     private PreviewLineChartView previewChart;
@@ -147,16 +152,11 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     private TextView sensorAge;
     private TextView currentBgValueText;
     private TextView notificationText;
-    private boolean alreadyDisplayedBgInfoCommon = false;
-    private String display_delta = "";
-    private boolean small_width = false;
-    private boolean small_height = false;
-    private boolean small_screen = false;
+    private ITrendArrow itr;
     private AlertDialog helper_dialog;
     private AlertDialog status_helper_dialog;
     private PopupInitialStatusHelperBinding initial_status_binding;
     private ActivityHomeBinding binding;
-    private ITrendArrow itr;
     private final UiPing ui = new UiPing();
 
     @Inject

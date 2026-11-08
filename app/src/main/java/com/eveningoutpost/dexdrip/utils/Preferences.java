@@ -32,7 +32,6 @@ import com.eveningoutpost.dexdrip.alert.Registry;
 import com.eveningoutpost.dexdrip.calibrations.PluggableCalibration;
 import com.eveningoutpost.dexdrip.cgm.dex.TxIdHelper;
 import com.eveningoutpost.dexdrip.models.JoH;
-import com.eveningoutpost.dexdrip.models.Profile;
 import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.models.UserError.ExtraLogTags;
 import com.eveningoutpost.dexdrip.models.UserError.Log;
@@ -443,7 +442,7 @@ public class Preferences extends PreferenceActivity {
                             .getDefaultSharedPreferences(preference.getContext())
                             .getString(preference.getKey(), ""));
         } catch (Exception e) {
-            Log.e(TAG, "Got exception binding preference summary: " + e.toString());
+            Log.e(TAG, "Got exception binding preference summary: " + e, e);
         }
     }
 
@@ -455,7 +454,7 @@ public class Preferences extends PreferenceActivity {
                             .getDefaultSharedPreferences(preference.getContext())
                             .getString(preference.getKey(), ""));
         } catch (Exception e) {
-            Log.e(TAG, "Got exception binding preference title: " + e.toString());
+            Log.e(TAG, "Got exception binding preference title: " + e, e);
         }
     }
 
@@ -552,7 +551,6 @@ public class Preferences extends PreferenceActivity {
         }
 
 
-
         @SuppressLint("ApplySharedPref")
         @Override
         public void onCreate(Bundle savedInstanceState) {
@@ -630,8 +628,8 @@ public class Preferences extends PreferenceActivity {
             });
 
             bindPreferenceSummaryToValue(findPreference("low_predict_alarm_level"));
-            Profile.validateTargetRange();
-            bindPreferenceSummaryToValue(findPreference("plus_target_range"));
+//            Profile.validateTargetRange();
+//            bindPreferenceSummaryToValue(findPreference("plus_target_range"));
 
 
             Log.d(TAG, collectionType.name());
@@ -679,22 +677,12 @@ public class Preferences extends PreferenceActivity {
                 if (collectionType == DexCollectionType.DexcomG5) {
                     try {
                         collectionCategory.addPreference(g5_settings_screen);
-                        //collectionCategory.addPreference(g5nonraw);
-                        //collectionCategory.addPreference(scanConstantly);
-                        //collectionCategory.addPreference(reAuth);
-                        //collectionCategory.addPreference(reBond);
-                        //collectionCategory.addPreference(runOnMain);
                     } catch (NullPointerException e) {
                         Log.wtf(TAG, "Null pointer adding G5 prefs ", e);
                     }
                 } else {
                     try {
                         collectionCategory.removePreference(g5_settings_screen);
-                       // collectionCategory.removePreference(scanConstantly);
-                       // collectionCategory.removePreference(g5nonraw);
-                       // collectionCategory.removePreference(reAuth);
-                       // collectionCategory.removePreference(reBond);
-                       // collectionCategory.removePreference(runOnMain);
                     } catch (NullPointerException e) {
                         Log.wtf(TAG, "Null pointer removing G5 prefs ", e);
                     }
@@ -885,23 +873,19 @@ public class Preferences extends PreferenceActivity {
                     ProfileEditor.convertData(Constants.MMOLL_TO_MGDL);
                     preferences.edit().putString("highValue", Long.toString(Math.round(highVal * Constants.MMOLL_TO_MGDL))).apply();
                     preferences.edit().putString("plus_target_range", Long.toString(Math.round(default_target_glucose * Constants.MMOLL_TO_MGDL))).apply();
-                    Profile.invalidateProfile();
                 }
                 if (persistent_high_Val < 36) {
                     ProfileEditor.convertData(Constants.MMOLL_TO_MGDL);
                     preferences.edit().putString("persistent_high_threshold", Long.toString(Math.round(persistent_high_Val * Constants.MMOLL_TO_MGDL))).apply();
-                    Profile.invalidateProfile();
                 }
                 if (forecast_low_Val < 36) {
                     ProfileEditor.convertData(Constants.MMOLL_TO_MGDL);
                     preferences.edit().putString("forecast_low_threshold", Long.toString(Math.round(forecast_low_Val * Constants.MMOLL_TO_MGDL))).apply();
-                    Profile.invalidateProfile();
                 }
                 if (lowVal < 36) {
                     ProfileEditor.convertData(Constants.MMOLL_TO_MGDL);
                     preferences.edit().putString("lowValue", Long.toString(Math.round(lowVal * Constants.MMOLL_TO_MGDL))).apply();
                     preferences.edit().putString("plus_target_range", Long.toString(Math.round(default_target_glucose * Constants.MMOLL_TO_MGDL))).apply();
-                    Profile.invalidateProfile();
                 }
 
             } else {
@@ -909,23 +893,19 @@ public class Preferences extends PreferenceActivity {
                     ProfileEditor.convertData(Constants.MGDL_TO_MMOLL);
                     preferences.edit().putString("highValue", JoH.qs(highVal * Constants.MGDL_TO_MMOLL, 1)).apply();
                     preferences.edit().putString("plus_target_range", JoH.qs(default_target_glucose * Constants.MGDL_TO_MMOLL,1)).apply();
-                    Profile.invalidateProfile();
                 }
                 if (persistent_high_Val > 35) {
                     ProfileEditor.convertData(Constants.MGDL_TO_MMOLL);
                     preferences.edit().putString("persistent_high_threshold", JoH.qs(persistent_high_Val * Constants.MGDL_TO_MMOLL, 1)).apply();
-                    Profile.invalidateProfile();
                 }
                 if (forecast_low_Val > 35) {
                     ProfileEditor.convertData(Constants.MGDL_TO_MMOLL);
                     preferences.edit().putString("forecast_low_threshold", JoH.qs(forecast_low_Val * Constants.MGDL_TO_MMOLL, 1)).apply();
-                    Profile.invalidateProfile();
                 }
                 if (lowVal > 35) {
                     ProfileEditor.convertData(Constants.MGDL_TO_MMOLL);
                     preferences.edit().putString("lowValue", JoH.qs(lowVal * Constants.MGDL_TO_MMOLL, 1)).apply();
                     preferences.edit().putString("plus_target_range", JoH.qs(default_target_glucose * Constants.MGDL_TO_MMOLL,1)).apply();
-                    Profile.invalidateProfile();
                 }
             }
             if (preference != null) preference.setSummary(newValue.toString());
@@ -935,7 +915,7 @@ public class Preferences extends PreferenceActivity {
                 allPrefsFragment.setSummary("persistent_high_threshold");
                 allPrefsFragment.setSummary("forecast_low_threshold");
             }
-            Profile.reloadPreferences(preferences);
+//            Profile.reloadPreferences(preferences);
 
         } catch (Exception e) {
             Log.e(TAG, "Got excepting processing high/low value preferences: " + e.toString());

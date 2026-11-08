@@ -1275,7 +1275,7 @@ public class BgGraphBuilder {
                     long lasttimestamp = 0;
 
                     // this can be optimised to oncreate and onchange
-                    Profile.reloadPreferencesIfNeeded(prefs); // TODO handle this better now we use profile time blocks
+//                    Profile.reloadPreferencesIfNeeded(prefs); // TODO handle this better now we use profile time blocks
 
                     try {
                         if (mylastbg != null) {
@@ -1296,7 +1296,7 @@ public class BgGraphBuilder {
                         // could not get a bg reading
                     }
 
-                    final double initial_predicted_bg = predictedbg;
+//                    final double initial_predicted_bg = predictedbg;
                     // final List<Iob> iobinfo_old = Treatments.ioBForGraph(numValues, (start_time * FUZZER));
 
                     long fuzzed_timestamp = (long) end_time; // initial value in case there are no iob records
@@ -1309,11 +1309,11 @@ public class BgGraphBuilder {
                     if (d)
                         Log.d(TAG, "initial Fuzzed start timestamp: " + android.text.format.DateFormat.format("yyyy-MM-dd HH:mm:ss", (long) start_time * FUZZER));
 
-                    double[] evaluation;
+//                    double[] evaluation;
                     if (prediction_enabled && simulation_enabled) {
                         // if (doMgdl) {
                         // These routines need to understand how the profile is defined to use native instead of scaled
-                        evaluation = Profile.evaluateEndGameMmol(predictedbg, lasttimestamp * FUZZER, end_time * FUZZER);
+//                        evaluation = Profile.evaluateEndGameMmol(predictedbg, lasttimestamp * FUZZER, end_time * FUZZER);
                         // } else {
                         //    evaluation = Profile.evaluateEndGameMmol(predictedbg, lasttimestamp * FUZZER, end_time * FUZZER);
                         // }
@@ -1394,8 +1394,8 @@ public class BgGraphBuilder {
     public Line idealLine() {
         // if profile has more than 1 target bg value then we need to iterate those and plot them for completeness
         List<PointValue> myLineValues = new ArrayList<PointValue>();
-        myLineValues.add(new HPointValue((double) start_time, (float) Profile.getTargetRangeInUnits(start_time)));
-        myLineValues.add(new HPointValue((double) predictive_end_time, (float) Profile.getTargetRangeInUnits(predictive_end_time)));
+//        myLineValues.add(new HPointValue((double) start_time, (float) Profile.getTargetRangeInUnits(start_time)));
+//        myLineValues.add(new HPointValue((double) predictive_end_time, (float) Profile.getTargetRangeInUnits(predictive_end_time)));
         Line myLine = new Line(myLineValues);
         myLine.setHasPoints(false);
         myLine.setStrokeWidth(1);

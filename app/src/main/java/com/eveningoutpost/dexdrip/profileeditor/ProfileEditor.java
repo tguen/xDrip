@@ -18,11 +18,9 @@ import com.eveningoutpost.dexdrip.Home;
 import com.eveningoutpost.dexdrip.R;
 import com.eveningoutpost.dexdrip.importedlibraries.dexcom.Dex_Constants;
 import com.eveningoutpost.dexdrip.models.JoH;
-import com.eveningoutpost.dexdrip.models.Profile;
 import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
 import com.eveningoutpost.dexdrip.utils.Preferences;
-import com.github.amlcurran.showcaseview.ShowcaseView;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -52,10 +50,6 @@ public class ProfileEditor extends BaseAppCompatActivity {
     private static TextView adjustPercentage;
 
     private static double last_conversion = 0;
-    private static final boolean oneshot = true;
-    private static ShowcaseView myShowcase;
-
-    private static final int SHOWCASE_PROFILE_SPLIT = 501;
 
     public static final int MINS_PER_DAY = 1440; // 00:00
     private static final int END_OF_DAY = MINS_PER_DAY - 1; // 23:59
@@ -89,7 +83,6 @@ public class ProfileEditor extends BaseAppCompatActivity {
         JoH.fixActionBar(this);
         // TODO add menu in xml
 
-
         adjustallSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -114,14 +107,12 @@ public class ProfileEditor extends BaseAppCompatActivity {
             }
         });
 
-
         recyclerView = (RecyclerView) findViewById(R.id.profile_recycler_view);
 
         mAdapter = new ProfileAdapter(this, profileItemList, doMgdl);
         RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(getApplicationContext());
         recyclerView.setLayoutManager(mLayoutManager);
         recyclerView.setItemAnimator(new DefaultItemAnimator());
-
 
         if (profileItemList.size() == 0) {
             profileItemList.add(new ProfileItem(0, END_OF_DAY,
@@ -238,7 +229,6 @@ public class ProfileEditor extends BaseAppCompatActivity {
                     }
                 });
 
-
         DefaultItemAnimator animator = new DefaultItemAnimator() {
             @Override
             public boolean canReuseUpdatedViewHolder(RecyclerView.ViewHolder viewHolder) {
@@ -249,9 +239,6 @@ public class ProfileEditor extends BaseAppCompatActivity {
         recyclerView.setItemAnimator(animator);
         recyclerView.setAdapter(mAdapter);
         mAdapter.notifyDataSetChanged();
-
-        showcasemenu(SHOWCASE_PROFILE_SPLIT);
-
 
     }
 
@@ -268,7 +255,7 @@ public class ProfileEditor extends BaseAppCompatActivity {
         super.onPause();
 
         if (dataChanged) {
-            Profile.reloadPreferences();
+//            Profile.reloadPreferences();
             Intent intent = new Intent(ProfileEditor.this, Preferences.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
             intent.putExtra("refresh", "");
@@ -324,7 +311,6 @@ public class ProfileEditor extends BaseAppCompatActivity {
             UserError.Log.uel(TAG, "Saved Treatment Profile data, timeblocks:" + profileItemListTmp.size());
             updateAdjustmentFactor(1.0); // reset it
             dataChanged = true;
-            Profile.invalidateProfile();
 
         } else {
             Pref.setString("saved_profile_list_json_working", data);
@@ -428,28 +414,6 @@ public class ProfileEditor extends BaseAppCompatActivity {
         return myprofileItemList;
     }
 
-    public static String minMaxCarbs(List<ProfileItem> myprofileItemList) {
-        double carbsmin = 9999999;
-        double carbsmax = -1;
-        for (ProfileItem item : myprofileItemList) {
-            if (item.carb_ratio > carbsmax) carbsmax = item.carb_ratio;
-            if (item.carb_ratio < carbsmin) carbsmin = item.carb_ratio;
-        }
-        if (carbsmin == carbsmax) return JoH.qs(carbsmin, -1);
-        return JoH.qs(carbsmin, -1) + " - " + JoH.qs(carbsmax, -1);
-    }
-
-    public static String minMaxSens(List<ProfileItem> myprofileItemList) {
-        double sensmin = 9999999;
-        double sensmax = -1;
-        for (ProfileItem item : myprofileItemList) {
-            if (item.sensitivity > sensmax) sensmax = item.sensitivity;
-            if (item.sensitivity < sensmin) sensmin = item.sensitivity;
-        }
-        if (sensmin == sensmax) return JoH.qs(sensmin, -1);
-        return JoH.qs(sensmin, -1) + " - " + JoH.qs(sensmax, -1);
-    }
-
 
     private void forceRefresh() {
         forceRefresh(true);
@@ -496,9 +460,6 @@ public class ProfileEditor extends BaseAppCompatActivity {
             }
         }
 
-    }
-
-    private synchronized void showcasemenu(int option) {
     }
 
 }

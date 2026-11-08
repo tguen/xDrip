@@ -28,89 +28,76 @@ import static com.eveningoutpost.dexdrip.services.Ob1G5CollectionService.getTran
  * Created by Emma Black on 11/5/14.
  */
 public class NavDrawerBuilder {
-    private List<Calibration> last_two_calibrations = Calibration.latestValid(2);
-    private final List<BgReading> last_two_bgReadings = BgReading.latestUnCalculated(2);
-    private final List<BgReading> bGreadings_in_last_30_mins = BgReading.last30Minutes();
-    private boolean is_active_sensor = Sensor.isActive();
-    public final List<Intent> nav_drawer_intents = new ArrayList<>();
+	public final List<Intent> nav_drawer_intents = new ArrayList<>();
     public final List<String> nav_drawer_options = new ArrayList<>();
 
     public NavDrawerBuilder(final Context context) {
         final DexCollectionType collector = DexCollectionType.getDexCollectionType();
 
-        final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-
-        this.nav_drawer_options.add(context.getString(R.string.home_screen));
-        this.nav_drawer_intents.add(new Intent(context, Home.class));
+        addOption(context, R.string.home_screen, Home.class);
 
 //        if (is_active_sensor && last_two_calibrations != null && !last_two_calibrations.isEmpty()) {
-//            this.nav_drawer_options.add(context.getString(R.string.calibration_graph));
-//            this.nav_drawer_intents.add(new Intent(context, CalibrationGraph.class));
+//            addOption(context, R.string.calibration_graph, CalibrationGraph.class);
 //        }
 
-            this.nav_drawer_options.add(context.getString(R.string.bg_data_table));
-            this.nav_drawer_intents.add(new Intent(context, BgReadingTable.class));
-            this.nav_drawer_options.add(context.getString(R.string.calibration_data_table));
-            this.nav_drawer_intents.add(new Intent(context, CalibrationDataTable.class));
+        addOption(context, R.string.bg_data_table, BgReadingTable.class);
+        addOption(context, R.string.calibration_data_table, CalibrationDataTable.class);
 
         if (!collector.canNotStartStopOrCal()) {
             // Only if the collector can start/stop sensor and submit calibrations (is not passive)
+            if (Sensor.isActive()) {
+	            final List<BgReading> last_two_bgReadings = BgReading.latestUnCalculated(2);
 
-            if (is_active_sensor) {
-                    if (last_two_bgReadings.size() > 1 || Ob1G5CollectionService.isG5WantingCalibration()) {
-                        if ((last_two_calibrations.size() > 1) && !Ob1G5CollectionService.isG5WantingInitialCalibration()) { // After two successful initial calibrations
-                            // TODO tighten this time limit
-                            if (bGreadings_in_last_30_mins.size() >= 2) {
-                                long time_now = JoH.tsl();
-                                if ((time_now - last_two_calibrations.get(0).timestamp < (1000 * 60 * 60))
-                                        && !Ob1G5CollectionService.isG5WantingCalibration()) { // Put steps in place to discourage over calibration
-                                    this.nav_drawer_options.add(context.getString(R.string.override_calibration));
-                                    this.nav_drawer_intents.add(new Intent(context, CalibrationOverride.class));
-                                } else { // G5, old G6, or Firefly in no-code mode, after initial calibration and long enough after previous calibration
-                                    this.nav_drawer_options.add(context.getString(R.string.add_calibration));
-                                    this.nav_drawer_intents.add(new Intent(context, AddCalibration.class));
-                                }
-                            } else {  // G5, old G6 or Firefly in no-code mode, not long after a calibration
-                                this.nav_drawer_options.add(context.getString(R.string.cannot_calibrate_right_now));
-                                this.nav_drawer_intents.add(new Intent(context, Home.class));
+	            if (last_two_bgReadings.size() > 1 || Ob1G5CollectionService.isG5WantingCalibration()) {
+                    final List<Calibration> last_two_calibrations = Calibration.latestValid(2);
+
+                    if ((last_two_calibrations.size() > 1) && !Ob1G5CollectionService.isG5WantingInitialCalibration()) { // After two successful initial calibrations
+                        // TODO tighten this time limit
+                        if (BgReading.last30Minutes().size() >= 2) {
+                            long time_now = JoH.tsl();
+                            if ((time_now - last_two_calibrations.get(0).timestamp < (1000 * 60 * 60))
+                                    && !Ob1G5CollectionService.isG5WantingCalibration()) { // Put steps in place to discourage over calibration
+                                addOption(context, R.string.override_calibration, CalibrationOverride.class);
+                            } else { // G5, old G6, or Firefly in no-code mode, after initial calibration and long enough after previous calibration
+                                addOption(context, R.string.add_calibration, AddCalibration.class);
                             }
-                        } else { // If there haven't been two initial calibrations
-                            if (BgReading.isDataSuitableForDoubleCalibration() || Ob1G5CollectionService.isG5WantingInitialCalibration()) {
-                                if ((FirmwareCapability.isTransmitterRawIncapable(getTransmitterID()) && last_two_bgReadings.size() > 1) || FirmwareCapability.isDeviceAltOrAlt2OrAlt3(getTransmitterID()) ) { //A Firefly G6 after third reading or a G7
-                                    this.nav_drawer_options.add(context.getString(R.string.add_calibration));
-                                    this.nav_drawer_intents.add(new Intent(context, AddCalibration.class));
-                                } else { // G5 or non-Firefly G6 or Firefly G6 in no-code mode, after warm-up before initial calibration
-                                    this.nav_drawer_options.add(context.getString(R.string.initial_calibration));
-                                    this.nav_drawer_intents.add(new Intent(context, DoubleCalibrationActivity.class));
-                                }
+                        } else {  // G5, old G6 or Firefly in no-code mode, not long after a calibration
+                            addOption(context, R.string.cannot_calibrate_right_now, Home.class);
+                        }
+                    } else { // If there haven't been two initial calibrations
+                        if (BgReading.isDataSuitableForDoubleCalibration() || Ob1G5CollectionService.isG5WantingInitialCalibration()) {
+                            if ((FirmwareCapability.isTransmitterRawIncapable(getTransmitterID()) && last_two_bgReadings.size() > 1) || FirmwareCapability.isDeviceAltOrAlt2OrAlt3(getTransmitterID()) ) { //A Firefly G6 after third reading or a G7
+                                addOption(context, R.string.add_calibration, AddCalibration.class);
+                            } else { // G5 or non-Firefly G6 or Firefly G6 in no-code mode, after warm-up before initial calibration
+                                addOption(context, R.string.initial_calibration, DoubleCalibrationActivity.class);
                             }
                         }
                     }
+                }
                 if (!DexCollectionType.isG7()) { // If we are using G7, there will be no stop sensor option in the menu.
-                    this.nav_drawer_options.add(context.getString(R.string.stop_sensor));
-                    this.nav_drawer_intents.add(new Intent(context, StopSensor.class));
+                    addOption(context, R.string.stop_sensor, StopSensor.class);
                 }
             } else {
-                this.nav_drawer_options.add(context.getString(R.string.start_sensor));
-                this.nav_drawer_intents.add(new Intent(context, StartNewSensor.class));
+                addOption(context, R.string.start_sensor, StartNewSensor.class);
             }
         }
 
+        final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         boolean bg_alerts = prefs.getBoolean("bg_alerts_from_main_menu", false);
         if (bg_alerts) {
-            this.nav_drawer_options.add(context.getString(R.string.level_alerts));
-            this.nav_drawer_intents.add(new Intent(context, AlertList.class));
+            addOption(context, R.string.level_alerts, AlertList.class);
         }
 
         if (Experience.gotData()) {
-            this.nav_drawer_options.add(context.getString(R.string.snooze_alert));
-            this.nav_drawer_intents.add(new Intent(context, SnoozeActivity.class));
-
-            this.nav_drawer_options.add(context.getString(R.string.history));
-            this.nav_drawer_intents.add(new Intent(context, BGHistory.class));
+            addOption(context, R.string.snooze_alert, SnoozeActivity.class);
+            addOption(context, R.string.history, BGHistory.class);
         }
 
-        this.nav_drawer_options.add(context.getString(R.string.settings));
-        this.nav_drawer_intents.add(new Intent(context, Preferences.class));
+        addOption(context, R.string.settings, Preferences.class);
+    }
+
+    private void addOption(final Context c, int str, Class<?> cls) {
+        this.nav_drawer_options.add(c.getString(str));
+        this.nav_drawer_intents.add(new Intent(c, cls));
     }
 }

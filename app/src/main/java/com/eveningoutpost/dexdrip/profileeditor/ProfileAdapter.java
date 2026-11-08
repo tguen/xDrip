@@ -37,7 +37,6 @@ public class ProfileAdapter extends RecyclerView.Adapter<ProfileAdapter.MyViewHo
     private int carbTopMax = 1;
     private Context context;
     int first_run = 0;
-    public int max_position = -1;
     private boolean doMgdl;
 
     public interface TimePickerCallbacks {
@@ -86,7 +85,6 @@ public class ProfileAdapter extends RecyclerView.Adapter<ProfileAdapter.MyViewHo
         SeekBar carbsSeekBar, sensSeekBar;
         TextView startTime, endTime;
         RelativeLayout wholeBlock;
-        int value;
         TextView result, carbsresult, sensresult;
         int sensitivity_scaling = 1;
         int carbs_scaling = 1;

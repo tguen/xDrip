@@ -131,10 +131,6 @@
 <!--                <category android:name="android.intent.category.MULTIWINDOW_LAUNCHER" />-->
             </intent-filter>
         </activity>
-        <activity
-            android:name=".BluetoothScan"
-            android:configChanges="orientation|screenSize"
-            android:label="@string/title_activity_bluetooth_scan" />
 
         <service
             android:name=".services.DexCollectionService"
@@ -282,12 +278,6 @@
             android:name=".utils.SdcardImportExport"
             android:configChanges="orientation|screenSize"
             android:label="@string/settings_on_external_storage" />
-
-        <activity
-            android:name=".profileeditor.ProfileEditor"
-            android:configChanges="orientation|screenSize"
-            android:label="@string/title_activity_profile_editor"
-            android:windowSoftInputMode="adjustPan" />
 
         <activity
             android:name=".EventLogActivity"
