@@ -106,7 +106,6 @@ public class JoH {
     private final static boolean debug_wakelocks = false;
 
     private static double benchmark_time = 0;
-    private static Map<String, Double> benchmarks = new HashMap<String, Double>();
     private static final Map<String, Long> rateLimits = new HashMap<>();
 
     public static boolean buggy_samsung = false; // flag set when we detect samsung devices which do not perform to android specifications
@@ -215,36 +214,6 @@ public class JoH {
     }
 
 
-    public static byte[] compressStringToBytes(String string) {
-        try {
-            ByteArrayOutputStream output = new ByteArrayOutputStream(string.length());
-            BestGZIPOutputStream gzipped_data = new BestGZIPOutputStream(output);
-            gzipped_data.write(string.getBytes(Charset.forName("UTF-8")));
-            gzipped_data.close();
-            byte[] compressed = output.toByteArray();
-            output.close();
-            return compressed;
-        } catch (Exception e) {
-            Log.e(TAG, "Exception in compress: " + e.toString());
-            return new byte[0];
-        }
-    }
-
-    public static byte[] compressBytesToBytes(byte[] bytes) {
-        try {
-            ByteArrayOutputStream output = new ByteArrayOutputStream(bytes.length);
-            BestGZIPOutputStream gzipped_data = new BestGZIPOutputStream(output);
-            gzipped_data.write(bytes);
-            gzipped_data.close();
-            byte[] compressed = output.toByteArray();
-            output.close();
-            return compressed;
-        } catch (Exception e) {
-            Log.e(TAG, "Exception in compress: " + e.toString());
-            return new byte[0];
-        }
-    }
-
     public static byte[] decompressBytesToBytes(byte[] bytes) {
         try {
             Log.d(TAG, "Decompressing  bytes size: " + bytes.length);
@@ -305,29 +274,8 @@ public class JoH {
     }
 
 
-    public static String ucFirst(String input) {
-        return input.substring(0, 1).toUpperCase() + input.substring(1).toLowerCase();
-    }
-
     public static boolean isSamsung() {
         return false;
-    }
-
-    private static final String BUGGY_SAMSUNG_ENABLED = "buggy-samsung-enabled";
-    public static void persistentBuggySamsungCheck() {
-        if (!buggy_samsung) {
-           if (JoH.isSamsung() && PersistentStore.getLong(BUGGY_SAMSUNG_ENABLED) > 4) {
-               buggy_samsung = true;
-               UserError.Log.d(TAG,"Enabling wake workaround mode due to historical pattern");
-           }
-        }
-    }
-
-    public static void setBuggySamsungEnabled() {
-        if (!buggy_samsung) {
-            JoH.buggy_samsung = true;
-            PersistentStore.incrementLong(BUGGY_SAMSUNG_ENABLED);
-        }
     }
 
     public static String getFieldFromURI(final String column, final Uri contentUri) {
@@ -417,15 +365,6 @@ public class JoH {
     }
 
 
-    public static synchronized void clearRatelimit(final String name) {
-        if (PersistentStore.getLong(name) > 0) {
-            PersistentStore.setLong(name, 0);
-        }
-        if (rateLimits.containsKey(name)) {
-            rateLimits.remove(name);
-        }
-    }
-
     // return true if below rate limit (persistent version)
     public static synchronized boolean pratelimit(final String name, final int seconds) {
         // check if over limit
@@ -474,21 +413,6 @@ public class JoH {
         return true;
     }
 
-    public static String getDeviceDetails() {
-        final String manufacturer = Build.MANUFACTURER.replace(" ", "_");
-        final String model = Build.MODEL.replace(" ", "_");
-        final String version = Integer.toString(Build.VERSION.SDK_INT) + " " + Build.VERSION.RELEASE + " " + Build.VERSION.INCREMENTAL;
-        return manufacturer + " " + model + " " + version;
-    }
-
-    public static String getVersionDetails() {
-        try {
-            return xdrip.getAppContext().getPackageManager().getPackageInfo(xdrip.getAppContext().getPackageName(), PackageManager.GET_META_DATA).versionName;
-        } catch (Exception e) {
-            return "Unknown version";
-        }
-    }
-
     public static void fixActionBar(AppCompatActivity context) {
         try {
             context.getSupportActionBar().setDisplayShowHomeEnabled(true);
@@ -524,10 +448,6 @@ public class JoH {
 
     public static String dateTimeText(long timestamp) {
         return android.text.format.DateFormat.format("yyyy-MM-dd kk:mm:ss", timestamp).toString();
-    }
-
-    public static String dateText(long timestamp) {
-        return android.text.format.DateFormat.format("yyyy-MM-dd", timestamp).toString();
     }
 
     public static String niceTimeSince(long t) {
@@ -611,10 +531,6 @@ public class JoH {
         }
     }
 
-    public static String niceTimeScalarRedux(long t) {
-        return niceTimeScalar(t).replaceFirst("^1 ", "");
-    }
-
 
     public static String normalizeNumber(final String str) {
         val normalized = new StringBuilder();
@@ -643,15 +559,6 @@ public class JoH {
         if (str == null) return def;
         try {
             return tolerantParseDouble(str);
-        } catch (NumberFormatException e) {
-            return def;
-        }
-    }
-
-    public static int tolerantParseInt(final String str, final int def) {
-        if (str == null) return def;
-        try {
-            return Integer.parseInt(str);
         } catch (NumberFormatException e) {
             return def;
         }
@@ -733,31 +640,6 @@ public class JoH {
         } catch (Exception e) {
             return false;
         }
-    }
-
-    public static String getWifiSSID() {
-        try {
-            final WifiManager wifi_manager = (WifiManager) xdrip.getAppContext().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-            if (wifi_manager.isWifiEnabled()) {
-                final WifiInfo wifiInfo = wifi_manager.getConnectionInfo();
-                if (wifiInfo != null) {
-                    final NetworkInfo.DetailedState wifi_state = WifiInfo.getDetailedStateOf(wifiInfo.getSupplicantState());
-                    if (wifi_state == NetworkInfo.DetailedState.CONNECTED
-                            || wifi_state == NetworkInfo.DetailedState.OBTAINING_IPADDR
-                            || wifi_state == NetworkInfo.DetailedState.CAPTIVE_PORTAL_CHECK) {
-                        String ssid = wifiInfo.getSSID();
-                        if (ssid.equals("<unknown ssid>")) return null; // WifiSsid.NONE;
-                        if (ssid.charAt(0) == '"') ssid = ssid.substring(1);
-                        if (ssid.charAt(ssid.length() - 1) == '"')
-                            ssid = ssid.substring(0, ssid.length() - 1);
-                        return ssid;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Got exception in getWifiSSID: " + e);
-        }
-        return null;
     }
 
     public static boolean runOnUiThread(Runnable theRunnable) {
@@ -871,22 +753,6 @@ public class JoH {
         }
     }
 
-    private static void stopReleaseAndNullPlayer() {
-        try {
-            playerLock.acquire();
-            try {
-                stopAndReleasePlayer(player);
-                player = null;
-            } catch (Exception e) {
-                UserError.Log.e(TAG, "Got exception trying to stop and release player: " + e);
-            } finally {
-                playerLock.release();
-            }
-        } catch (InterruptedException e) {
-            UserError.Log.e(TAG, "Got interrupted exception with player semaphore wait 3 " + e);
-        }
-    }
-
     public static void delayedMediaPlayerRelease(final MediaPlayer mp) {
         new Thread(() -> {
             // android calls the onCompletionListener before the sound has actually finished!
@@ -960,11 +826,6 @@ public class JoH {
         }
     }
 
-    public static void stopSoundUri() {
-        UserError.Log.d(TAG, "stopSoundUri called");
-        stopReleaseAndNullPlayer();
-    }
-
     public static Object cloneObject(Object obj) {
         try {
             Object clone = obj.getClass().newInstance();
@@ -1028,79 +889,6 @@ public class JoH {
         return new Intent(xdrip.getAppContext(), c).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
     }
 
-
-    public static Bitmap screenShot(View view, String annotation) {
-
-        if (view == null) {
-            static_toast_long("View is null in screenshot!");
-            return null;
-        }
-        final int width = view.getWidth();
-        final int height = view.getHeight();
-        Log.d(TAG, "Screenshot called: " + width + "," + height);
-        final Bitmap bitmap = Bitmap.createBitmap(width,
-                height, Bitmap.Config.ARGB_8888);
-
-        final Canvas canvas = new Canvas(bitmap);
-
-        view.destroyDrawingCache();
-        view.layout(0, 0, width, height);
-        view.draw(canvas);
-
-        if (annotation != null) {
-            final int offset = (annotation != null) ? 40 : 0;
-            final Bitmap bitmapf = Bitmap.createBitmap(width,
-                    height + offset, Bitmap.Config.ARGB_8888);
-            final Canvas canvasf = new Canvas(bitmapf);
-
-            Paint paint = new Paint();
-	        paint.setColor(Color.GRAY);
-	        paint.setTextSize(20);
-            // paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_OUT));
-            canvasf.drawBitmap(bitmap, 0, offset, paint);
-            canvasf.drawText(annotation, 50, (offset / 2) + 5, paint);
-            bitmap.recycle();
-            return bitmapf;
-        }
-
-        return bitmap;
-    }
-
-
-    public static void bitmapToFile(Bitmap bitmap, String path, String fileName) {
-
-        if (bitmap == null) return;
-        Log.d(TAG, "bitmapToFile: " + bitmap.getWidth() + "x" + bitmap.getHeight());
-        File dir = new File(path);
-        if (!dir.exists())
-            dir.mkdirs();
-        final File file = new File(path, fileName);
-        try {
-            FileOutputStream output = new FileOutputStream(file);
-            final boolean result = bitmap.compress(Bitmap.CompressFormat.PNG, 80, output);
-            output.flush();
-            output.close();
-            Log.d(TAG, "Bitmap compress result: " + result);
-        } catch (Exception e) {
-            Log.e(TAG, "Got exception writing bitmap to file: " + e);
-        }
-    }
-
-    public static void shareImage(final Context context, final File file) {
-        final Uri uri = FileProvider.getUriForFile(context, BuildConfig.APPLICATION_ID + ".provider", file);
-        final Intent intent = new Intent();
-        intent.setAction(Intent.ACTION_SEND);
-        intent.setType("image/*");
-        intent.putExtra(android.content.Intent.EXTRA_SUBJECT, "");
-        intent.putExtra(android.content.Intent.EXTRA_TEXT, "");
-        intent.putExtra(Intent.EXTRA_STREAM, uri);
-        intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        try {
-            context.startActivity(Intent.createChooser(intent, "Share"));
-        } catch (ActivityNotFoundException e) {
-            static_toast_long("No suitable app to show an image!");
-        }
-    }
 
     public static void cancelAlarm(Context context, PendingIntent serviceIntent) {
         // do we want a try catch block here?
@@ -1275,7 +1063,6 @@ public class JoH {
         return doPairingRequest(context, broadcastReceiver, intent, mBluetoothDeviceAddress, null);
     }
 
-    @TargetApi(19)
     public static boolean doPairingRequest(Context context, BroadcastReceiver broadcastReceiver, Intent intent, final String mBluetoothDeviceAddress, final String pinHint) {
         if (BluetoothDevice.ACTION_PAIRING_REQUEST.equals(intent.getAction())) {
             final BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
@@ -1324,16 +1111,6 @@ public class JoH {
             }
         }
         return true;
-    }
-
-    public static String getLocalBluetoothName() {
-        try {
-            final String name = BluetoothAdapter.getDefaultAdapter().getName();
-            if (name == null) return "";
-            return name;
-        } catch (Exception e) {
-            return "";
-        }
     }
 
     public static boolean refreshDeviceCache(String thisTAG, BluetoothGatt gatt){
@@ -1433,50 +1210,12 @@ public class JoH {
     }
 
 
-    public static synchronized void unBond(String transmitterMAC) {
-
-        UserError.Log.d(TAG, "unBond() start");
-        if (transmitterMAC == null) return;
-        try {
-            final BluetoothAdapter mBluetoothAdapter = ((BluetoothManager) xdrip.getAppContext().getSystemService(Context.BLUETOOTH_SERVICE)).getAdapter();
-
-            final Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
-            if (pairedDevices.size() > 0) {
-                for (BluetoothDevice device : pairedDevices) {
-                    if (device.getAddress() != null) {
-                        if (device.getAddress().equals(transmitterMAC)) {
-                            try {
-                                UserError.Log.e(TAG, "removingBond: " + transmitterMAC);
-                                Method m = device.getClass().getMethod("removeBond", (Class[]) null);
-                                m.invoke(device, (Object[]) null);
-
-                            } catch (Exception e) {
-                                UserError.Log.e(TAG, e.getMessage(), e);
-                            }
-                        }
-
-                    }
-                }
-            }
-        } catch (Exception e) {
-            UserError.Log.e(TAG, "Exception during unbond! " + transmitterMAC, e);
-        }
-        UserError.Log.d(TAG, "unBond() finished");
-    }
-
-
     public static void threadSleep(long millis) {
         try {
             Thread.sleep(millis);
         } catch (InterruptedException e) {
             //
         }
-    }
-
-    public static ByteBuffer bArrayAsBuffer(byte[] bytes) {
-        final ByteBuffer bb = ByteBuffer.allocate(bytes.length);
-        bb.put(bytes);
-        return bb;
     }
 
     public static byte[] joinBytes(final byte[] first, final byte[] second) {
@@ -1488,14 +1227,6 @@ public class JoH {
         System.arraycopy(first, 0, result, 0, first.length);
         System.arraycopy(second, 0, result, first.length, second.length);
         return result;
-    }
-
-
-    public static long checksum(byte[] bytes) {
-        if (bytes == null) return 0;
-        final CRC32 crc = new CRC32();
-        crc.update(bytes);
-        return crc.getValue();
     }
 
 

@@ -42,6 +42,8 @@ import static com.eveningoutpost.dexdrip.calibrations.PluggableCalibration.newCl
 import static com.eveningoutpost.dexdrip.g5model.Ob1G5StateMachine.shortTxId;
 import static com.eveningoutpost.dexdrip.importedlibraries.dexcom.Dex_Constants.TREND_ARROW_VALUES.NOT_COMPUTABLE;
 import static com.eveningoutpost.dexdrip.importedlibraries.dexcom.Dex_Constants.TREND_ARROW_VALUES.getTrend;
+import static com.eveningoutpost.dexdrip.utilitymodels.Constants.DAY_IN_MS;
+import static com.eveningoutpost.dexdrip.utilitymodels.Constants.MINUTE_IN_MS;
 
 
 @Table(name = "BgReadings", id = BaseColumns._ID)
@@ -49,18 +51,17 @@ public class BgReading extends Model {
 
     private final static String TAG = BgReading.class.getSimpleName();
     private final static String TAG_ALERT = TAG + " AlertBg";
-    public static final double AGE_ADJUSTMENT_TIME = 86400000 * 1.9;
+    public static final double AGE_ADJUSTMENT_TIME = DAY_IN_MS * 1.9;
     public static final double AGE_ADJUSTMENT_FACTOR = .45;
-    public static final double AGE_ADJUSTMENT_TIME_G6 = 86400000 * 1.9 / 1.8;
+    public static final double AGE_ADJUSTMENT_TIME_G6 = DAY_IN_MS * 1.9 / 1.8;
     public static final double AGE_ADJUSTMENT_FACTOR_G6 = .45 / 3;
     //TODO: Have these as adjustable settings!!
-    public final static double BESTOFFSET = (60000 * 0); // Assume readings are about x minutes off from actual!
+    public final static double BESTOFFSET = (MINUTE_IN_MS * 0); // Assume readings are about x minutes off from actual!
 
     public static final int BG_READING_ERROR_VALUE = 38; // error marker
     public static final int BG_READING_MINIMUM_VALUE = 39;
     public static final int BG_READING_MAXIMUM_VALUE = 400;
 
-    private static volatile long earliest_backfill = 0;
 
     @Column(name = "sensor", index = true)
     public Sensor sensor;
@@ -780,12 +781,6 @@ public class BgReading extends Model {
         }
     }
 
-    public static boolean isDataStale() {
-        final BgReading last = lastNoSenssor();
-        if (last == null) return true;
-        return JoH.msSince(last.timestamp) > Home.stale_data_millis();
-    }
-
     public static boolean doWeHaveRecentUsableData() {
         final BgReading last = last();
         if (last == null) return false;
@@ -902,17 +897,6 @@ public class BgReading extends Model {
                 .where("calculated_value != 0")
                 .where("raw_data != 0")
                 .executeSingle();
-    }
-
-    public static List<BgReading> last30Minutes() {
-        double timestamp = (new Date().getTime()) - (60000 * 30);
-        return new Select()
-                .from(BgReading.class)
-                .where("timestamp >= " + timestamp)
-                .where("calculated_value != 0")
-                .where("raw_data != 0")
-                .orderBy("timestamp desc")
-                .execute();
     }
 
     public static boolean isDataSuitableForDoubleCalibration() {

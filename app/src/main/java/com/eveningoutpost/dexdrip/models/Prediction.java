@@ -4,7 +4,6 @@ import android.provider.BaseColumns;
 
 import com.activeandroid.annotation.Column;
 import com.activeandroid.annotation.Table;
-import com.activeandroid.query.Delete;
 import com.activeandroid.query.Select;
 import com.google.gson.annotations.Expose;
 
@@ -14,6 +13,7 @@ import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
+
 
 /**
  * Created by jamorham on 11/06/2018.
@@ -64,16 +64,6 @@ public class Prediction extends PlusModel {
         return prediction;
     }
 
-    public Prediction addNote(String note) {
-        this.note = note;
-        return this;
-    }
-
-
-    public String toS() {
-        return JoH.defaultGsonInstance().toJson(this);
-    }
-
     // static methods
 
     public static Prediction last() {
@@ -86,14 +76,6 @@ public class Prediction extends PlusModel {
             updateDB();
             return null;
         }
-    }
-
-    public static List<Prediction> latestForGraph(int number, double startTime) {
-        return latestForGraph(number, (long) startTime, Long.MAX_VALUE);
-    }
-
-    public static List<Prediction> latestForGraph(int number, long startTime) {
-        return latestForGraph(number, startTime, Long.MAX_VALUE);
     }
 
     public static List<Prediction> latestForGraph(int number, long startTime, long endTime) {
@@ -114,19 +96,8 @@ public class Prediction extends PlusModel {
     }
 
 
-    public static List<Prediction> cleanup(int retention_days) {
-        return new Delete()
-                .from(Prediction.class)
-                .where("timestamp < ?", JoH.tsl() - (retention_days * 86400000L))
-                .execute();
-    }
-
-
     // create the table ourselves without worrying about model versioning and downgrading
     public static void updateDB() {
         patched = fixUpTable(schema, patched);
     }
 }
-
-
-

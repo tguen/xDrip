@@ -20,8 +20,6 @@ public class SensorSanity {
     public static final double DEXCOM_G6_MIN_RAW = 5; // raw values below this will be treated as error
     public static final double DEXCOM_G6_MAX_RAW = 1000; // raw values above this will be treated as error
 
-    public static final double LIBRE_MIN_RAW = 5; // raw values below this will be treated as error
-
     private static final String TAG = "SensorSanity";
 
     public static boolean isRawValueSane(double raw_value) {
@@ -30,11 +28,6 @@ public class SensorSanity {
 
     public static boolean isRawValueSane(double raw_value, boolean hard) {
         return isRawValueSane(raw_value, DexCollectionType.getDexCollectionType(), hard);
-    }
-
-    public static boolean isRawValueSane(double raw_value, DexCollectionType type) {
-        return isRawValueSane(raw_value, type, false);
-
     }
 
     public static boolean isRawValueSane(double raw_value, DexCollectionType type, boolean hard_check) {

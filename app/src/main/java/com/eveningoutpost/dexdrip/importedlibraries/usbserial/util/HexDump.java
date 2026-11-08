@@ -25,15 +25,6 @@ public class HexDump {
             '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
     };
 
-    public static String dumpHexString(Byte[] array) {
-        if (array == null) return "<null>";
-        byte[] line = new byte[array.length];
-        for (int i = 0; i < array.length; i++) {
-            line[i] = array[i];
-        }
-        return dumpHexString(line, 0, array.length);
-    }
-
     public static String dumpHexString(byte[] array) {
         if (array == null) return "<null>";
         return dumpHexString(array, 0, array.length);
@@ -94,10 +85,6 @@ public class HexDump {
         return result.toString();
     }
 
-    public static String toHexString(byte b) {
-        return toHexString(toByteArray(b));
-    }
-
     public static String toHexString(byte[] array) {
         return toHexString(array, 0, array.length);
     }
@@ -119,16 +106,6 @@ public class HexDump {
         return toHexString(toByteArray(i));
     }
 
-    public static String toHexString(short i) {
-        return toHexString(toByteArray(i));
-    }
-
-    public static byte[] toByteArray(byte b) {
-        byte[] array = new byte[1];
-        array[0] = b;
-        return array;
-    }
-
     public static byte[] toByteArray(int i) {
         byte[] array = new byte[4];
 
@@ -140,35 +117,4 @@ public class HexDump {
         return array;
     }
 
-    public static byte[] toByteArray(short i) {
-        byte[] array = new byte[2];
-
-        array[1] = (byte) (i & 0xFF);
-        array[0] = (byte) ((i >> 8) & 0xFF);
-
-        return array;
-    }
-
-    private static int toByte(char c) {
-        if (c >= '0' && c <= '9')
-            return (c - '0');
-        if (c >= 'A' && c <= 'F')
-            return (c - 'A' + 10);
-        if (c >= 'a' && c <= 'f')
-            return (c - 'a' + 10);
-
-        throw new RuntimeException("Invalid hex char '" + c + "'");
-    }
-
-    public static byte[] hexStringToByteArray(String hexString) {
-        int length = hexString.length();
-        byte[] buffer = new byte[length / 2];
-
-        for (int i = 0; i < length; i += 2) {
-            buffer[i / 2] = (byte) ((toByte(hexString.charAt(i)) << 4) | toByte(hexString
-                    .charAt(i + 1)));
-        }
-
-        return buffer;
-    }
 }

@@ -2,11 +2,8 @@ package com.eveningoutpost.dexdrip;
 
 import android.app.Application;
 import android.content.Context;
-import android.content.ContextWrapper;
-import android.content.res.Configuration;
 import android.os.Build;
 import android.preference.PreferenceManager;
-import android.util.Log;
 
 import com.eveningoutpost.dexdrip.alert.Poller;
 import com.eveningoutpost.dexdrip.calibrations.PluggableCalibration;
@@ -20,14 +17,11 @@ import com.eveningoutpost.dexdrip.utilitymodels.ColorCache;
 import com.eveningoutpost.dexdrip.utilitymodels.IdempotentMigrations;
 import com.eveningoutpost.dexdrip.utilitymodels.NotificationChannels;
 import com.eveningoutpost.dexdrip.utilitymodels.PlusAsyncExecutor;
-import com.eveningoutpost.dexdrip.utilitymodels.Pref;
 import com.eveningoutpost.dexdrip.utils.jobs.DailyJob;
 import com.eveningoutpost.dexdrip.utils.jobs.XDripJobCreator;
 import com.evernote.android.job.JobManager;
 
 import net.danlew.android.joda.JodaTimeAndroid;
-
-import java.util.Locale;
 
 import androidx.annotation.StringRes;
 
@@ -36,10 +30,8 @@ import androidx.annotation.StringRes;
  * Created by Emma Black on 3/21/15.
  */
 public class xdrip extends Application {
-
     private static final String TAG = "xdrip.java";
     private static volatile Context context;
-    private static Locale LOCALE;
     public static PlusAsyncExecutor executor;
     private static Boolean isRunningTestCache;
 
@@ -48,13 +40,6 @@ public class xdrip extends Application {
         if (xdrip.context == null) {
             xdrip.context = context.getApplicationContext();
         }
-    }
-
-    public static void setContextAlways(final Context context) {
-        if (context == null) return;
-        Log.d(TAG, "Set context: " + context.getResources().getConfiguration().getLocales().get(0).getLanguage()
-                + " was: " + xdrip.context.getResources().getConfiguration().getLocales().get(0).getLanguage());
-        xdrip.context = context;
     }
 
 
@@ -122,29 +107,6 @@ public class xdrip extends Application {
             return false;
         } else {
             return true;
-        }
-    }
-
-
-    // force language on oreo activities
-    public static Context getLangContext(Context context) {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && Pref.getBooleanDefaultFalse("force_english")) {
-                final String forced_language = Pref.getString("forced_language", "en");
-                final Configuration config = context.getResources().getConfiguration();
-
-                if (LOCALE == null) LOCALE = new Locale(forced_language);
-                Locale.setDefault(LOCALE);
-                config.setLocale(LOCALE);
-                context = context.createConfigurationContext(config);
-                //Log.d(TAG, "Sending language context for: " + LOCALE);
-                return new ContextWrapper(context);
-            } else {
-                return context;
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Got exception in getLangContext: " + e);
-            return context;
         }
     }
 

@@ -6,9 +6,9 @@ import com.activeandroid.Model;
 import com.activeandroid.annotation.Column;
 import com.activeandroid.annotation.Table;
 import com.activeandroid.query.Select;
-import com.eveningoutpost.dexdrip.Home;
 
 import java.util.List;
+
 
 /**
  * Created by Emma Black on 12/9/14.
@@ -26,12 +26,6 @@ public class CalibrationRequest extends Model {
    @Column(name = "requestIfBelow")
     public double requestIfBelow;
 
-    public static void createRange(double low, double high) {
-        CalibrationRequest calibrationRequest = new CalibrationRequest();
-        calibrationRequest.requestIfAbove = low;
-        calibrationRequest.requestIfBelow = high;
-        calibrationRequest.save();
-    }
     static void createOffset(double center, double distance) {
         CalibrationRequest calibrationRequest = new CalibrationRequest();
         calibrationRequest.requestIfAbove = center + distance;
@@ -62,17 +56,6 @@ public class CalibrationRequest extends Model {
                 .where("requestIfBelow > ?", bgReading.calculated_value)
                 .executeSingle();
         return (calibrationRequest != null && isSlopeFlatEnough(bgReading, 1));
-    }
-
-    public static boolean isSlopeFlatEnough() {
-        BgReading bgReading = BgReading.last(true);
-        if (bgReading == null) return false;
-        if (JoH.msSince(bgReading.timestamp) > Home.stale_data_millis()) {
-            UserError.Log.d(TAG, "Slope cannot be flat enough as data is stale");
-            return false;
-        }
-        // TODO check if stale, check previous slope also, check that reading parameters also
-        return isSlopeFlatEnough(bgReading);
     }
 
     public static boolean isSlopeFlatEnough(BgReading bgReading) {

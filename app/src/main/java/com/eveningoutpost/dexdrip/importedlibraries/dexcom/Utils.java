@@ -1,9 +1,5 @@
 package com.eveningoutpost.dexdrip.importedlibraries.dexcom;
 
-import com.eveningoutpost.dexdrip.importedlibraries.dexcom.records.EGVRecord;
-import com.eveningoutpost.dexdrip.importedlibraries.dexcom.records.GlucoseDataSet;
-import com.eveningoutpost.dexdrip.importedlibraries.dexcom.records.SensorRecord;
-
 import java.util.Date;
 import java.util.TimeZone;
 
@@ -21,44 +17,6 @@ public class Utils {
         TimeZone tz = TimeZone.getDefault();
         if (tz.inDaylightTime(new Date())) timeAdd = timeAdd - (1000 * 60 * 60);
         return new Date(timeAdd);
-    }
-
-    public static String getTimeString(long timeDeltaMS) {
-        long minutes = (timeDeltaMS / 1000) / 60;
-        long hours = minutes / 60;
-        long days = hours / 24;
-        long weeks = days / 7;
-        minutes= minutes - hours * 60;
-        hours = hours - days * 24;
-        days= days - weeks * 7;
-
-        String timeAgoString = "";
-        if (weeks > 0) {
-            timeAgoString += weeks + " weeks ";
-        }
-        if (days > 0) {
-            timeAgoString += days + " days ";
-        }
-        if (hours > 0) {
-            timeAgoString += hours + " hours ";
-        }
-        if (minutes >= 0) {
-            timeAgoString += minutes + " min ";
-        }
-
-        return (timeAgoString.equals("") ? "--" : timeAgoString + "ago");
-    }
-
-    public static GlucoseDataSet[] mergeGlucoseDataRecords(EGVRecord[] egvRecords,
-                                                           SensorRecord[] sensorRecords) {
-        int egvLength = egvRecords.length;
-        int sensorLength = sensorRecords.length;
-        int smallerLength = egvLength < sensorLength ? egvLength : sensorLength;
-        GlucoseDataSet[] glucoseDataSets = new GlucoseDataSet[smallerLength];
-        for (int i = 1; i <= smallerLength; i++) {
-            glucoseDataSets[smallerLength - i] = new GlucoseDataSet(egvRecords[egvLength - i], sensorRecords[sensorLength - i]);
-        }
-        return glucoseDataSets;
     }
 
     public static String bytesToHex(byte[] bytes) {

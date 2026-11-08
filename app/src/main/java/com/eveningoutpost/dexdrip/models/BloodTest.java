@@ -13,7 +13,6 @@ import com.eveningoutpost.dexdrip.Home;
 import com.eveningoutpost.dexdrip.calibrations.CalibrationAbstract;
 import com.eveningoutpost.dexdrip.calibrations.NativeCalibrationPipe;
 import com.eveningoutpost.dexdrip.calibrations.PluggableCalibration;
-import com.eveningoutpost.dexdrip.messages.BloodTestMessage;
 import com.eveningoutpost.dexdrip.utilitymodels.BgGraphBuilder;
 import com.eveningoutpost.dexdrip.utilitymodels.Constants;
 import com.eveningoutpost.dexdrip.utilitymodels.PersistentStore;
@@ -23,10 +22,8 @@ import com.google.common.math.DoubleMath;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.Expose;
-import com.squareup.wire.Wire;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -150,26 +147,6 @@ public class BloodTest extends Model {
         return null;
     }
 
-    public static BloodTest createFromCal(double bg, double timeoffset, String source) {
-        return createFromCal(bg, timeoffset, source, null);
-    }
-
-    public static BloodTest createFromCal(double bg, double timeoffset, String source, String suggested_uuid) {
-        final String unit = Pref.getString("units", "mgdl");
-
-        if (unit.compareTo("mgdl") != 0) {
-            bg = bg * Constants.MMOLL_TO_MGDL;
-        }
-
-        if ((bg < 40) || (bg > 400)) {
-            Log.wtf(TAG, "Invalid out of range bloodtest glucose mg/dl value of: " + bg);
-            JoH.static_toast_long("Bloodtest out of range: " + bg + " mg/dl");
-            return null;
-        }
-
-        return create((long) (new Date().getTime() - timeoffset), bg, source, suggested_uuid);
-    }
-
     public static BloodTest last() {
         final List<BloodTest> btl = last(1);
         if ((btl != null) && (btl.size() > 0)) {
@@ -226,33 +203,6 @@ public class BloodTest extends Model {
         } catch (android.database.sqlite.SQLiteException e) {
             fixUpTable();
             return null;
-        }
-    }
-
-    private static void processFromMessage(BloodTestMessage btm) {
-        if ((btm != null) && (btm.uuid != null) && (btm.uuid.length() == 36)) {
-            boolean is_new = false;
-            BloodTest bt = byUUID(btm.uuid);
-            if (bt == null) {
-                bt = getForPreciseTimestamp(Wire.get(btm.timestamp, BloodTestMessage.DEFAULT_TIMESTAMP), CLOSEST_READING_MS);
-                if (bt != null) {
-                    UserError.Log.wtf(TAG, "Error matches a different uuid with the same timestamp: " + bt.uuid + " vs " + btm.uuid + " skipping!");
-                    return;
-                }
-                bt = new BloodTest();
-            } else {
-                if (bt.state != Wire.get(btm.state, BloodTestMessage.DEFAULT_STATE)) {
-                }
-            }
-            bt.timestamp = Wire.get(btm.timestamp, BloodTestMessage.DEFAULT_TIMESTAMP);
-            bt.mgdl = Wire.get(btm.mgdl, BloodTestMessage.DEFAULT_MGDL);
-            bt.created_timestamp = Wire.get(btm.created_timestamp, BloodTestMessage.DEFAULT_CREATED_TIMESTAMP);
-            bt.state = Wire.get(btm.state, BloodTestMessage.DEFAULT_STATE);
-            bt.source = Wire.get(btm.source, BloodTestMessage.DEFAULT_SOURCE);
-            bt.uuid = btm.uuid;
-            bt.saveit(); // de-dupe by uuid
-        } else {
-            UserError.Log.wtf(TAG, "processFromMessage uuid is null or invalid");
         }
     }
 

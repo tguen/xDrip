@@ -17,14 +17,12 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.Expose;
 import com.google.gson.internal.bind.DateTypeAdapter;
 
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
 import androidx.preference.PreferenceManager;
-import lombok.val;
 
 
 /**
@@ -269,17 +267,6 @@ public class AlertType extends Model {
         }
     }
 
-    public static void remove_all() {
-        List<AlertType> Alerts  = new Select()
-        .from(AlertType.class)
-        .execute();
-
-        for (AlertType alert : Alerts) {
-            alert.delete();
-        }
-        ActiveBgAlert.ClearData();
-    }
-
     public static void add_alert(
             String uuid,
             String name,
@@ -381,37 +368,6 @@ public class AlertType extends Model {
         return gson.toJson(this);
     }
 
-    public static void print_all() {
-        List<AlertType> Alerts  = new Select()
-            .from(AlertType.class)
-            .execute();
-
-        Log.d(TAG,"List of all alerts");
-        for (AlertType alert : Alerts) {
-            Log.d(TAG, alert.toString());
-        }
-    }
-
-    // get the first item in the alert list which is active for either high or low alert, sorted by when the threshold will be hit, eg the highest low alert or the lowest high alert
-    public static double getFirstActiveAlertThreshold(final boolean highAlert) {
-        final List<AlertType> list = getAll(highAlert);
-        if (list != null) {
-            for (final AlertType alert : list) {
-                if (alert.active) return alert.threshold;
-            }
-        }
-        return -1;
-    }
-
-    public static List<AlertType> getAllActive() {
-        List<AlertType> alerts  = new Select()
-                .from(AlertType.class)
-                .where("active = ?", true)
-                .execute();
-
-        return alerts;
-    }
-
     public static List<AlertType> getAll(boolean above) {
         String order;
         if (above) {
@@ -439,71 +395,6 @@ public class AlertType extends Model {
             }
         }
         return false;
-    }
-
-    public static AlertType getMostExtremeAlert(boolean highAlerts) {
-        val alerts = getAll(highAlerts);
-        if (alerts == null) return null;
-        val filtered = new ArrayList<AlertType>();
-        for (val alert : alerts) {
-            if (alert.active && alert.in_time_frame()) {    // remove alerts which are not live now
-                filtered.add(alert);
-            }
-        }
-        if (filtered.size() == 0) return null;
-        return filtered.get(filtered.size()-1); // They are sorted with max last
-    }
-
-    public static AlertType getLowestAlert() {
-        return getMostExtremeAlert(false);
-    }
-
-    public static AlertType getHighestAlert() {
-        return getMostExtremeAlert(true);
-    }
-
-    // This function is used to make sure that we always have a static alert on 55 low.
-    // This alert will not be editable/removable.
-    public static void CreateStaticAlerts() {
-        if(get_alert(LOW_ALERT_55) == null) {
-            add_alert(LOW_ALERT_55, "low alert ", false, 55, true, 1, null, 0, 0, true, true, 20, true, true);
-        }
-    }
-
-
-    public static void testAll(Context context) {
-        remove_all();
-        add_alert(null, "high alert 1", true, 180, true, 10, null, 0, 0, true, true, 20, true, true);
-        add_alert(null, "high alert 2", true, 200, true, 10, null, 0, 0, true, true,20, true, true);
-        add_alert(null, "high alert 3", true, 220, true, 10, null, 0, 0, true, true,20, true, true);
-        print_all();
-        AlertType a1 = get_highest_active_alert(context, 190);
-        Log.d(TAG, "a1 = " + a1.toString());
-        AlertType a2 = get_highest_active_alert(context, 210);
-        Log.d(TAG, "a2 = " + a2.toString());
-
-
-        AlertType a3 = get_alert(a1.uuid);
-        Log.d(TAG, "a1 == a3 ? need to see true " + (a1==a3) + a1 + " " + a3);
-
-        add_alert(null, "low alert 1", false, 80, true, 10, null, 0, 0, true, true,20, true, true);
-        add_alert(null, "low alert 2", false, 60, true, 10, null, 0, 0, true, true,20, true, true);
-
-        AlertType al1 = get_highest_active_alert(context, 90);
-        Log.d(TAG, "al1 should be null  " + al1);
-        al1 = get_highest_active_alert(context, 80);
-        Log.d(TAG, "al1 = " + al1.toString());
-        AlertType al2 = get_highest_active_alert(context, 50);
-        Log.d(TAG, "al2 = " + al2.toString());
-
-        Log.d(TAG, "HigherAlert(a1, a2) = a1?" +  (HigherAlert(a1,a2) == a2));
-        Log.d(TAG, "HigherAlert(al1, al2) = al1?" +  (HigherAlert(al1,al2) == al2));
-        Log.d(TAG, "HigherAlert(a1, al1) = al1?" +  (HigherAlert(a1,al1) == al1));
-        Log.d(TAG, "HigherAlert(al1, a2) = al1?" +  (HigherAlert(al1,a2) == al1));
-
-        // Make sure we do not influance on real data...
-        remove_all();
-
     }
 
 
