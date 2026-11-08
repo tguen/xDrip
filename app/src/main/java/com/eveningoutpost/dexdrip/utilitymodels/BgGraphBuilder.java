@@ -22,7 +22,6 @@ import com.eveningoutpost.dexdrip.models.Forecast.PolyTrendLine;
 import com.eveningoutpost.dexdrip.models.Forecast.TrendLine;
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.Prediction;
-import com.eveningoutpost.dexdrip.models.Profile;
 import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.processing.SmootherFactory;
 import com.eveningoutpost.dexdrip.store.FastStore;
@@ -67,8 +66,10 @@ import lombok.val;
 import static com.eveningoutpost.dexdrip.models.JoH.tolerantParseDouble;
 import static com.eveningoutpost.dexdrip.utilitymodels.ColorCache.X;
 import static com.eveningoutpost.dexdrip.utilitymodels.ColorCache.getCol;
+import static com.eveningoutpost.dexdrip.utilitymodels.Constants.DAY_IN_MS;
 import static com.eveningoutpost.dexdrip.utilitymodels.Constants.HOUR_IN_MS;
 import static com.eveningoutpost.dexdrip.utilitymodels.Constants.MAX_READINGS_PER_HOUR;
+import static com.eveningoutpost.dexdrip.utilitymodels.Constants.MINUTE_IN_MS;
 import static com.eveningoutpost.dexdrip.utils.DexCollectionType.getDexCollectionType;
 import static lecho.lib.hellocharts.Log.setLogger;
 
@@ -180,11 +181,11 @@ public class BgGraphBuilder {
     private final boolean showSMB = Pref.getBoolean("show_smb_icons", true);
 
     public BgGraphBuilder(Context context) {
-        this(context, new Date().getTime() + (60000 * 10));
+        this(context, new Date().getTime() + 10 * MINUTE_IN_MS);
     }
 
     public BgGraphBuilder(Context context, long end) {
-        this(context, end - (60000 * 60 * 24), end);
+        this(context, end - DAY_IN_MS, end);
     }
 
     public BgGraphBuilder(Context context, long start, long end) {
@@ -192,10 +193,6 @@ public class BgGraphBuilder {
     }
 
     public BgGraphBuilder(Context context, long start, long end, int numValues, boolean show_prediction) {
-        this(context, start, end, numValues, show_prediction, false);
-    }
-
-    public BgGraphBuilder(Context context, long start, long end, int numValues, boolean show_prediction, final boolean useArchive) {
         // swap argument order if needed
         if (start > end) {
             long temp = end;
@@ -903,12 +900,6 @@ public class BgGraphBuilder {
 
             double last_calibration = 0;
             double last_bloodtest = 0;
-
-            if (doMgdl) {
-                Profile.scale_factor = Constants.MMOLL_TO_MGDL;
-            } else {
-                Profile.scale_factor = 1;
-            }
 
             final long close_to_side_time = (long) (end_time * FUZZER) - (Constants.MINUTE_IN_MS * 10);
             // enumerate calibrations

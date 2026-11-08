@@ -2,7 +2,6 @@ package com.eveningoutpost.dexdrip.profileeditor;
 
 import android.util.Log;
 
-import com.eveningoutpost.dexdrip.BaseAppCompatActivity;
 import com.eveningoutpost.dexdrip.Home;
 import com.eveningoutpost.dexdrip.importedlibraries.dexcom.Dex_Constants;
 import com.eveningoutpost.dexdrip.models.UserError;
@@ -19,7 +18,7 @@ import java.util.List;
  * Created by jamorham on 21/06/2016.
  */
 
-public class ProfileEditor extends BaseAppCompatActivity {
+public class ProfileEditor {
 
     private static final String TAG = "jamorhamprofile";
 
@@ -28,8 +27,6 @@ public class ProfileEditor extends BaseAppCompatActivity {
     public static final int MINS_PER_DAY = 1440; // 00:00
     private static final int END_OF_DAY = MINS_PER_DAY - 1; // 23:59
 
-
-    private static double adjustmentFactor = 1;
 
     // convert between mg/dl or mmol when we change preferences
     public static void convertData(double multiplier) {

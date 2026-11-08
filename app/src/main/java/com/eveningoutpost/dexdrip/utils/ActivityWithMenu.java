@@ -3,22 +3,25 @@ package com.eveningoutpost.dexdrip.utils;
 import android.content.Intent;
 import android.os.Bundle;
 
-
-import androidx.drawerlayout.widget.DrawerLayout;
-
-import com.eveningoutpost.dexdrip.BaseAppCompatActivity;
-import com.eveningoutpost.dexdrip.models.JoH;
-import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.NavDrawerBuilder;
 import com.eveningoutpost.dexdrip.NavigationDrawerFragment;
 import com.eveningoutpost.dexdrip.R;
+import com.eveningoutpost.dexdrip.models.JoH;
+import com.eveningoutpost.dexdrip.models.UserError;
 
 import java.util.List;
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.drawerlayout.widget.DrawerLayout;
+
 
 /**
  * Created by Emma Black on 6/8/15.
  */
-public abstract class ActivityWithMenu extends BaseAppCompatActivity implements NavigationDrawerFragment.NavigationDrawerCallbacks {
+public abstract class ActivityWithMenu
+    extends AppCompatActivity
+    implements NavigationDrawerFragment.NavigationDrawerCallbacks
+{
     private int menu_position;
     private String menu_name;
     private NavigationDrawerFragment mNavigationDrawerFragment;

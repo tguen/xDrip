@@ -1,5 +1,6 @@
 package com.eveningoutpost.dexdrip.utilitymodels;
 
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.os.Bundle;
 
@@ -25,27 +26,37 @@ import static com.eveningoutpost.dexdrip.utilitymodels.Unitized.usingMgDl;
 import static com.eveningoutpost.dexdrip.utils.DexCollectionType.getBestCollectorHardwareName;
 
 // created by jamorham
-
 public class BroadcastGlucose {
-
     private static final String TAG = "BroadcastGlucose";
     private static long lastTimestamp = 0;
     private static long dexStartedAt = 0;
-    private static boolean connectedToG7 = false;
-    private static boolean connectedToG6 = false;
-    private static boolean usingG6OrG7 = false;
 
     public static void sendLocalBroadcast(final BgReading bgReading) {
-        if (SendXdripBroadcast.enabled()) {
-            final Bundle bundle = new Bundle();
-            if (bgReading != null) {
+        if (!SendXdripBroadcast.enabled()) {
+            return;
+        }
+        final Bundle bundle = new Bundle();
+        if (bgReading == null) {
+            // just status update
+            addCollectorStatus(bundle);
+            final Intent intent = new Intent(Intents.ACTION_STATUS_UPDATE);
+            SendXdripBroadcast.send(intent, bundle);
+            return;
+        }
+
                 if (bgReading.calculated_value == 0) {
                     UserError.Log.wtf(TAG, "Refusing to broadcast reading with calculated value of 0");
                     return;
                 }
 
                 if (Math.abs(bgReading.timestamp - lastTimestamp) < MINUTE_IN_MS) {
-                    val msg = String.format("Refusing to broadcast a reading with close timestamp to last broadcast:  %s (%d) vs %s (%d) ", dateTimeText(lastTimestamp), lastTimestamp, dateTimeText(bgReading.timestamp), bgReading.timestamp);
+                    @SuppressLint("DefaultLocale")
+                    String msg = String.format(
+                        "Refusing to broadcast a reading with close timestamp to last broadcast:  %s (%d) vs %s (%d) ",
+                        dateTimeText(lastTimestamp),
+                        lastTimestamp,
+                        dateTimeText(bgReading.timestamp),
+                        bgReading.timestamp);
                     if (bgReading.timestamp == lastTimestamp) {
                         UserError.Log.d(TAG, msg);
                     } else {
@@ -122,21 +133,17 @@ public class BroadcastGlucose {
                         if (dg.from_plugin) {
                             bundle.putString(Intents.XDRIP_CALIBRATION_PLUGIN, dg.plugin_name);
                         }
-
-
                     } else {
                         final String msg = "Not locally broadcasting due to noise block level of: " + noiseBlockLevel + " and noise of; " + JoH.roundDouble(dg.noise, 1);
                         UserError.Log.e("LocalBroadcast", msg);
                         JoH.static_toast_long(msg);
                     }
                 } else {
-
                     // better to use the display glucose version above
                     bundle.putDouble(Intents.EXTRA_NOISE, BgGraphBuilder.last_noise);
                     if (BgGraphBuilder.last_noise <= noiseBlockLevel) {
                         // standard xdrip-classic data set
                         bundle.putDouble(Intents.EXTRA_BG_ESTIMATE, bgReading.calculated_value);
-
 
                         //TODO: change back to bgReading.calculated_value_slope if it will also get calculated for Share data
                         // bundle.putDouble(Intents.EXTRA_BG_SLOPE, bgReading.calculated_value_slope);
@@ -154,24 +161,12 @@ public class BroadcastGlucose {
                 }
 
                 bundle.putInt(Intents.EXTRA_SENSOR_BATTERY, BridgeBattery.getBestBridgeBattery());
-                if (DexCollectionType.isG7() || getBestCollectorHardwareName().equals("G6 Native")) { // If we are using G7 or One+, or G6 in native mode
-                    usingG6OrG7 = true;
-                }
-                if (DexCollectionType.isG7() && FirmwareCapability.isDeviceAltOrAlt2OrAlt3(getTransmitterID())) { // If we are using G7 or One+ and there is connectivity
-                    connectedToG7 = true;
-                }
-                if (getBestCollectorHardwareName().equals("G6 Native") && FirmwareCapability.isTransmitterG6(getTransmitterID())) { // If we are using a G6 in native mode and there is connectivity
-                    connectedToG6 = true;
-                }
-                if (usingG6OrG7) { // If we are using G7 or G6 in native mode
-                    if (connectedToG6 || connectedToG7) { // Only if there is connectivity
+                if (DexCollectionType.isG7() && FirmwareCapability.isDeviceAltOrAlt2OrAlt3(getTransmitterID())) {
+                    // If we are using G7 or One+ and there is connectivity
                         dexStartedAt = DexSessionKeeper.getStart(); // Session start time reported by the Dexcom transmitter
                         if (dexStartedAt > 0) { // Only if dexStartedAt is valid
                             bundle.putLong(Intents.EXTRA_SENSOR_STARTED_AT, dexStartedAt);
-                        }
                     }
-                } else { // If we are not using G7, One+ or G6 in native mode
-                    bundle.putLong(Intents.EXTRA_SENSOR_STARTED_AT, sensor.started_at);
                 }
                 bundle.putLong(Intents.EXTRA_TIMESTAMP, bgReading.timestamp);
 
@@ -209,13 +204,6 @@ public class BroadcastGlucose {
                 final Intent intent = new Intent(Intents.ACTION_NEW_BG_ESTIMATE);
                 SendXdripBroadcast.send(intent, bundle);
                 //JoH.dumpBundle(bundle, TAG);
-            } else {
-                // just status update
-                addCollectorStatus(bundle);
-                final Intent intent = new Intent(Intents.ACTION_STATUS_UPDATE);
-                SendXdripBroadcast.send(intent, bundle);
-            }
-        }
     }
 
     private static void addCollectorStatus(final Bundle bundle) {

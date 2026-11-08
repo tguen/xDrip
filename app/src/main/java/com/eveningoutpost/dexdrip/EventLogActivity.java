@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import androidx.annotation.LayoutRes;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SearchView;
 import androidx.core.view.MenuItemCompat;
 import androidx.databinding.ObservableArrayList;
@@ -53,7 +54,7 @@ import me.tatarka.bindingcollectionadapter2.collections.MergeObservableList;
  *
  */
 @ExtensionMethod({java.util.Arrays.class, ExtensionMethods.class})
-public class EventLogActivity extends BaseAppCompatActivity {
+public class EventLogActivity extends AppCompatActivity {
 
     private static final List<Integer> severitiesList = new ArrayList<>();
     private static final boolean D = false;

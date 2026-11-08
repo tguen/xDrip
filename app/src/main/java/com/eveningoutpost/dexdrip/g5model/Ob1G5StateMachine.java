@@ -1386,15 +1386,6 @@ public class Ob1G5StateMachine {
         }
     }
 
-    public static void stopSensor() {
-        if (acceptCommands()) {
-            enqueueCommand(
-                    new SessionStopTxMessage(
-                            DexTimeKeeper.getDexTime(getTransmitterID(), tsl())),
-                    "Stop Sensor");
-        }
-    }
-
     private static void postExtension() {
         Inevitable.task("post-extension", 2000, () -> {
             DexSyncKeeper.clear(getTransmitterID());
@@ -1694,7 +1685,7 @@ public class Ob1G5StateMachine {
 
         Sensor.updateBatteryLevel(sensor, transmitterData.sensor_battery_level);
         if (d)
-            UserError.Log.i(TAG, "timestamp create: " + Long.toString(transmitterData.timestamp));
+            UserError.Log.i(TAG, "timestamp create: " + transmitterData.timestamp);
 
         if ((lastGlucoseBgReading != null) && (msSince(lastUsableGlucosePacket) < Constants.SECOND_IN_MS * 30)) {
             UserError.Log.d(TAG, "Updating BgReading provided by transmitter");
@@ -1716,9 +1707,7 @@ public class Ob1G5StateMachine {
         //   UserError.Log.d(TAG, "Dex sensor_battery_level " + Double.toString(transmitterData.sensor_battery_level));//KS
         //   UserError.Log.d(TAG, "Dex timestamp " + JoH.dateTimeText(transmitterData.timestamp));//KS
 
-
         // TODO static_last_timestamp =  transmitterData.timestamp;
-
     }
 
     public static void evaluateG6Settings() {
