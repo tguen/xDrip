@@ -141,7 +141,7 @@ public abstract class G5BaseService extends Service {
     }
 
     public static void setG6bareBones() {
-        Pref.setBoolean("using_g6", true);
+//        Pref.setBoolean("using_g6", true);
         // TODO add initiate bonding true in case gets disabled??
         final int battery_warning_level = Pref.getStringToInt("g5-battery-warning-level", G5_LOW_BATTERY_WARNING_DEFAULT);
         if (battery_warning_level == G5_LOW_BATTERY_WARNING_DEFAULT) {

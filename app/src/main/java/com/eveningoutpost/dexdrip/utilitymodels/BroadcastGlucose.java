@@ -160,7 +160,6 @@ public class BroadcastGlucose {
                     }
                 }
 
-                bundle.putInt(Intents.EXTRA_SENSOR_BATTERY, BridgeBattery.getBestBridgeBattery());
                 if (DexCollectionType.isG7() && FirmwareCapability.isDeviceAltOrAlt2OrAlt3(getTransmitterID())) {
                     // If we are using G7 or One+ and there is connectivity
                         dexStartedAt = DexSessionKeeper.getStart(); // Session start time reported by the Dexcom transmitter

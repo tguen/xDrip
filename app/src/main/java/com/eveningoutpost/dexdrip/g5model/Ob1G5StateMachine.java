@@ -2114,7 +2114,7 @@ public class Ob1G5StateMachine {
     }
 
     public static boolean usingG6() {
-        return Pref.getBooleanDefaultFalse("using_g6");
+        return true; //Pref.getBooleanDefaultFalse("using_g6");
     }
 
     private static boolean getEGlucose(final Ob1G5CollectionService parent) {

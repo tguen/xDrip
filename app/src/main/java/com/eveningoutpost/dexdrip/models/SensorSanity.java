@@ -55,13 +55,13 @@ public class SensorSanity {
 
         if (DexCollectionType.hasDexcomRaw(type)) {
             if (!BgReading.isRawMarkerValue(raw_value) || hard_check) {
-                if (Pref.getBooleanDefaultFalse("using_g6")) {
+//                if (Pref.getBooleanDefaultFalse("using_g6")) {
                     if (raw_value < DEXCOM_G6_MIN_RAW) state = false;
                     else if (raw_value > DEXCOM_G6_MAX_RAW) state = false;
-                } else {
-                    if (raw_value < DEXCOM_MIN_RAW) state = false;
-                    else if (raw_value > DEXCOM_MAX_RAW) state = false;
-                }
+//                } else {
+//                    if (raw_value < DEXCOM_MIN_RAW) state = false;
+//                    else if (raw_value > DEXCOM_MAX_RAW) state = false;
+//                }
             }
         }
 

@@ -13,8 +13,6 @@ import com.activeandroid.util.SQLiteUtils;
 import com.eveningoutpost.dexdrip.BestGlucose;
 import com.eveningoutpost.dexdrip.Home;
 import com.eveningoutpost.dexdrip.calibrations.CalibrationAbstract;
-import com.eveningoutpost.dexdrip.importedlibraries.dexcom.records.EGVRecord;
-import com.eveningoutpost.dexdrip.importedlibraries.dexcom.records.SensorRecord;
 import com.eveningoutpost.dexdrip.models.UserError.Log;
 import com.eveningoutpost.dexdrip.services.Ob1G5CollectionService;
 import com.eveningoutpost.dexdrip.utilitymodels.BgGraphBuilder;
@@ -293,95 +291,6 @@ public class BgReading extends Model {
 
 
     //*******CLASS METHODS***********//
-    // Dexcom Bluetooth Share
-    public static void create(EGVRecord[] egvRecords, long addativeOffset, Context context) {
-        for (EGVRecord egvRecord : egvRecords) {
-            BgReading.create(egvRecord, addativeOffset, context);
-        }
-    }
-
-    public static void create(SensorRecord[] sensorRecords, long addativeOffset, Context context) {
-        for (SensorRecord sensorRecord : sensorRecords) {
-            BgReading.create(sensorRecord, addativeOffset, context);
-        }
-    }
-
-    public static void create(SensorRecord sensorRecord, long addativeOffset, Context context) {
-        Log.i(TAG, "create: gonna make some sensor records: " + sensorRecord.getUnfiltered());
-        if (BgReading.is_new(sensorRecord, addativeOffset)) {
-            BgReading bgReading = new BgReading();
-            Sensor sensor = Sensor.currentSensor();
-            Calibration calibration = Calibration.getForTimestamp(sensorRecord.getSystemTime().getTime() + addativeOffset);
-            if (sensor != null && calibration != null) {
-                bgReading.sensor = sensor;
-                bgReading.sensor_uuid = sensor.uuid;
-                bgReading.calibration = calibration;
-                bgReading.calibration_uuid = calibration.uuid;
-                bgReading.raw_data = (sensorRecord.getUnfiltered() / 1000);
-                bgReading.filtered_data = (sensorRecord.getFiltered() / 1000);
-                bgReading.timestamp = sensorRecord.getSystemTime().getTime() + addativeOffset;
-                if (bgReading.timestamp > new Date().getTime()) {
-                    return;
-                }
-                bgReading.uuid = UUID.randomUUID().toString();
-                bgReading.time_since_sensor_started = bgReading.timestamp - sensor.started_at;
-                bgReading.calculateAgeAdjustedRawValue();
-                bgReading.save();
-            }
-        }
-    }
-
-    // Dexcom Bluetooth Share
-    public static void create(EGVRecord egvRecord, long addativeOffset, Context context) {
-        BgReading bgReading = BgReading.getForTimestamp(egvRecord.getSystemTime().getTime() + addativeOffset);
-        Log.i(TAG, "create: Looking for BG reading to tag this thing to: " + egvRecord.getBGValue());
-        if (bgReading != null) {
-            bgReading.calculated_value = egvRecord.getBGValue();
-            if (egvRecord.getBGValue() <= 13) {
-                Calibration calibration = bgReading.calibration;
-                double firstAdjSlope = calibration.first_slope + (calibration.first_decay * (Math.ceil(new Date().getTime() - calibration.timestamp) / (1000 * 60 * 10)));
-                double calSlope = (calibration.first_scale / firstAdjSlope) * 1000;
-                double calIntercept = ((calibration.first_scale * calibration.first_intercept) / firstAdjSlope) * -1;
-                bgReading.raw_calculated = (((calSlope * bgReading.raw_data) + calIntercept) - 5);
-            }
-            Log.i(TAG, "create: NEW VALUE CALCULATED AT: " + bgReading.calculated_value);
-            bgReading.calculated_value_slope = bgReading.slopefromName(egvRecord.getTrend().friendlyTrendName());
-            bgReading.noise = egvRecord.noiseValue();
-            String friendlyName = egvRecord.getTrend().friendlyTrendName();
-            if (friendlyName.compareTo("NONE") == 0 ||
-                    friendlyName.compareTo("NOT_COMPUTABLE") == 0 ||
-                    friendlyName.compareTo("NOT COMPUTABLE") == 0 ||
-                    friendlyName.compareTo("OUT OF RANGE") == 0 ||
-                    friendlyName.compareTo("OUT_OF_RANGE") == 0) {
-                bgReading.hide_slope = true;
-            }
-            bgReading.save();
-            bgReading.find_new_curve();
-            bgReading.find_new_raw_curve();
-            //context.startService(new Intent(context, Notifications.class));
-            Notifications.start(); // this may not be needed as it is duplicated in handleNewBgReading
-        }
-    }
-
-    public static BgReading getForTimestamp(double timestamp) {
-        Sensor sensor = Sensor.currentSensor();
-        if (sensor != null) {
-            BgReading bgReading = new Select()
-                    .from(BgReading.class)
-                    .where("Sensor = ? ", sensor.getId())
-                    .where("timestamp <= ?", (timestamp + (60 * 1000))) // 1 minute padding (should never be that far off, but why not)
-                    .where("calculated_value = 0")
-                    .where("raw_calculated = 0")
-                    .orderBy("timestamp desc")
-                    .executeSingle();
-            if (bgReading != null && Math.abs(bgReading.timestamp - timestamp) < (3 * 60 * 1000)) { //cool, so was it actually within 4 minutes of that bg reading?
-                Log.i(TAG, "getForTimestamp: Found a BG timestamp match");
-                return bgReading;
-            }
-        }
-        Log.d(TAG, "getForTimestamp: No luck finding a BG timestamp match");
-        return null;
-    }
 
     public static BgReading getForPreciseTimestamp(long timestamp, long precision) {
         return getForPreciseTimestamp(timestamp, precision, true);
@@ -406,25 +315,6 @@ public class BgReading extends Model {
         return null;
     }
 
-
-    public static boolean is_new(SensorRecord sensorRecord, long addativeOffset) {
-        double timestamp = sensorRecord.getSystemTime().getTime() + addativeOffset;
-        Sensor sensor = Sensor.currentSensor();
-        if (sensor != null) {
-            BgReading bgReading = new Select()
-                    .from(BgReading.class)
-                    .where("Sensor = ? ", sensor.getId())
-                    .where("timestamp <= ?", (timestamp + (60 * 1000))) // 1 minute padding (should never be that far off, but why not)
-                    .orderBy("timestamp desc")
-                    .executeSingle();
-            if (bgReading != null && Math.abs(bgReading.timestamp - timestamp) < (3 * 60 * 1000)) { //cool, so was it actually within 4 minutes of that bg reading?
-                Log.i(TAG, "isNew; Old Reading");
-                return false;
-            }
-        }
-        Log.i(TAG, "isNew: New Reading");
-        return true;
-    }
 
     public static BgReading create(double raw_data, double filtered_data, Context context, Long timestamp) {
         return create(raw_data, filtered_data, context, timestamp, false);

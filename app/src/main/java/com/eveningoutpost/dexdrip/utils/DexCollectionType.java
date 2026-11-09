@@ -1,7 +1,6 @@
 package com.eveningoutpost.dexdrip.utils;
 
 import com.eveningoutpost.dexdrip.services.Ob1G5CollectionService;
-import com.eveningoutpost.dexdrip.services.UiBasedCollector;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
 
 import java.lang.reflect.Method;
@@ -19,11 +18,9 @@ import static com.eveningoutpost.dexdrip.g5model.Ob1G5StateMachine.shortTxId;
  * Created by andy on 01/06/16.
  */
 public enum DexCollectionType {
-
     None("None"),
     DexcomG5("DexcomG5"),
     DexcomG6("DexcomG6"), // currently pseudo
-    UiBased("UiBased"),
     Disabled("Disabled"),
     ;
 
@@ -50,8 +47,8 @@ public enum DexCollectionType {
 
         Collections.addAll(usesBluetooth, DexcomG5);
         Collections.addAll(usesFiltered, DexcomG5); // Bluetooth and Wifi+Bluetooth need dynamic mode
-        Collections.addAll(isPassive, UiBased);
-        Collections.addAll(canNotStartStopOrCal, UiBased, Disabled); // Collectors that cannot start/stop sensor or submit calibration
+        Collections.addAll(isPassive);
+        Collections.addAll(canNotStartStopOrCal, Disabled); // Collectors that cannot start/stop sensor or submit calibration
         Collections.addAll(usesDexcomRaw, DexcomG5);
     }
 
@@ -93,10 +90,6 @@ public enum DexCollectionType {
         return false;
     }
 
-    public static boolean hasBattery() {
-        return false;
-    }
-
     public static boolean hasDexcomRaw() {
         return hasDexcomRaw(getDexCollectionType());
     }
@@ -118,8 +111,6 @@ public enum DexCollectionType {
         switch (type) {
             case DexcomG5:
                 return Ob1G5CollectionService.class;
-            case UiBased:
-                return UiBasedCollector.class;
             default:
                 return null;
         }
@@ -164,24 +155,6 @@ public enum DexCollectionType {
                 return dct.name();
             default:
                 return dct.name();
-        }
-    }
-
-    public static int getBestBridgeBatteryPercent() {
-        if (DexCollectionType.hasBattery()) {
-            // TODO this logic needs double checking for multi collector types and others
-                    return Pref.getInt("bridge_battery", -1);
-        } else {
-            return -2;
-        }
-    }
-
-    public static String getBestBridgeBatteryPercentString() {
-        final int battery = getBestBridgeBatteryPercent();
-        if (battery > 0) {
-            return "" + battery;
-        } else {
-            return "";
         }
     }
 

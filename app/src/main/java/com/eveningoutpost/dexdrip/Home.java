@@ -28,11 +28,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
-import android.widget.AdapterView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.eveningoutpost.dexdrip.calibrations.NativeCalibrationPipe;
 import com.eveningoutpost.dexdrip.calibrations.PluggableCalibration;
 import com.eveningoutpost.dexdrip.dagger.Injectors;
 import com.eveningoutpost.dexdrip.databinding.ActivityHomeBinding;
@@ -44,7 +42,6 @@ import com.eveningoutpost.dexdrip.g5model.Ob1G5StateMachine;
 import com.eveningoutpost.dexdrip.g5model.SensorDays;
 import com.eveningoutpost.dexdrip.models.ActiveBgAlert;
 import com.eveningoutpost.dexdrip.models.BgReading;
-import com.eveningoutpost.dexdrip.models.BloodTest;
 import com.eveningoutpost.dexdrip.models.Calibration;
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.ProcessInitialDataQuality;
@@ -54,11 +51,8 @@ import com.eveningoutpost.dexdrip.services.Ob1G5CollectionService;
 import com.eveningoutpost.dexdrip.ui.BaseShelf;
 import com.eveningoutpost.dexdrip.ui.MicroStatus;
 import com.eveningoutpost.dexdrip.ui.MicroStatusImpl;
-import com.eveningoutpost.dexdrip.ui.NumberGraphic;
 import com.eveningoutpost.dexdrip.ui.UiPing;
 import com.eveningoutpost.dexdrip.ui.dialog.DidYouCancelAlarm;
-import com.eveningoutpost.dexdrip.ui.graphic.ITrendArrow;
-import com.eveningoutpost.dexdrip.ui.graphic.TrendArrowFactory;
 import com.eveningoutpost.dexdrip.utilitymodels.*;
 import com.eveningoutpost.dexdrip.utils.ActivityWithMenu;
 import com.eveningoutpost.dexdrip.utils.DexCollectionType;
@@ -104,7 +98,6 @@ import static com.eveningoutpost.dexdrip.xdrip.gs;
 
 
 public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPermissionsResultCallback {
-    public static final String BLOOD_TEST_ACTION = "BLOOD_TEST_ACTION";
     public static final String HOME_FULL_WAKEUP = "HOME_FULL_WAKEUP";
     public static final String SHOW_NOTIFICATION = "SHOW_NOTIFICATION";
     public static final String BLUETOOTH_METER_CALIBRATION = "BLUETOOTH_METER_CALIBRATION";
@@ -115,17 +108,13 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     private static final boolean d = false;
 
     public static boolean activityVisible = false;
-    public static boolean blockTouches = false;
     private static float hours = DEFAULT_CHART_HOURS;
-    private static boolean is_holo = true;
     private static boolean reset_viewport = false;
     private static String nexttoast;
     private static Activity mActivity;
 
     public BgGraphBuilder bgGraphBuilder;
     public AlertDialog dialog;
-    public Viewport holdViewport = new Viewport();
-    public LineChartView chart;
     private boolean updateStuff;
     private boolean updatingPreviewViewport = false;
     private boolean updatingChartViewport = false;
@@ -146,7 +135,8 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
     private TextView sensorAge;
     private TextView currentBgValueText;
     private TextView notificationText;
-    private ITrendArrow itr;
+    private LineChartView chart;
+    private Viewport holdViewport = new Viewport();
     private AlertDialog helper_dialog;
     private AlertDialog status_helper_dialog;
     private PopupInitialStatusHelperBinding initial_status_binding;
@@ -341,11 +331,14 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
 
     private void processIncomingBundle(Bundle bundle) {
         Log.d(TAG, "Processing incoming bundle");
-        if (bundle != null) {
+        if (bundle == null) {
+            return;
+        }
+
             if (bundle.getString(Home.HOME_FULL_WAKEUP) != null) {
                 if (!JoH.isScreenOn()) {
-                    final int timeout = 60000;
-                    final PowerManager.WakeLock wl = JoH.getWakeLock("full-wakeup", timeout + 1000);
+                    final int timeout = MINUTE_IN_MS;
+                    final PowerManager.WakeLock wl = JoH.getWakeLock("full-wakeup", timeout + SECOND_IN_MS);
                     keepScreenOn();
                     final Timer t = new Timer();
                     t.schedule(new TimerTask() {
@@ -369,63 +362,12 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
                 final PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
                 JoH.showNotification(bundle.getString(SHOW_NOTIFICATION), bundle.getString("notification_body"), pendingIntent, notification_id, true, true, true);
                 UserError.Log.uel(TAG, bundle.getString("notification_body"));
-            } else if (bundle.getString("numberIconTest") != null) {
-                JoH.show_ok_dialog(
-                        this,
-                        gs(R.string.prepare_to_test),
-                        gs(R.string.after_you_click_ok_look_for_a_number_icon_in_the_notification_area_if_you_see_123_then_the_test_has_succeeded__on_some_phones_this_test_will_crash_the_phone__after_30_seconds_we_will_shut_off_the_notification_if_your_phone_does_not_recover_after_this_then_hold_the_power_button_to_reboot_it),
-                        () -> {
-                            JoH.static_toast_long(gs(R.string.running_test_with_number_123));
-                            NumberGraphic.testNotification("123");
-                        });
-            } else if (bundle.getString(Home.BLOOD_TEST_ACTION) != null) {
-                Log.d(TAG, "BLOOD_TEST_ACTION");
-                final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setTitle(gs(R.string.blood_test_action));
-                builder.setMessage(gs(R.string.what_would_you_like_to_do));
-                final String bt_uuid = bundle.getString(Home.BLOOD_TEST_ACTION + "2");
-                if (bt_uuid != null) {
-                    final BloodTest bt = BloodTest.byUUID(bt_uuid);
-                    if (bt != null) {
-                        builder.setNeutralButton(gs(R.string.nothing), (dialog, which) -> dialog.dismiss());
-
-                        builder.setPositiveButton(gs(R.string.calibrate), (dialog, which) -> {
-                            dialog.dismiss();
-                            // TODO time should be absolute not relative!?!?
-                            final long time_since = msSince(bt.timestamp);
-                            Home.startHomeWithExtra(xdrip.getAppContext(), Home.BLUETOOTH_METER_CALIBRATION, BgGraphBuilder.unitized_string_static(bt.mgdl), Long.toString(time_since));
-                            bt.addState(BloodTest.STATE_CALIBRATION);
-                        });
-
-                        builder.setNegativeButton(R.string.delete, (dialog, which) -> {
-                            dialog.dismiss();
-                            final AlertDialog.Builder builder1 = new AlertDialog.Builder(mActivity);
-                            builder1.setTitle(gs(R.string.confirm_delete));
-                            builder1.setMessage(gs(R.string.are_you_sure_you_want_to_delete_this_blood_test_result));
-                            builder1.setPositiveButton(gs(R.string.yes_delete), (dialog12, which12) -> {
-                                dialog12.dismiss();
-                                bt.removeState(BloodTest.STATE_VALID);
-                                NativeCalibrationPipe.removePendingCalibration((int) bt.mgdl);
-                                staticRefreshBGCharts();
-                                JoH.static_toast_short(gs(R.string.deleted));
-                            });
-                            builder1.setNegativeButton(gs(R.string.no), (dialog1, which1) -> dialog1.dismiss());
-                            final AlertDialog alert = builder1.create();
-                            alert.show();
-                        });
-                        final AlertDialog alert = builder.create();
-                        alert.show();
-                    } else {
-                        JoH.static_toast_long(String.format(gs(R.string.could_not_find_blood_data), bt_uuid));
-                    }
-                }
             } else if (bundle.getString("confirmsnooze") != null) {
                 switch (bundle.getString("confirmsnooze")) {
                     case "simpleconfirm":
                         DidYouCancelAlarm.dialog(this, AlertPlayer::defaultSnooze);
                         break;
                 }
-            }
         }
     }
 
@@ -681,18 +623,8 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
             previewChart.setCurrentViewport(holdViewport);
             UserError.Log.e(TAG, "SMALL HEIGHT VIEWPORT WARNING");
         } else {
-            if (homeShelf.get("time_buttons") || homeShelf.get("time_locked_always")) {
-                final long which_hour = PersistentStore.getLong("home-locked-hours"); // TODO use which time method
-                if (which_hour > 0) {
-                    hours = which_hour;
-                } else {
-                    hours = DEFAULT_CHART_HOURS;
-                }
-                setHoursViewPort(source);
-            } else {
                 hours = DEFAULT_CHART_HOURS;
                 setHoursViewPort(source);
-            }
             previewChart.setVisibility(homeShelf.get("chart_preview") ? View.VISIBLE : View.GONE);
         }
     }
@@ -725,20 +657,12 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         return Pref.getBooleanDefaultFalse("engineering_mode");
     }
 
-    public static boolean get_holo() {
-        return Home.is_holo;
-    }
-
     private void setHoursViewPort(final String source) {
-
         boolean exactHoursSpecified = false;
-
         final Viewport maxViewPort = new Viewport(chart.getMaximumViewport());
 
         switch (source) {
             case "":
-            case "timeButtonClick":
-            case "timeButtonLongClick":
                 exactHoursSpecified = true;
                 break;
 
@@ -759,9 +683,7 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         // always show at least the ideal number of hours
         float ideal_hours_to_show = DEFAULT_CHART_HOURS;
         // ... and rescale to accommodate predictions if not locked
-        if (! homeShelf.get("time_locked_always")) {
             ideal_hours_to_show += bgGraphBuilder.getPredictivehours();
-        }
         float hours_to_show =  exactHoursSpecified ? hours : Math.max(hours, ideal_hours_to_show);
 
         UserError.Log.d(TAG, "VIEWPORT " + source + " moveviewport in setHours: asked " + hours + " vs auto " + ideal_hours_to_show + " = " + hours_to_show + " full chart width: " + bgGraphBuilder.hoursShownOnChart());
@@ -774,24 +696,12 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
             holdViewport.bottom = maxViewPort.bottom;
         }
 
-        // if locked, center display on current bg values, not predictions
-        if (homeShelf.get("time_locked_always")) {
-            holdViewport.left -= hour_width * bgGraphBuilder.getPredictivehours();
-            holdViewport.right -= hour_width * bgGraphBuilder.getPredictivehours();
-        }
-
-        if (d) {
-            UserError.Log.d(TAG, "HOLD VIEWPORT " + holdViewport);
-            UserError.Log.d(TAG, "MAX VIEWPORT " + maxViewPort);
-        }
-
         if (isAutoYPanEnabled()) {
             Viewport v = bgGraphBuilder.computeYViewport();
             holdViewport.top = v.top;
             holdViewport.bottom = v.bottom;
         }
         chart.setCurrentViewport(holdViewport);
-
     }
 
     private void updateCurrentBgInfo(final String source) {
@@ -808,7 +718,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
             // TODO above reset viewport thing seems defunct now
         }
         setupCharts(source);
-        initializeGraphicTrendArrow();
         final TextView notificationText = (TextView) findViewById(R.id.notices);
         final TextView lowPredictText = (TextView) findViewById(R.id.lowpredict);
         if (BgGraphBuilder.isXLargeTablet(getApplicationContext())) {
@@ -912,9 +821,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
             toast(nexttoast);
             nexttoast = null;
         }
-
-	    //if (isG5Share) showcasemenu(SHOWCASE_G5FIRMWARE); // nov 2016 firmware warning resolved 15/12/2016
-        //showcasemenu(1); // 3 dot menu
     }
 
     private void updateCurrentBgInfoCommon(DexCollectionType collector, TextView notificationText) {
@@ -932,40 +838,20 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
 
         if (!isSensorActive) {
             // Define a variable (notConnectedToG6Yet) that is only true if Native G6 is chosen, but, transmitter days is unknown or not synced yet.
-            boolean notConnectedToG6Yet = DexCollectionType.getDexCollectionType() == DexcomG5 && Pref.getBooleanDefaultFalse("ob1_g5_use_transmitter_alg") && Pref.getBooleanDefaultFalse("using_g6") && (DexTimeKeeper.getTransmitterAgeInDays(getTransmitterID()) == -1 || !DexSyncKeeper.isReady(getTransmitterID()));
-            if (notConnectedToG6Yet || shortTxId()) { // Only if G6 has been selected and transmitter is not synced yet, or if G7 has been selected.
+            boolean notConnectedToG6Yet = DexCollectionType.getDexCollectionType() == DexcomG5
+//                && Pref.getBooleanDefaultFalse("ob1_g5_use_transmitter_alg")
+//                && Pref.getBooleanDefaultFalse("using_g6")
+                && (DexTimeKeeper.getTransmitterAgeInDays(getTransmitterID()) == -1
+                    || !DexSyncKeeper.isReady(getTransmitterID()));
+            if (notConnectedToG6Yet || shortTxId()) {
+                // Only if G6 has been selected and transmitter is not synced yet, or if G7 has been selected.
                 notificationText.setText(R.string.wait_to_connect);
-            } else { // Only if G6 is not selected or G6 transmitter is synced.
+            } else {
+                // Only if G6 is not selected or G6 transmitter is synced.
                 notificationText.setText(R.string.now_start_your_sensor);
             }
 
             displayCurrentInfo(); // update the display even with no sensor to clear old data
-
-            /*
-            if ((dialog == null) || (!dialog.isShowing())) {
-                if (!Experience.gotData() && Experience.backupAvailable() && JoH.ratelimit("restore-backup-prompt", 10)) {
-
-                } else {
-                    if (!Experience.gotData() && !QuickSettingsDialogs.isDialogShowing() && !notConnectedToG6Yet && JoH.ratelimit("start-sensor_prompt", 20)) {
-                        // Show the start sensor prompt only if G6 is not selected or the G6 transmitter is synchronized.
-                        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                        final Context context = this;
-                        builder.setTitle(getString(R.string.start_sensor) + "?");
-                        builder.setMessage(String.format(gs(R.string.start_sensor_confirmation), DexCollectionType.getBestCollectorHardwareName()));
-                        builder.setNegativeButton(gs(R.string.change_settings), (dialog, which) -> {
-                            dialog.dismiss();
-                            startActivity(new Intent(context, Preferences.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-                        });
-                        builder.setPositiveButton(R.string.start_sensor, (dialog, which) -> {
-                            dialog.dismiss();
-                            startActivity(new Intent(context, StartNewSensor.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-                        });
-                        dialog = builder.create();
-                        dialog.show();
-                    }
-                }
-            }
-            */
             return;
         }
 
@@ -1130,36 +1016,9 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         DecimalFormat df = new DecimalFormat("#");
         df.setMaximumFractionDigits(0);
 
-        if (DexCollectionType.hasBattery()) {
-            final int bridgeBattery = Pref.getInt("bridge_battery", 0);
-
-            if (bridgeBattery < 1) {
-                //dexbridgeBattery.setText(R.string.waiting_for_packet);
-                dexbridgeBattery.setVisibility(View.INVISIBLE);
-            } else {
-                    dexbridgeBattery.setText(getString(R.string.bridge_battery) + ": " + bridgeBattery + ((bridgeBattery < 200) ? "%" : "mV"));
-            }
-            if (bridgeBattery < 50) dexbridgeBattery.setTextColor(Color.YELLOW);
-            if (bridgeBattery < 25) dexbridgeBattery.setTextColor(Color.RED);
-            else dexbridgeBattery.setTextColor(Color.GREEN);
-            dexbridgeBattery.setVisibility(View.VISIBLE);
-        } else {
-            dexbridgeBattery.setVisibility(View.INVISIBLE);
-        }
-
-            uploaderBattery.setVisibility(View.INVISIBLE);
-
-        if (!Pref.getBoolean("display_bridge_battery", true)) {
             dexbridgeBattery.setVisibility(View.INVISIBLE);
             uploaderBattery.setVisibility(View.INVISIBLE);
-        }
-
             sensorAge.setVisibility(View.GONE);
-        if (blockTouches) {
-            sensorAge.setText("SCANNING.. DISPLAY LOCKED!");
-            sensorAge.setVisibility(View.VISIBLE);
-            sensorAge.setTextColor(Color.GREEN);
-        }
 
         if ((currentBgValueText.getPaintFlags() & Paint.STRIKE_THRU_TEXT_FLAG) > 0) {
             currentBgValueText.setPaintFlags(currentBgValueText.getPaintFlags() & (~Paint.STRIKE_THRU_TEXT_FLAG));
@@ -1168,7 +1027,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         final BgReading lastBgReading = BgReading.lastNoSenssor();
         boolean predictive = PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).getBoolean("predictive_bg", false);
         if (lastBgReading != null) {
-
             // detect broken data from G5 or other sources
             if ((lastBgReading.raw_data != 0) && (lastBgReading.raw_data * 2 == lastBgReading.filtered_data)) {
                 if (JoH.ratelimit("g5-corrupt-data-warning", 1200)) {
@@ -1180,9 +1038,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
             if (!displayCurrentInfoFromReading(lastBgReading, predictive)) {
                 currentBgValueText.setText("");
                 display_delta = "";
-                if (itr != null) {
-                    itr.update(null); // hide graphical arrow
-                }
             }
         } else {
             currentBgValueText.setText(""); // clear value if no reading
@@ -1258,14 +1113,14 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
                 if ((lastBgReading.hide_slope) || (bg_from_filtered)) {
                     slope_arrow = "";
                 }
-                currentBgValueText.setText(stringEstimate + (itr == null ? " " + slope_arrow : ""));
+                currentBgValueText.setText(stringEstimate + " " + slope_arrow);
             } else {
                 // old depreciated prediction
                 estimate = BgReading.activePrediction();
                 String stringEstimate = bgGraphBuilder.unitized_string(estimate);
-                currentBgValueText.setText(stringEstimate + (itr == null ? " " + BgReading.activeSlopeArrow() : ""));
+                currentBgValueText.setText(stringEstimate + " " + BgReading.activeSlopeArrow());
             }
-            if (extrastring.length() > 0)
+            if (!extrastring.isEmpty())
                 currentBgValueText.setText(extrastring + currentBgValueText.getText());
         }
         int minutes = (int) (System.currentTimeMillis() - lastBgReading.timestamp) / (60 * 1000);
@@ -1283,10 +1138,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         if (small_screen) {
             if (currentBgValueText.getText().length() > 4)
                 currentBgValueText.setTextSize(25);
-        }
-
-        if (itr != null) {
-            itr.update((lastBgReading.hide_slope || hide_slope) ? null : dg.slope * 60000);
         }
 
         // do we actually need to do this query here if we again do it in unitizedDeltaString
@@ -1336,7 +1187,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
-        if (blockTouches) return true;
         try {
             return super.dispatchTouchEvent(ev);
         } catch (Exception e) {
@@ -1376,19 +1226,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
         }
         if (d) Log.d(TAG, "Keydown event: " + keyCode + " event: " + event.toString());
         return super.onKeyDown(keyCode, event);
-    }
-
-    public void initializeGraphicTrendArrow() {
-        if (homeShelf.get("graphic_trend_arrow")) {
-            if (itr == null) {
-                itr = TrendArrowFactory.create(findViewById(R.id.trendArrow));
-            }
-        } else {
-            if (itr != null) {
-                itr.update(null);
-                itr = null;
-            }
-        }
     }
 
     public static double convertToMgDlIfMmol(double value) {
@@ -1443,46 +1280,6 @@ public class Home extends ActivityWithMenu implements ActivityCompat.OnRequestPe
                     }
                 }
             }
-        }
-    }
-
-    public void showArrowConfigurator(View v, boolean show, boolean refresh) {
-
-        if (homeShelf.get("arrow_configurator") && show) {
-            show = false; // hide on second click of spanner
-        }
-
-        homeShelf.set("arrow_configurator", show);
-        try {
-            final View configurator = itr.getConfigurator();
-            try {
-                ((ViewGroup) configurator.getParent()).removeView(configurator);
-            } catch (NullPointerException e) {
-                // not yet assigned
-            }
-            final ViewGroup parent = (ViewGroup) v.getParent().getParent();
-            parent.removeView(configurator);
-            if (show && configurator != null) {
-                parent.addView(configurator);
-            }
-        } catch (NullPointerException e) {
-            // not instantiated
-        }
-        if (refresh) {
-            staticRefreshBGCharts();
-        }
-    }
-
-    public int arrowSelectionCurrent() {
-        return TrendArrowFactory.getArrayPosition();
-    }
-
-    public void arrowSelectionChanged(AdapterView<?> parentView, View selectedItemView, int position, long id) {
-        if (TrendArrowFactory.setType(position)) {
-            showArrowConfigurator(selectedItemView, false, false);
-            itr = null;
-            initializeGraphicTrendArrow();
-            showArrowConfigurator(selectedItemView, true, true);
         }
     }
 
