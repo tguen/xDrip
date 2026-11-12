@@ -1,12 +1,8 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 buildscript {
     repositories {
         mavenCentral()
-    }
-    dependencies {
-        if (getGradle().getStartParameter().getTaskRequests().toString().contains("Release]")) {
-           // println("Enabling New Relic")
-           // classpath "com.newrelic.agent.android:agent-gradle-plugin:5.27.1"
-        }
     }
 }
 apply plugin: 'com.android.application'
@@ -19,11 +15,6 @@ if (project.file('local.gradle').exists()) {
 }
 
 if (getGradle().getStartParameter().getTaskRequests().toString().contains("Release]")) {
-   /* apply plugin: 'newrelic'
-    newrelic {
-        variantMapsEnabled false
-        uploadMapsForVariant ''
-    }*/
     apply plugin: 'com.google.android.gms.oss-licenses-plugin'
 }
 
@@ -40,10 +31,10 @@ repositories {
 }
 
 android {
-    compileSdk 36 // TODO centralize
+    compileSdk = 36 // TODO centralize
 
 
-    configurations.all {
+    configurations.configureEach {
         resolutionStrategy.force 'com.google.code.findbugs:jsr305:1.3.9'
 
         resolutionStrategy.eachDependency { DependencyResolveDetails details ->
@@ -114,7 +105,7 @@ android {
     }
 
     configurations {
-        all {
+        configureEach {
             exclude group: 'commons-logging', module: 'commons-logging'
             exclude group: 'org.apache.httpcomponents'
         }
@@ -161,14 +152,14 @@ android {
                     'proguard-rules.pro'
         }
         debug {
-            minifyEnabled true
-            shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'),
-                    'proguard-rules.pro'
-            testProguardFile 'proguard-debug.pro'
-            multiDexKeepProguard file('proguard-debug.pro')
+//            minifyEnabled true
+//            shrinkResources true
+//            proguardFiles getDefaultProguardFile('proguard-android.txt'),
+//                    'proguard-rules.pro'
+//            testProguardFile 'proguard-debug.pro'
+//            multiDexKeepProguard file('proguard-debug.pro')
             ext.enableCrashlytics = false
-            //      applicationIdSuffix ".debug"
+            applicationIdSuffix ".debug"
             versionNameSuffix "-debug"
             debuggable true
         }
@@ -338,59 +329,9 @@ dependencies {
 
     implementation "no.nordicsemi.android:ble:2.6.1"
 
-    testImplementation 'joda-time:joda-time:2.10.7'
-
-    // ns-sdk's NSDeviceStatus is a kotlinx.serialization @Serializable Kotlin class. Its generated
-    // synthetic constructor takes a SerializationConstructorMarker parameter, which the JVM resolves
-    // eagerly for every constructor when gson's reflective adapter asks for the no-arg one — even
-    // though gson never calls kotlinx.serialization itself. Not pulled in anywhere on :app's runtime
-    // classpath today (checked with `./gradlew :app:dependencies`), so AAPSStatusHandlerTest needs it
-    // test-scoped to even load the class under Robolectric.
-    testImplementation 'org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.3'
-
-    testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.objenesis:objenesis:2.5.1'
-    testImplementation 'org.hamcrest:hamcrest-library:1.3'
-    testImplementation "org.robolectric:robolectric:4.16"
-    testImplementation "com.google.truth:truth:1.4.5"
-    testImplementation 'com.squareup.okhttp3:mockwebserver:5.4.0'
-    testImplementation 'com.squareup.okhttp3:okhttp-tls:5.4.0'
-
-    testImplementation 'org.mockito:mockito-inline:2.13.0'
-    testImplementation 'org.mockito:mockito-core:4.11.0'
-
-    testImplementation 'org.powermock:powermock-core:1.7.1'
-    testImplementation 'org.powermock:powermock-module-junit4:1.7.1'
-    testImplementation 'org.powermock:powermock-module-junit4-rule:1.7.1'
-    testImplementation 'org.powermock:powermock-classloading-xstream:1.7.1'
-    testImplementation 'org.powermock:powermock-api-mockito2:1.7.1'
-
-    androidTestImplementation(name: 'barista-1.7.0', ext: 'aar') {
-        exclude group: 'com.android.support'
-    }
-    // espresso, workarounds needed for correct functioning
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0', {
-        exclude group: 'com.android.support', module: 'support-annotations'
-    }
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5', {
-        exclude group: 'com.android.support', module: 'support-annotations'
-    }
-    androidTestImplementation 'androidx.test:rules:1.2.0'
-    androidTestImplementation 'androidx.test.uiautomator:uiautomator:2.2.0'
-    androidTestImplementation 'androidx.test.espresso:espresso-contrib:3.1.0'
-    androidTestImplementation 'androidx.test.espresso:espresso-idling-resource:3.1.0'
-    // add this for intent mocking support
-    //androidTestImplementation 'com.android.support.test.espresso:espresso-intents:3.0.1'
-    // add this for webview testing support
-    //androidTestImplementation 'com.android.support.test.espresso:espresso-web:3.0.1'
-
     // you will want to install the android studio lombok plugin
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor "org.projectlombok:lombok"
-
-    // use lombok in unit tests
-    testCompileOnly 'org.projectlombok:lombok'
-    testAnnotationProcessor 'org.projectlombok:lombok'
 }
 
 java {
@@ -399,24 +340,22 @@ java {
     }
 }
 
-tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-    kotlinOptions {
-        jvmTarget = "1.8"
+kotlin {
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_1_8
     }
 }
 
-tasks.withType(Test) {
-    // TranslationPlaceholderTest reads the string resources straight from the source tree, which
-    // Gradle does not otherwise know about: a changed translation would leave the test UP-TO-DATE.
-    inputs.files(fileTree("src/main/res") { include "values*/*.xml" })
-            .withPropertyName("stringResources")
-            .withPathSensitivity(PathSensitivity.RELATIVE)
-
-    testLogging {
-        exceptionFormat "full"
-        events "started", "skipped", "passed", "failed"
-        showStandardStreams true
-    }
-}
-
-apply plugin: 'com.google.gms.google-services'
+//tasks.withType(Test) {
+//    // TranslationPlaceholderTest reads the string resources straight from the source tree, which
+//    // Gradle does not otherwise know about: a changed translation would leave the test UP-TO-DATE.
+//    inputs.files(fileTree("src/main/res") { include "values*/*.xml" })
+//            .withPropertyName("stringResources")
+//            .withPathSensitivity(PathSensitivity.RELATIVE)
+//
+//    testLogging {
+//        exceptionFormat "full"
+//        events "started", "skipped", "passed", "failed"
+//        showStandardStreams true
+//    }
+//}
