@@ -6,7 +6,6 @@ import com.activeandroid.Model;
 import com.activeandroid.annotation.Column;
 import com.activeandroid.annotation.Table;
 import com.activeandroid.query.Select;
-import com.eveningoutpost.dexdrip.utilitymodels.Blukon;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
 
 /**
@@ -77,7 +76,6 @@ public class ActiveBluetoothDevice extends Model {
                     .executeSingle();
         }
         Pref.setString("last_connected_device_address", address);
-        Blukon.clearPin();
         if (btDevice == null) {
             ActiveBluetoothDevice newBtDevice = new ActiveBluetoothDevice();
             newBtDevice.name = name;

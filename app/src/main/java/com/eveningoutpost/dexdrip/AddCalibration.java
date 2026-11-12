@@ -3,12 +3,12 @@ package com.eveningoutpost.dexdrip;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.PowerManager;
-
 import android.text.TextUtils;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 
+import com.eveningoutpost.dexdrip.calibrations.NativeCalibrationPipe;
 import com.eveningoutpost.dexdrip.g5model.FirmwareCapability;
 import com.eveningoutpost.dexdrip.models.BloodTest;
 import com.eveningoutpost.dexdrip.models.Calibration;
@@ -21,15 +21,15 @@ import com.eveningoutpost.dexdrip.utilitymodels.Constants;
 import com.eveningoutpost.dexdrip.utilitymodels.PersistentStore;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
 import com.eveningoutpost.dexdrip.utilitymodels.UndoRedo;
-import com.eveningoutpost.dexdrip.calibrations.NativeCalibrationPipe;
 import com.eveningoutpost.dexdrip.utils.DexCollectionType;
 
 import java.util.UUID;
 
-import static com.eveningoutpost.dexdrip.services.Ob1G5CollectionService.getTransmitterID;
-
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.drawerlayout.widget.DrawerLayout;
+
+import static com.eveningoutpost.dexdrip.services.Ob1G5CollectionService.getTransmitterID;
+
 
 public class AddCalibration extends AppCompatActivity implements NavigationDrawerFragment.NavigationDrawerCallbacks {
     // Unit used
@@ -159,11 +159,6 @@ public class AddCalibration extends AppCompatActivity implements NavigationDrawe
                                             } else {
                                                 UserError.Log.e(TAG, "Ignoring Remote calibration value as identical to last one: " + calValue);
                                             }
-
-                                            if (from_external.equals("true")) {
-                                                Log.d("jamorham calib", "Relaying tasker pushed calibration");
-                                                GcmActivity.pushCalibration(string_value, bg_age);
-                                            }
                                         }
                                     } else {
                                         Log.wtf("CALERROR", "bg age either in future or older than 1 day: " + bgAgeNumber);
@@ -262,7 +257,6 @@ public class AddCalibration extends AppCompatActivity implements NavigationDrawe
     public static void sendFollowerCalibration(double calValue, long offset) {
         Log.d(TAG, "sendFollowerCalibration: " + calValue + " " + offset);
         final String uuid = UUID.randomUUID().toString();
-        GcmActivity.pushCalibration2(calValue, uuid, offset);
         UndoRedo.addUndoCalibration(uuid);
         JoH.static_toast_long("Calibration sent to master for processing");
     }

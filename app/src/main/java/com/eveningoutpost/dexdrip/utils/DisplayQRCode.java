@@ -1,6 +1,5 @@
 package com.eveningoutpost.dexdrip.utils;
 
-import static com.eveningoutpost.dexdrip.models.JoH.base64decode;
 import static com.eveningoutpost.dexdrip.models.JoH.base64decodeBytes;
 import static com.eveningoutpost.dexdrip.ui.helpers.BitmapUtil.getScreenHeight;
 import static com.eveningoutpost.dexdrip.ui.helpers.BitmapUtil.getScreenWidth;
@@ -25,15 +24,10 @@ import android.util.Log;
 import android.view.View;
 
 import com.eveningoutpost.dexdrip.BaseAppCompatActivity;
-import com.eveningoutpost.dexdrip.GcmActivity;
-import com.eveningoutpost.dexdrip.cloud.nightlite.NightLiteEntry;
-import com.eveningoutpost.dexdrip.cloud.nightlite.NightLiteQR;
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.R;
-import com.eveningoutpost.dexdrip.utilitymodels.NightscoutUploader;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
 import com.eveningoutpost.dexdrip.utilitymodels.PrefsViewImpl;
-import com.eveningoutpost.dexdrip.utilitymodels.desertsync.RouteTools;
 import com.eveningoutpost.dexdrip.databinding.ActivityDisplayQrcodeBinding;
 import com.eveningoutpost.dexdrip.xdrip;
 import com.google.zxing.WriterException;
@@ -83,7 +77,8 @@ public class DisplayQRCode extends BaseAppCompatActivity {
 
     @Override
     public void onNewIntent(Intent intent) {
-        processIntent(intent);
+	    super.onNewIntent(intent);
+	    processIntent(intent);
     }
 
 
@@ -144,15 +139,6 @@ public class DisplayQRCode extends BaseAppCompatActivity {
     }
 
     public synchronized void desertSyncSettings(View view) {
-        prefsMap.clear();
-        prefsMap.put("desert_sync_enabled", Boolean.toString(true));
-        prefsMap.put("desert_sync_master_ip", RouteTools.getBestInterfaceAddress());
-        prefsMap.put("dex_collection_method", "Follower");
-        prefsMap.put("custom_sync_key", Pref.getString("custom_sync_key", ""));
-        prefsMap.put("use_custom_sync_key", Boolean.toString(Pref.getBoolean("use_custom_sync_key", false)));
-        prefsMap.put("desert_use_https", Boolean.toString(Pref.getBooleanDefaultFalse("desert_use_https")));
-        prefsMap.put("xdrip_webservice_secret", Pref.getString("xdrip_webservice_secret", ""));
-        showQRCode();
     }
 
 
@@ -233,7 +219,6 @@ public class DisplayQRCode extends BaseAppCompatActivity {
                                                 break;
                                             }
                                             case 2: {
-                                                GcmActivity.backfillLink(reply.substring(3, 35), JoH.bytesToHex(mykey));
                                                 break;
                                             }
                                             default: {
@@ -333,12 +318,9 @@ public class DisplayQRCode extends BaseAppCompatActivity {
     }
 
     private void showNsQr() {
-        val ns = Pref.getString("cloud_storage_api_base", "");
-        showQRString(NightscoutUploader.getJsonFromSetting(ns),"Nightscout configuration");
     }
 
     private void showNsLiteQr() {
-        showQRString(NightLiteQR.getJsonFromSetting(NightLiteEntry.getApi()),"NightLite configuration");
     }
 
     private void showQRString(String str, String hint) {

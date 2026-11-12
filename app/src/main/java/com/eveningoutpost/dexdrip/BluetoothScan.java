@@ -35,15 +35,12 @@ import com.eveningoutpost.dexdrip.models.ActiveBluetoothDevice;
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.models.UserError.Log;
-import com.eveningoutpost.dexdrip.utilitymodels.Blukon;
 import com.eveningoutpost.dexdrip.utilitymodels.CollectionServiceStarter;
 import com.eveningoutpost.dexdrip.utilitymodels.Inevitable;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.eveningoutpost.dexdrip.cgm.medtrum.Medtrum;
 import com.eveningoutpost.dexdrip.utils.AndroidBarcode;
 import com.eveningoutpost.dexdrip.utils.ListActivityWithMenu;
 import com.eveningoutpost.dexdrip.utils.LocationHelper;
-import com.eveningoutpost.dexdrip.wearintegration.WatchUpdaterService;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
@@ -56,8 +53,6 @@ import java.util.Map;
 
 import lecho.lib.hellocharts.util.ChartUtils;
 
-import static com.eveningoutpost.dexdrip.Home.startWatchUpdaterService;
-import static com.eveningoutpost.dexdrip.cgm.medtrum.Medtrum.getDeviceInfoStringFromLegacy;
 import static com.eveningoutpost.dexdrip.xdrip.gs;
 
 @TargetApi(android.os.Build.VERSION_CODES.JELLY_BEAN_MR2)
@@ -360,7 +355,6 @@ public class BluetoothScan extends ListActivityWithMenu {
                     .executeSingle();
 
             prefs.edit().putString("last_connected_device_address", device.getAddress()).apply();
-            Blukon.clearPin();
             if (btDevice == null) {
                 ActiveBluetoothDevice newBtDevice = new ActiveBluetoothDevice();
                 newBtDevice.name = device.getName();
@@ -371,8 +365,6 @@ public class BluetoothScan extends ListActivityWithMenu {
                 btDevice.address = device.getAddress();
                 btDevice.save();
             }
-
-            startWatchUpdaterService(this, WatchUpdaterService.ACTION_SYNC_ACTIVEBTDEVICE, TAG);
         }
 
         // automatically set or unset the option for "Transmiter" device
@@ -451,27 +443,6 @@ public class BluetoothScan extends ListActivityWithMenu {
                     prefs.edit().putString("dex_collection_method", "LimiTTer").apply();
                 }
                 returnToHome();
-            } else if (device.getName().matches("^BLU[0-9][0-9][0-9][0-9][0-9].*$")) {
-
-                Blukon.doPinDialog(this,
-                        new Runnable() {
-                            @Override
-                            public void run() {
-                                if (!CollectionServiceStarter.isLimitter()) {
-                                    prefs.edit().putString("dex_collection_method", "LimiTTer").apply();
-                                }
-                                returnToHome();
-                            }
-                        });
-
-            } else if (device.getName().matches("MT")) {
-                if (Medtrum.saveSerialFromLegacy(adverts.get(device.getAddress()))) {
-                    JoH.static_toast_long("Set Medtrum serial number");
-                    CollectionServiceStarter.restartCollectionServiceBackground();
-                    returnToHome();
-                } else {
-                    JoH.static_toast_long("Failed to find Medtrum serial number");
-                }
             } else {
                 returnToHome();
             }
@@ -635,12 +606,6 @@ public class BluetoothScan extends ListActivityWithMenu {
                 viewHolder.deviceName.setText(deviceName);
                 viewHolder.deviceAddress.setText(device.getAddress());
                 if (adverts.containsKey(device.getAddress())) {
-                    if (deviceName.equals("MT")) {
-                        final String medtrum = getDeviceInfoStringFromLegacy(adverts.get(device.getAddress()));
-                        if (medtrum != null) {
-                            viewHolder.deviceName.setText(medtrum);
-                        }
-                    }
                     try {
                         if (Pref.getBooleanDefaultFalse("engineering_mode")) {
                             viewHolder.deviceAddress.append("   " + new String(adverts.get(device.getAddress()), "UTF-8"));

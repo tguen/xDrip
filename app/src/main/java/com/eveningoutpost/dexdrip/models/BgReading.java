@@ -1,17 +1,9 @@
 package com.eveningoutpost.dexdrip.models;
 
-import static com.eveningoutpost.dexdrip.evaluators.PersistentHigh.persistentHighThreshold;
-import static com.eveningoutpost.dexdrip.g5model.Ob1G5StateMachine.shortTxId;
-import static com.eveningoutpost.dexdrip.importedlibraries.dexcom.Dex_Constants.TREND_ARROW_VALUES.NOT_COMPUTABLE;
-import static com.eveningoutpost.dexdrip.importedlibraries.dexcom.Dex_Constants.TREND_ARROW_VALUES.getTrend;
-import static com.eveningoutpost.dexdrip.calibrations.PluggableCalibration.getCalibrationPluginFromPreferences;
-import static com.eveningoutpost.dexdrip.calibrations.PluggableCalibration.newCloseSensorData;
-
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.PowerManager;
-import androidx.preference.PreferenceManager;
 import android.provider.BaseColumns;
 
 import com.activeandroid.Model;
@@ -21,29 +13,23 @@ import com.activeandroid.query.Delete;
 import com.activeandroid.query.Select;
 import com.activeandroid.util.SQLiteUtils;
 import com.eveningoutpost.dexdrip.BestGlucose;
-import com.eveningoutpost.dexdrip.GcmActivity;
 import com.eveningoutpost.dexdrip.Home;
+import com.eveningoutpost.dexdrip.R;
+import com.eveningoutpost.dexdrip.calibrations.CalibrationAbstract;
 import com.eveningoutpost.dexdrip.importedlibraries.dexcom.records.EGVRecord;
 import com.eveningoutpost.dexdrip.importedlibraries.dexcom.records.SensorRecord;
+import com.eveningoutpost.dexdrip.messages.BgReadingMessage;
+import com.eveningoutpost.dexdrip.messages.BgReadingMultiMessage;
 import com.eveningoutpost.dexdrip.models.UserError.Log;
-import com.eveningoutpost.dexdrip.R;
 import com.eveningoutpost.dexdrip.services.Ob1G5CollectionService;
-import com.eveningoutpost.dexdrip.services.SyncService;
-import com.eveningoutpost.dexdrip.sharemodels.ShareUploadableBg;
 import com.eveningoutpost.dexdrip.utilitymodels.BgGraphBuilder;
 import com.eveningoutpost.dexdrip.utilitymodels.BgSendQueue;
 import com.eveningoutpost.dexdrip.utilitymodels.Constants;
 import com.eveningoutpost.dexdrip.utilitymodels.Inevitable;
 import com.eveningoutpost.dexdrip.utilitymodels.Notifications;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.eveningoutpost.dexdrip.utilitymodels.UploaderQueue;
-import com.eveningoutpost.dexdrip.utilitymodels.WholeHouse;
-import com.eveningoutpost.dexdrip.calibrations.CalibrationAbstract;
-import com.eveningoutpost.dexdrip.messages.BgReadingMessage;
-import com.eveningoutpost.dexdrip.messages.BgReadingMultiMessage;
 import com.eveningoutpost.dexdrip.utils.DexCollectionType;
 import com.eveningoutpost.dexdrip.utils.SqliteRejigger;
-import com.eveningoutpost.dexdrip.wearintegration.WatchUpdaterService;
 import com.eveningoutpost.dexdrip.xdrip;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -63,10 +49,19 @@ import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 
+import androidx.preference.PreferenceManager;
 import lombok.val;
 
+import static com.eveningoutpost.dexdrip.calibrations.PluggableCalibration.getCalibrationPluginFromPreferences;
+import static com.eveningoutpost.dexdrip.calibrations.PluggableCalibration.newCloseSensorData;
+import static com.eveningoutpost.dexdrip.evaluators.PersistentHigh.persistentHighThreshold;
+import static com.eveningoutpost.dexdrip.g5model.Ob1G5StateMachine.shortTxId;
+import static com.eveningoutpost.dexdrip.importedlibraries.dexcom.Dex_Constants.TREND_ARROW_VALUES.NOT_COMPUTABLE;
+import static com.eveningoutpost.dexdrip.importedlibraries.dexcom.Dex_Constants.TREND_ARROW_VALUES.getTrend;
+
+
 @Table(name = "BgReadings", id = BaseColumns._ID)
-public class BgReading extends Model implements ShareUploadableBg {
+public class BgReading extends Model {
 
     private final static String TAG = BgReading.class.getSimpleName();
     private final static String TAG_ALERT = TAG + " AlertBg";
@@ -659,12 +654,6 @@ public class BgReading extends Model implements ShareUploadableBg {
     }
 
     public static void pushBgReadingSyncToWatch(BgReading bgReading, boolean is_new) {
-        Log.d(TAG, "pushTreatmentSyncToWatch Add treatment to UploaderQueue.");
-        if (Pref.getBooleanDefaultFalse("wear_sync")) {
-            if (UploaderQueue.newEntryForWatch(is_new ? "insert" : "update", bgReading) != null) {
-                SyncService.startSyncService(3000); // sync in 3 seconds
-            }
-        }
     }
 
     public String displaySlopeArrow() {
@@ -1107,7 +1096,6 @@ public class BgReading extends Model implements ShareUploadableBg {
         Calibration calibration = Calibration.byuuid(bgr.calibration_uuid);
         if (calibration == null) {
             Log.i(TAG, "received Unknown calibration: " + bgr.calibration_uuid + " asking for sensor upate...");
-            GcmActivity.requestSensorCalibrationsUpdate();
         } else {
             bgr.calibration = calibration;
         }
@@ -1199,184 +1187,6 @@ public class BgReading extends Model implements ShareUploadableBg {
         }
     }
 
-    public static void bgReadingInsertFromWebFollow(double calculated_value, long timestamp) {
-        final BgReading bgr = bgReadingInsertFromG5(calculated_value, timestamp, null);
-        if (bgr != null) {
-            bgr.source_info = "Web Follow";
-            bgr.save();
-        }
-    }
-
-    public static synchronized BgReading bgReadingInsertFromGluPro(double calculated_value, final long timestamp, String sourceInfoAppend) {
-
-        final Sensor sensor = Sensor.currentSensor();
-        if (sensor == null) {
-            Log.w(TAG, "No sensor, ignoring this bg reading");
-            return null;
-        }
-
-        if (calculated_value == Double.NEGATIVE_INFINITY) {
-            Log.d(TAG, "bgReadingInsertFromGluPro: converting negative infinity to LOW state");
-            calculated_value = 38; // map the value to LOW
-        }
-
-        if (Double.isInfinite(calculated_value) || Double.isNaN(calculated_value)) {
-            Log.e(TAG, "Ignoring invalid bg reading: " + calculated_value);
-            return null;
-        }
-
-        if (calculated_value < 0) {
-            Log.e(TAG, "Ignoring negative bg reading: " + calculated_value);
-            return null;
-        }
-
-        if (calculated_value > 600) {
-            Log.e(TAG, "Ignoring too high bg reading: " + calculated_value);
-            return null;
-        }
-
-        // TODO slope!!
-        final BgReading existing = getForPreciseTimestamp(timestamp, Constants.MINUTE_IN_MS);
-        if (existing == null) {
-            final BgReading bgr = new BgReading();
-            bgr.sensor = sensor;
-            bgr.sensor_uuid = sensor.uuid;
-            bgr.time_since_sensor_started = JoH.msSince(sensor.started_at); // is there a helper for this?
-            bgr.timestamp = timestamp;
-            bgr.uuid = UUID.randomUUID().toString();
-            bgr.calculated_value = calculated_value;
-            bgr.raw_data = SPECIAL_RAW_NOT_AVAILABLE; // placeholder
-
-            if (sourceInfoAppend != null && !sourceInfoAppend.isEmpty()) {
-                bgr.appendSourceInfo(sourceInfoAppend);
-            }
-            bgr.save();
-            if (JoH.ratelimit("sync wakelock", 15)) {
-                final PowerManager.WakeLock linger = JoH.getWakeLock("G5 Insert", 4000);
-            }
-            Inevitable.stackableTask("NotifySyncBgr", 3000, () -> notifyAndSync(bgr));
-            return bgr;
-        } else {
-            return existing;
-        }
-    }
-
-
-    public static synchronized BgReading bgReadingInsertMedtrum(double calculated_value, long timestamp, String sourceInfoAppend, double raw_data) {
-
-        final Sensor sensor = Sensor.currentSensor();
-        if (sensor == null) {
-            Log.w(TAG, "No sensor, ignoring this bg reading");
-            return null;
-        }
-        // TODO slope!!
-        final BgReading existing = getForPreciseTimestamp(timestamp, Constants.MINUTE_IN_MS);
-        if (existing == null) {
-            final BgReading bgr = new BgReading();
-            bgr.sensor = sensor;
-            bgr.sensor_uuid = sensor.uuid;
-            bgr.time_since_sensor_started = JoH.msSince(sensor.started_at); // is there a helper for this?
-            bgr.timestamp = timestamp;
-            bgr.uuid = UUID.randomUUID().toString();
-            bgr.calculated_value = calculated_value;
-            bgr.raw_data = raw_data / 1000d;
-            bgr.filtered_data = bgr.raw_data;
-            if (sourceInfoAppend != null && sourceInfoAppend.equals("Backfill")) {
-                bgr.raw_data = BgReading.SPECIAL_G5_PLACEHOLDER;
-            } else {
-                bgr.calculateAgeAdjustedRawValue();
-            }
-            bgr.appendSourceInfo("Medtrum Native");
-            if (sourceInfoAppend != null && sourceInfoAppend.length() > 0) {
-                bgr.appendSourceInfo(sourceInfoAppend);
-            }
-            bgr.save();
-            if (JoH.ratelimit("sync wakelock", 15)) {
-                final PowerManager.WakeLock linger = JoH.getWakeLock("Medtrum Insert", 4000);
-            }
-            Inevitable.task("NotifySyncBgr" + bgr.timestamp, 3000, () -> notifyAndSync(bgr));
-            if (bgr.isBackfilled()) {
-                handleResyncWearAfterBackfill(bgr.timestamp);
-            }
-            return bgr;
-        } else {
-            return existing;
-        }
-    }
-    public static synchronized BgReading bgReadingInsertLibre2(double calculated_value, long timestamp, double raw_data) {
-
-        final Sensor sensor = Sensor.currentSensor();
-        if (sensor == null) {
-            Log.w(TAG, "No sensor, ignoring this bg reading");
-            return null;
-        }
-        // TODO slope!!
-        final BgReading existing = getForPreciseTimestamp(timestamp, DexCollectionType.getCurrentDeduplicationPeriod());
-        if (existing == null) {
-            Calibration calibration = Calibration.lastValid();
-            final BgReading bgReading = new BgReading();
-            if (calibration == null) {
-                Log.d(TAG, "create: No calibration yet");
-                bgReading.sensor = sensor;
-                bgReading.sensor_uuid = sensor.uuid;
-                bgReading.raw_data = raw_data;
-                bgReading.age_adjusted_raw_value = raw_data;
-                bgReading.filtered_data = raw_data;
-                bgReading.timestamp = timestamp;
-                bgReading.uuid = UUID.randomUUID().toString();
-                bgReading.calculated_value = calculated_value;
-                bgReading.calculated_value_slope = 0;
-                bgReading.hide_slope = false;
-                bgReading.appendSourceInfo("Libre2 Native");
-                bgReading.find_slope();
-
-                bgReading.save();
-                bgReading.perform_calculations();
-                bgReading.postProcess(false);
-
-            } else {
-                Log.d(TAG, "Calibrations, so doing everything bgReading = " + bgReading);
-                bgReading.sensor = sensor;
-                bgReading.sensor_uuid = sensor.uuid;
-                bgReading.calibration = calibration;
-                bgReading.calibration_uuid = calibration.uuid;
-                bgReading.raw_data = raw_data ;
-                bgReading.age_adjusted_raw_value = raw_data;
-                bgReading.filtered_data = raw_data;
-                bgReading.timestamp = timestamp;
-                bgReading.uuid = UUID.randomUUID().toString();
-
-                bgReading.calculated_value = ((calibration.slope * calculated_value) + calibration.intercept);
-                bgReading.filtered_calculated_value = ((calibration.slope * bgReading.ageAdjustedFiltered()) + calibration.intercept);
-
-                bgReading.calculated_value_slope = 0;
-                bgReading.hide_slope = false;
-                bgReading.appendSourceInfo("Libre2 Native");
-
-                BgReading.updateCalculatedValueToWithinMinMax(bgReading);
-
-                bgReading.find_slope();
-                bgReading.save();
-
-                bgReading.postProcess(false);
-
-            }
-
-           return bgReading;
-        } else {
-            return existing;
-        }
-    }
-
-    public static void handleResyncWearAfterBackfill(final long earliest) {
-        if (earliest_backfill == 0 || earliest < earliest_backfill) earliest_backfill = earliest;
-        if (WatchUpdaterService.isEnabled()) {
-            Inevitable.task("wear-backfill-sync", 10000, () -> {
-                WatchUpdaterService.startServiceAndResendDataIfNeeded(earliest_backfill);
-                earliest_backfill = 0;
-            });
-        }
-    }
 
     public void setRemoteMarker() {
         filtered_data = SPECIAL_REMOTE_PLACEHOLDER;
@@ -1395,7 +1205,7 @@ public class BgReading extends Model implements ShareUploadableBg {
     }
 
     public static BgReading bgReadingInsertFromJson(String json, boolean do_notification) {
-        return bgReadingInsertFromJson(json, do_notification, WholeHouse.isEnabled());
+        return bgReadingInsertFromJson(json, do_notification, false);
     }
 
     public static BgReading bgReadingInsertFromJson(String json, boolean do_notification, boolean force_sensor) {

@@ -1,16 +1,12 @@
 package com.eveningoutpost.dexdrip.g5model;
 
-
 import android.text.SpannableString;
 
-import com.eveningoutpost.dexdrip.cgm.glupro.GluProService;
-import com.eveningoutpost.dexdrip.models.Sensor;
 import com.eveningoutpost.dexdrip.R;
-import com.eveningoutpost.dexdrip.utilitymodels.Constants;
-import com.eveningoutpost.dexdrip.utilitymodels.PersistentStore;
-import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.eveningoutpost.dexdrip.utilitymodels.StatusItem.Highlight;
+import com.eveningoutpost.dexdrip.models.Sensor;
 import com.eveningoutpost.dexdrip.ui.helpers.Span;
+import com.eveningoutpost.dexdrip.utilitymodels.Constants;
+import com.eveningoutpost.dexdrip.utilitymodels.StatusItem.Highlight;
 import com.eveningoutpost.dexdrip.utils.DexCollectionType;
 import com.eveningoutpost.dexdrip.xdrip;
 
@@ -34,12 +30,10 @@ import static com.eveningoutpost.dexdrip.services.Ob1G5CollectionService.usingNa
 import static com.eveningoutpost.dexdrip.utilitymodels.Constants.DAY_IN_MS;
 import static com.eveningoutpost.dexdrip.utilitymodels.Constants.HOUR_IN_MS;
 import static com.eveningoutpost.dexdrip.utilitymodels.Constants.MINUTE_IN_MS;
-import static com.eveningoutpost.dexdrip.utils.DexCollectionType.GluPro;
 import static com.eveningoutpost.dexdrip.utils.DexCollectionType.None;
 import static com.eveningoutpost.dexdrip.utils.DexCollectionType.getBestCollectorHardwareName;
 import static com.eveningoutpost.dexdrip.utils.DexCollectionType.getDexCollectionType;
 import static com.eveningoutpost.dexdrip.utils.DexCollectionType.hasDexcomRaw;
-import static com.eveningoutpost.dexdrip.utils.DexCollectionType.hasLibre;
 
 // jamorham
 
@@ -84,16 +78,7 @@ public class SensorDays {
 
         val ths = new SensorDays();
 
-        if (hasLibre(type)) {
-            String libreVersion = PersistentStore.getString("LibreVersion");
-            ths.period = DAY_IN_MS * 14; // TODO 10 day sensors?
-            if (libreVersion.equals("3")) {
-                ths.period = DAY_IN_MS * 15;
-            }
-            ths.strategy = USE_LIBRE_STRATEGY;
-            ths.warmupMs = HOUR_IN_MS;
-
-        } else if (hasDexcomRaw(type)) {
+        if (hasDexcomRaw(type)) {
             ths.strategy = USE_DEXCOM_STRATEGY;
             val vr2 = (VersionRequest2RxMessage)
                     getFirmwareXDetails(tx_id, 2);
@@ -127,11 +112,6 @@ public class SensorDays {
                 ths.warmupMs = HOUR_IN_MS;
             }
 
-        } else if (type == GluPro) {
-            ths.strategy = USE_GLUPRO_STRATEGY;
-            ths.period = GluProService.getRunTime();
-            ths.warmupMs = HOUR_IN_MS;
-
         } else {
             // unknown type
         }
@@ -157,31 +137,10 @@ public class SensorDays {
         }
     }
 
-    private static long getLibreAgeMs() {
-        return Pref.getInt("nfc_sensor_age", -50000) * MINUTE_IN_MS;
-    }
-
-    private long getLibreStart() {
-        try {
-            val age_ms = getLibreAgeMs();
-            if (age_ms > 0) {
-                return tsl() - age_ms;
-            } else {
-                return Sensor.currentSensor().started_at;
-            }
-        } catch (Exception e) {
-            return -1;
-        }
-    }
-
     public long getStart() {
         switch (strategy) {
             case USE_DEXCOM_STRATEGY:
                 return getDexcomStart();
-            case USE_LIBRE_STRATEGY:
-                return getLibreStart();
-            case USE_GLUPRO_STRATEGY:
-                return com.eveningoutpost.dexdrip.cgm.glupro.GluPro.getStart();
             default:
                 return 0; // very large error default will be caught by sanity check
         }

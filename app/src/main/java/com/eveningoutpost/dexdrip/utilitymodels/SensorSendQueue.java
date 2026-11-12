@@ -7,11 +7,10 @@ import com.activeandroid.annotation.Column;
 import com.activeandroid.annotation.Table;
 import com.activeandroid.query.Delete;
 import com.activeandroid.query.Select;
-import com.eveningoutpost.dexdrip.GcmActivity;
-import com.eveningoutpost.dexdrip.Home;
 import com.eveningoutpost.dexdrip.models.Sensor;
 
 import java.util.List;
+
 
 /**
  * Created by Emma Black on 11/7/14.
@@ -53,10 +52,6 @@ public class SensorSendQueue extends Model {
     }
     
     public static void SendToFollower(Sensor sensor) {
-       // SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(xdrip.getAppContext());
-        if(Home.get_master()) {
-            GcmActivity.syncSensor(sensor, true);
-        }
     }
 
     public static void deleteAll() {

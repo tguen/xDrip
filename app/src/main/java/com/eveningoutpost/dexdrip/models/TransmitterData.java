@@ -6,8 +6,6 @@ import com.activeandroid.Model;
 import com.activeandroid.annotation.Column;
 import com.activeandroid.annotation.Table;
 import com.activeandroid.query.Select;
-import com.eveningoutpost.dexdrip.GcmActivity;
-import com.eveningoutpost.dexdrip.Home;
 import com.eveningoutpost.dexdrip.importedlibraries.usbserial.util.HexDump;
 import com.eveningoutpost.dexdrip.models.UserError.Log;
 import com.eveningoutpost.dexdrip.utilitymodels.Constants;
@@ -21,6 +19,7 @@ import java.nio.ByteOrder;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+
 
 /**
  * Created by Emma Black on 11/6/14.
@@ -87,9 +86,6 @@ public class TransmitterData extends Model {
                     if (data.length > 2) {
                         try {
                             Pref.setInt("bridge_battery", Integer.parseInt(data[2]));
-                            if (Home.get_master()) {
-                                GcmActivity.sendBridgeBattery(Pref.getInt("bridge_battery", -1));
-                            }
                             CheckBridgeBattery.checkBridgeBattery();
                         } catch (Exception e) {
                             Log.e(TAG, "Got exception processing classic wixel or limitter battery value: " + e.toString());

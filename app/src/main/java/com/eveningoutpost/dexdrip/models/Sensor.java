@@ -1,7 +1,5 @@
 package com.eveningoutpost.dexdrip.models;
 
-import static com.eveningoutpost.dexdrip.models.JoH.tsl;
-
 import android.provider.BaseColumns;
 
 import com.activeandroid.Model;
@@ -9,7 +7,6 @@ import com.activeandroid.annotation.Column;
 import com.activeandroid.annotation.Table;
 import com.activeandroid.query.Delete;
 import com.activeandroid.query.Select;
-import com.eveningoutpost.dexdrip.GcmActivity;
 import com.eveningoutpost.dexdrip.Home;
 import com.eveningoutpost.dexdrip.models.UserError.Log;
 import com.eveningoutpost.dexdrip.utilitymodels.Constants;
@@ -27,6 +24,9 @@ import java.util.UUID;
 
 import lombok.Setter;
 import lombok.val;
+
+import static com.eveningoutpost.dexdrip.models.JoH.tsl;
+
 
 /**
  * Created by Emma Black on 10/29/14.
@@ -240,9 +240,6 @@ public class Sensor extends Model {
         }
         sensor.save();
         SensorSendQueue.addToQueue(sensor);
-        if ((!from_sync) && (Home.get_master())) {
-            GcmActivity.sendSensorBattery(sensor.latest_battery_level);
-        }
     }
 
     public static void updateSensorLocation(String sensor_location) {
@@ -354,4 +351,3 @@ public class Sensor extends Model {
         }
     }
 }
-

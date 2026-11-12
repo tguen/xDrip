@@ -1,36 +1,30 @@
 package com.eveningoutpost.dexdrip.utilitymodels;
 
-import static com.eveningoutpost.dexdrip.services.DexCollectionService.MAX_BT_WDG;
-import static com.eveningoutpost.dexdrip.utils.Preferences.MAX_GLUCOSE_INPUT;
-import static com.eveningoutpost.dexdrip.utils.Preferences.MIN_GLUCOSE_INPUT;
-
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
-import androidx.preference.PreferenceManager;
 import android.util.Log;
 
+import com.eveningoutpost.dexdrip.R;
+import com.eveningoutpost.dexdrip.SnoozeActivity;
 import com.eveningoutpost.dexdrip.models.APStatus;
 import com.eveningoutpost.dexdrip.models.AlertType;
 import com.eveningoutpost.dexdrip.models.BgReading;
-import com.eveningoutpost.dexdrip.models.DesertSync;
 import com.eveningoutpost.dexdrip.models.JoH;
-import com.eveningoutpost.dexdrip.models.Libre2RawValue;
-import com.eveningoutpost.dexdrip.models.Libre2Sensor;
-import com.eveningoutpost.dexdrip.models.LibreBlock;
-import com.eveningoutpost.dexdrip.models.LibreData;
-import com.eveningoutpost.dexdrip.models.PenData;
 import com.eveningoutpost.dexdrip.models.Prediction;
 import com.eveningoutpost.dexdrip.models.UserNotification;
-import com.eveningoutpost.dexdrip.R;
-import com.eveningoutpost.dexdrip.SnoozeActivity;
 import com.eveningoutpost.dexdrip.stats.FirstPageFragment;
 import com.eveningoutpost.dexdrip.utils.Preferences;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 
+import androidx.preference.PreferenceManager;
 import lombok.val;
+
+import static com.eveningoutpost.dexdrip.utils.Preferences.MAX_GLUCOSE_INPUT;
+import static com.eveningoutpost.dexdrip.utils.Preferences.MIN_GLUCOSE_INPUT;
+
 
 /**
  * Created by Emma Black on 4/15/15.
@@ -50,14 +44,8 @@ public class IdempotentMigrations {
         migrateBGAlerts();
         migrateToNewStyleRestUris();
         BgReading.updateDB();
-        LibreBlock.updateDB();
-        LibreData.updateDB();
         APStatus.updateDB();
         Prediction.updateDB();
-        DesertSync.updateDB();
-        PenData.updateDB();
-        Libre2RawValue.updateDB();
-        Libre2Sensor.updateDB();
 //        BgReadingArchive.updateDB();
         AlertType.fixUpTable();
         UserNotification.updateDB();
@@ -66,7 +54,6 @@ public class IdempotentMigrations {
         IncompatibleApps.notifyAboutIncompatibleApps();
         CompatibleApps.notifyAboutCompatibleApps();
         legacySettingsMoveLanguageFromNoToNb();
-        settingsFix();
         FirstPageFragment.defineDefaults(); // Define the statistics page visibility defaults.
         prefSettingRangeVerification();
         inheritPrefSettingsAfterUpdate();
@@ -180,24 +167,6 @@ public class IdempotentMigrations {
         Pref.setBoolean("number_icon_large_arrow", false);
         Pref.setBoolean("ongoing_notification_channel", true);
         Pref.setString("bg_notification_sound", "default"); // We need this along with a detector in the playFile method to handle the default mp3 option with SDK 26.
-
-    }
-
-    // Required adjustments/conversions to settings after an update
-    private static void settingsFix() {
-
-        try { // Use the closest list value for the Bluetooth watchdog timer
-            int oldValue = JoH.parseIntWithDefault(Pref.getString("bluetooth_watchdog_timer", Integer.toString(MAX_BT_WDG)), 10, MAX_BT_WDG);
-            int roundedValue = Math.round(oldValue / 5.0f) * 5; // Round to the nearest multiple of 5
-
-            // Clamp to valid range (just in case)
-            if (roundedValue < 5) roundedValue = 5;
-            if (roundedValue > MAX_BT_WDG) roundedValue = MAX_BT_WDG;
-
-            Pref.setString("bluetooth_watchdog_timer", Integer.toString(roundedValue));
-        } catch (ClassCastException e) {
-            Log.e(TAG, "Converting bluetooth_watchdog_timer to list failed");
-        }
 
     }
 

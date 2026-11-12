@@ -1,7 +1,6 @@
 package com.eveningoutpost.dexdrip.g5model;
 
 import com.eveningoutpost.dexdrip.models.UserError;
-import com.eveningoutpost.dexdrip.services.G5CollectionService;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -15,8 +14,6 @@ import lombok.val;
 
 
 public class BatteryInfoRxMessage extends BaseMessage {
-
-    private final static String TAG = G5CollectionService.TAG; // meh
 
     public static final byte opcode = 0x23;
     public static final byte opcode2 = 0x22;

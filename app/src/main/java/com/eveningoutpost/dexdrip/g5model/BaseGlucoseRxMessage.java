@@ -1,14 +1,14 @@
 package com.eveningoutpost.dexdrip.g5model;
 
-import static com.eveningoutpost.dexdrip.utilitymodels.Constants.MINUTE_IN_MS;
-import static com.eveningoutpost.dexdrip.utilitymodels.Constants.SECOND_IN_MS;
-
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.UserError;
-import com.eveningoutpost.dexdrip.services.G5CollectionService;
 
 import lombok.NoArgsConstructor;
 import lombok.val;
+
+import static com.eveningoutpost.dexdrip.utilitymodels.Constants.MINUTE_IN_MS;
+import static com.eveningoutpost.dexdrip.utilitymodels.Constants.SECOND_IN_MS;
+
 
 /**
  * Created by jamorham on 02/07/2018.
@@ -16,9 +16,6 @@ import lombok.val;
 
 @NoArgsConstructor
 public abstract class BaseGlucoseRxMessage extends BaseMessage {
-
-    private final static String TAG = G5CollectionService.TAG; // meh
-
     public TransmitterStatus status;
     public int status_raw;
     public int timestamp;

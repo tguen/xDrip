@@ -77,7 +77,6 @@ import com.eveningoutpost.dexdrip.utilitymodels.Pref;
 import com.eveningoutpost.dexdrip.utilitymodels.XdripNotificationCompat;
 import com.eveningoutpost.dexdrip.utils.BestGZIPOutputStream;
 import com.eveningoutpost.dexdrip.utils.CipherUtils;
-import com.eveningoutpost.dexdrip.utils.Telemetry;
 import com.eveningoutpost.dexdrip.utils.framework.BuggySamsung;
 import com.eveningoutpost.dexdrip.xdrip;
 import com.google.common.primitives.Bytes;
@@ -123,7 +122,6 @@ import java.util.zip.Deflater;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.Inflater;
 
-import io.sentry.Sentry;
 import lombok.val;
 
 /**
@@ -567,16 +565,7 @@ public class JoH {
     }
 
     public static synchronized void logException(Exception e) {
-        if (ratelimit("joh-logException", 300)) {
-            if (Telemetry.isCrashReportingEnabled()) {
-                try {
-                    Sentry.captureException(e);
-                    UserError.Log.e(TAG, "Exception logged: " + e);
-                } catch (Exception ex) {
-                    //
-                }
-            }
-        }
+        Log.e(TAG, e.getMessage(), e);
     }
 
 
@@ -584,16 +573,7 @@ public class JoH {
     public static synchronized void logMessage(final String message) {
         if (message == null) return;
         if (message.equals(lastLoggedMessage)) return;
-        if (ratelimit("joh-logMessage", 300)) {
-            if (Telemetry.isTelemetryEnabled()) {
-                try {
-                    Sentry.captureMessage(message);
-                    UserError.Log.e(TAG, "Message logged: " + message);
-                } catch (Exception ex) {
-                    //
-                }
-            }
-        }
+        Log.i(TAG, message);
     }
 
 

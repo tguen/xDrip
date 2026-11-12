@@ -1,7 +1,6 @@
 package com.eveningoutpost.dexdrip.g5model;
 
 // created by jamorham
-
 import android.util.SparseArray;
 
 import com.eveningoutpost.dexdrip.R;
@@ -12,7 +11,6 @@ import com.google.common.collect.ImmutableSet;
 import lombok.Getter;
 import lombok.val;
 
-import static com.eveningoutpost.dexdrip.services.G5CollectionService.TAG;
 
 public enum CalibrationState {
 
@@ -73,6 +71,8 @@ public enum CalibrationState {
     private static final ImmutableSet<CalibrationState> failed = ImmutableSet.of(SensorFailed, SensorFailed2, SensorFailed3, SensorFailed4, SensorFailed5, SensorFailed6, SensorFailed7, SensorFailed8, SensorFailed9, SensorFailed10, SensorFailedStart);
     private static final ImmutableSet<CalibrationState> stopped = ImmutableSet.of(Stopped, Ended, SensorExpired, SensorFailed, SensorFailed2, SensorFailed3, SensorFailed4, SensorFailed5, SensorFailed6, SensorFailed7, SensorFailed8, SensorFailed9, SensorFailed10, SensorFailedStart, SensorStopped, SensorStopped2);
     private static final ImmutableSet<CalibrationState> transitional = ImmutableSet.of(WarmingUp, SensorStarted, SensorStopped, CalibrationSent);
+
+    private static final String TAG = CalibrationState.class.getSimpleName();
 
 
     CalibrationState(int value, String text) {

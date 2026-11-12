@@ -10,7 +10,6 @@ public class Injectors {
 
     private static MicroStatusComponent microStatusComponent;
     private static HomeShelfComponent homeShelfComponent;
-    private static WebServiceComponent webServiceComponent;
 
     public static MicroStatusComponent getMicroStatusComponent() {
         if (microStatusComponent == null) {
@@ -26,9 +25,4 @@ public class Injectors {
         return homeShelfComponent;
     }
 
-    public static WebServiceComponent getWebServiceComponent() {
-        if (webServiceComponent == null) {
-            webServiceComponent = DaggerWebServiceComponent.create();
-        }
-        return webServiceComponent;
-    }}
+}

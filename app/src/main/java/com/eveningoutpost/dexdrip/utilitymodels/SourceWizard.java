@@ -4,24 +4,24 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
-import androidx.databinding.ObservableArrayList;
-import androidx.databinding.ObservableList;
-import androidx.annotation.StringRes;
 import android.view.View;
 
 import com.eveningoutpost.dexdrip.BR;
-import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.R;
-import com.eveningoutpost.dexdrip.databinding.DialogTreeSelectorBinding;
+import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.utils.DexCollectionHelper;
 import com.eveningoutpost.dexdrip.utils.DexCollectionType;
 import com.eveningoutpost.dexdrip.xdrip;
 
 import java.util.List;
 
+import androidx.annotation.StringRes;
+import androidx.databinding.ObservableArrayList;
+import androidx.databinding.ObservableList;
 import me.tatarka.bindingcollectionadapter2.ItemBinding;
 
 import static com.eveningoutpost.dexdrip.ui.helpers.UiHelper.convertDpToPixel;
+
 
 /**
  * Created by jamorham on 20/12/2017.
@@ -30,7 +30,6 @@ import static com.eveningoutpost.dexdrip.ui.helpers.UiHelper.convertDpToPixel;
  *
  */
 
-import static com.eveningoutpost.dexdrip.xdrip.gs;
 public class SourceWizard {
     @SuppressLint("StaticFieldLeak")
     private static final String TAG = "SourceWizard";
@@ -119,18 +118,7 @@ public class SourceWizard {
 
         final AlertDialog.Builder builder = new AlertDialog.Builder(activity);
         // family node
-        if (!branch.data.isCollectionType()) {
-
-            final DialogTreeSelectorBinding binding = DialogTreeSelectorBinding.inflate(activity.getLayoutInflater());
-            binding.setViewModel(new ViewModel(branch));
-
-            builder.setTitle(branch.data.name);
-            builder.setMessage(branch.data.description);
-
-            builder.setView(binding.getRoot());
-
-            // leaf node
-        } else {
+        if (branch.data.isCollectionType()) {
             final Tree<Item> fbranch = branch;
             final Item item = branch.data;
             builder.setTitle(R.string.are_you_sure);

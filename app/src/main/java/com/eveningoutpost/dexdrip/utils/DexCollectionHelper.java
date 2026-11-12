@@ -12,8 +12,6 @@ import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.services.Ob1G5CollectionService;
 import com.eveningoutpost.dexdrip.utilitymodels.CollectionServiceStarter;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.eveningoutpost.dexdrip.cgm.sharefollow.ShareFollowService;
-import com.eveningoutpost.dexdrip.cgm.carelinkfollow.CareLinkFollowService;
 import com.eveningoutpost.dexdrip.plugin.Dialog;
 import com.eveningoutpost.dexdrip.xdrip;
 
@@ -96,7 +94,6 @@ public class DexCollectionHelper {
                                         "dex_share_us_acct", "Select Servers", "My account is on USA servers", "Select whether using USA or rest-of-world account",
                                         () -> {
                                             Home.staticRefreshBGCharts();
-                                            ShareFollowService.resetInstanceAndInvalidateSession();
                                             CollectionServiceStarter.restartCollectionServiceBackground();
                                         })));
                 break;

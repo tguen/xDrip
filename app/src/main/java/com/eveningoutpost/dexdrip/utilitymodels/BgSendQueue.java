@@ -12,19 +12,17 @@ import com.activeandroid.annotation.Column;
 import com.activeandroid.annotation.Table;
 import com.activeandroid.query.Delete;
 import com.activeandroid.query.Select;
-import com.eveningoutpost.dexdrip.GcmActivity;
 import com.eveningoutpost.dexdrip.Home;
+import com.eveningoutpost.dexdrip.NewDataObserver;
+import com.eveningoutpost.dexdrip.WidgetUpdateService;
 import com.eveningoutpost.dexdrip.models.BgReading;
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.models.UserError.Log;
-import com.eveningoutpost.dexdrip.NewDataObserver;
-import com.eveningoutpost.dexdrip.services.SyncService;
-import com.eveningoutpost.dexdrip.WidgetUpdateService;
-import com.eveningoutpost.dexdrip.calibrations.PluggableCalibration;
 import com.eveningoutpost.dexdrip.xDripWidget;
 
 import java.util.List;
+
 
 /**
  * Created by Emma Black on 11/7/14.
@@ -113,12 +111,6 @@ public class BgSendQueue extends Model {
         }
         final PowerManager.WakeLock wakeLock = JoH.getWakeLock("sendQueue", 120000);
         try {
-
-            // Add to upload queue
-            //if (!is_follower) {
-                UploaderQueue.newEntry(operation_type, bgReading);
-            //}
-
             // all this other UI stuff probably shouldn't be here but in lieu of a better method we keep with it..
             if (!quick) {
                 if (Home.activityVisible) {
@@ -141,31 +133,9 @@ public class BgSendQueue extends Model {
                     JoH.getWakeLock("broadcstNightWatch", 3000);
                 }
 
-
             if (!quick) {
                 NewDataObserver.newBgReading(bgReading, is_follower);
             }
-
-            if ((!is_follower) && (Pref.getBoolean("plus_follow_master", false))) {
-                if (Pref.getBoolean("display_glucose_from_plugin", false))
-                {
-                    // TODO does this currently ignore noise or is noise properly calculated on the follower?
-                    // munge bgReading for follower TODO will probably want extra option for this in future
-                    // TODO we maybe don't need deep clone for this! Check how value will be used below
-                    //GcmActivity.syncBGReading(PluggableCalibration.mungeBgReading(new Cloner().deepClone(bgReading)));
-                    GcmActivity.syncBGReading(PluggableCalibration.mungeBgReading(BgReading.fromJSON(bgReading.toJSON(true))));
-                } else {
-                    // send as is
-                    GcmActivity.syncBGReading(bgReading);
-                }
-            }
-
-            // process the uploader queue
-            if (JoH.ratelimit("start-sync-service", 30)) {
-                JoH.startService(SyncService.class);
-            }
-
-
         } finally {
             JoH.releaseWakeLock(wakeLock);
         }

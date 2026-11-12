@@ -32,7 +32,6 @@ import com.eveningoutpost.dexdrip.utils.bt.ReplyProcessor;
 import com.eveningoutpost.dexdrip.utils.bt.Subscription;
 import com.eveningoutpost.dexdrip.utils.framework.PoorMansConcurrentLinkedDeque;
 import com.eveningoutpost.dexdrip.utils.time.SlidingWindowConstraint;
-import com.eveningoutpost.dexdrip.watch.thinjam.BackgroundScanReceiver;
 import com.eveningoutpost.dexdrip.xdrip;
 import com.polidea.rxandroidble2.RxBleClient;
 import com.polidea.rxandroidble2.RxBleConnection;
@@ -100,7 +99,6 @@ public abstract class JamBaseBluetoothSequencer extends JamBaseBluetoothService 
 
         public final ConcurrentHashMap<UUID, Object> characteristics = new ConcurrentHashMap<>();
 
-        public volatile Subscription scanSubscription;
         public volatile Subscription connectionSubscription;
         public volatile Subscription stateSubscription;
         public volatile Subscription discoverSubscription;
@@ -109,10 +107,7 @@ public abstract class JamBaseBluetoothSequencer extends JamBaseBluetoothService 
 
         public volatile String address; // use setAddress() to initiate! don't write directly
         public volatile boolean isConnected;
-        public volatile boolean isNotificationEnabled;
         public volatile boolean isDiscoveryComplete;
-        public volatile UUID readCharacteristic;
-        public volatile UUID writeCharacteristic;
         public volatile String state;
         public volatile UUID queue_write_characterstic;
         public volatile long lastProcessedIncomingData = -1;
@@ -122,20 +117,13 @@ public abstract class JamBaseBluetoothSequencer extends JamBaseBluetoothService 
         public volatile boolean playSounds = false;
         public volatile boolean autoConnect = false;
         public volatile boolean autoReConnect = false;
-        public volatile boolean useBackgroundScanning = false;
         public volatile boolean retry133 = true;
         public volatile boolean discoverOnce = false;
         public volatile boolean resetWhenAlreadyConnected = false;
         public volatile boolean useReconnectHandler = false;
 
-        public PendingIntent serviceIntent;
         public SlidingWindowConstraint reconnectConstraint;
-        private PendingIntent serviceFailoverIntent;
-        public long retry_time;
         public long retry_backoff;
-        public long wakeup_time;
-        long failover_time;
-        long last_wake_up_time;
         @Getter
         long lastConnected;
 
@@ -220,21 +208,20 @@ public abstract class JamBaseBluetoothSequencer extends JamBaseBluetoothService 
     }
 
 
-    private String getIntentFilterName() {
-        return BackgroundScanReceiver.getACTION_NAME();
-    }
-
     private PendingIntent scanCallBack = null;
 
     private void registerScanReceiver() {
+        /*
         if (scanCallBack == null) {
             scanCallBack = PendingIntent.getBroadcast(xdrip.getAppContext(), SCAN_REQUEST_CODE,
                     new Intent(xdrip.getAppContext(), BackgroundScanReceiver.class).setAction(getIntentFilterName()).putExtra("CallingClass", this.getClass().getSimpleName()), PendingIntent.FLAG_UPDATE_CURRENT);
         }
         BackgroundScanReceiver.addCallBack2(this, this.getClass().getSimpleName());
+        */
     }
 
     private void unregisterScanReceiver() {
+        /*
         if (scanCallBack != null) {
             try {
                 rxBleClient.getBackgroundScanner().stopBackgroundBleScan(scanCallBack);
@@ -243,6 +230,7 @@ public abstract class JamBaseBluetoothSequencer extends JamBaseBluetoothService 
             }
             BackgroundScanReceiver.removeCallBack(this.getClass().getSimpleName());
         }
+        */
     }
 
     protected synchronized void startConnect(final String address) {

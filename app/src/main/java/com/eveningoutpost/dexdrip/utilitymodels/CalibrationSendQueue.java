@@ -58,21 +58,8 @@ public class CalibrationSendQueue extends Model {
     }
 
     public static void addToQueue(Calibration calibration, Context context) {
-
-        // TODO support for various insert/update/delete functions
-
-        //  CalibrationSendQueue calibrationSendQueue = new CalibrationSendQueue();
-        //  calibrationSendQueue.calibration = calibration;
-        //  calibrationSendQueue.success = false;
-        //  calibrationSendQueue.mongo_success = false;
-        //  calibrationSendQueue.save();
-        UploaderQueue.newEntry("create", calibration);
         Log.i(TAG, "calling SensorSendQueue.SendToFollower");
         SensorSendQueue.SendToFollower(Sensor.getByUuid(calibration.sensor_uuid));
     }
 
-    public void markMongoSuccess() {
-        mongo_success = true;
-        save();
-    }
 }

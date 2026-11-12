@@ -1,7 +1,5 @@
 package com.eveningoutpost.dexdrip.alert;
 
-import static com.eveningoutpost.dexdrip.utilitymodels.UpdateActivity.AUTO_UPDATE_PREFS_NAME;
-
 import android.content.SharedPreferences;
 
 import com.eveningoutpost.dexdrip.models.UserError.Log;
@@ -38,11 +36,6 @@ public class Registry {
             if (Pref.getBooleanDefaultFalse("alert_raise_for_sensor_expiry")) {
                 registry.add(new SensorExpiry());
             }
-            if (Pref.getBoolean(AUTO_UPDATE_PREFS_NAME, true)) {
-                registry.add(new UpdateAvailable());
-            }
-            //  addGlucoseAlerts();
-            // sort();
         }
     }
 
@@ -58,21 +51,6 @@ public class Registry {
             registry.clear();
         }
     }
-
-    /*private  static void addGlucoseAlerts() {
-       synchronized (registry) {
-           registry.add(new CustomAlert("Ultra Low")
-                   .setHighAlert(false)
-                   .setSmoothedRate(false)
-                   .setRateOfChange(0d)
-                   .setThreshold(100));
-           registry.add(new CustomAlert("Ultra High")
-                   .setHighAlert(true)
-                   .setSmoothedRate(false)
-                   .setRateOfChange(0d)
-                   .setThreshold(300));
-       }
-    }*/
 
     public static SharedPreferences.OnSharedPreferenceChangeListener prefListener = (prefs, key) -> {
         if (key.startsWith("alert_")) {

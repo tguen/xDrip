@@ -1,23 +1,12 @@
 package com.eveningoutpost.dexdrip.stats;
 
-
 import android.Manifest;
 import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
-import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import androidx.annotation.NonNull;
-import androidx.core.app.ActivityCompat;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentManager;
-import androidx.fragment.app.FragmentPagerAdapter;
-import androidx.core.content.ContextCompat;
-import androidx.fragment.app.FragmentStatePagerAdapter;
-import androidx.viewpager.widget.ViewPager;
-
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -26,21 +15,25 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import com.eveningoutpost.dexdrip.Home;
+import com.eveningoutpost.dexdrip.R;
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.UserError.Log;
-import com.eveningoutpost.dexdrip.R;
-import com.eveningoutpost.dexdrip.utilitymodels.JamorhamShowcaseDrawer;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.eveningoutpost.dexdrip.utilitymodels.ShotStateStore;
 import com.eveningoutpost.dexdrip.utils.ActivityWithMenu;
-import com.github.amlcurran.showcaseview.ShowcaseView;
-import com.github.amlcurran.showcaseview.targets.ViewTarget;
 
 import java.io.File;
 
-import static com.eveningoutpost.dexdrip.models.JoH.goFullScreen;
+import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentStatePagerAdapter;
+import androidx.viewpager.widget.ViewPager;
+
 import static com.eveningoutpost.dexdrip.R.id.pager;
+import static com.eveningoutpost.dexdrip.models.JoH.goFullScreen;
+
 
 public class StatsActivity extends ActivityWithMenu {
 
@@ -51,7 +44,6 @@ public class StatsActivity extends ActivityWithMenu {
     public static final int D30 = 3;
     public static final int D90 = 4;
     public static int state = D7;
-    private static boolean swipeInfoNotNeeded = false; // don't show info if already swiped after startup.
     StatisticsPageAdapter mStatisticsPageAdapter;
     ViewPager mViewPager;
     TextView[] indicationDots;
@@ -100,54 +92,6 @@ public class StatsActivity extends ActivityWithMenu {
     }
 
     private void showStartupInfo() {
-        // if (swipeInfoNotNeeded) {
-        //    //show info only if user didn't swipe already.
-        //    return;
-        // }
-        final boolean oneshot = true;
-        final int option = Home.SHOWCASE_STATISTICS;
-        if ((oneshot) && (ShotStateStore.hasShot(option))) return;
-
-
-        // This could do with being in a utility static method also used in Home
-        final int size1 = 50;
-        final int size2 = 20;
-        final String title = "Swipe for Different Reports";
-        final String message = "Swipe left and right to see different report tabs.\n\nChoose time period for Today, Yesterday, 7 Days etc.\n\nFull screen mode, print colors and Sharing are supported from the butttons and 3 dot menu.";
-        final ViewTarget target = new ViewTarget(R.id.button_stats_7d, this);
-        final Activity activity = this;
-
-
-        JoH.runOnUiThreadDelayed(new Runnable() {
-                                     @Override
-                                     public void run() {
-                                         final ShowcaseView myShowcase = new ShowcaseView.Builder(activity)
-
-                                                 .setTarget(target)
-                                                 .setStyle(R.style.CustomShowcaseTheme2)
-                                                 .setContentTitle(title)
-                                                 .setContentText("\n" + message)
-                                                 .setShowcaseDrawer(new JamorhamShowcaseDrawer(getResources(), getTheme(), size1, size2))
-                                                 .singleShot(oneshot ? option : -1)
-                                                 .build();
-                                         myShowcase.setBackgroundColor(Color.TRANSPARENT);
-                                         myShowcase.show();
-                                     }
-                                 }
-                , 3000);
-
-        // TextView tv = new TextView(this);
-        //  tv.setText("Swipe left/right to switch between reports!");
-        //  tv.setTextColor(Color.GREEN);
-        //  tv.setTextSize(25);
-
-        //for (int i = 0; i < 2; i++) {
-        //Show toast twice the "long" period
-        //       Toast toast = new Toast(getApplicationContext());
-        //       toast.setView(tv);
-        //       toast.setGravity(Gravity.CENTER, 0, 0);
-        //        toast.show();
-        //}
     }
 
     private void assignButtonNames() {

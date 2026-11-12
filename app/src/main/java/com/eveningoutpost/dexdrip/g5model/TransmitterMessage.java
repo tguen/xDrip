@@ -1,7 +1,6 @@
 package com.eveningoutpost.dexdrip.g5model;
 
 import com.eveningoutpost.dexdrip.models.JoH;
-import com.eveningoutpost.dexdrip.services.G5CollectionService;
 import com.google.gson.annotations.Expose;
 
 import java.nio.ByteBuffer;
@@ -12,7 +11,7 @@ import java.nio.ByteOrder;
  */
 
 public class TransmitterMessage {
-    protected static final String TAG = G5CollectionService.TAG; // meh
+    protected static final String TAG = TransmitterMessage.class.getSimpleName();
     static final int INVALID_TIME = 0xFFFFFFFF;
     @Expose
     long postExecuteGuardTime = 50;

@@ -1,12 +1,7 @@
 package com.eveningoutpost.dexdrip.dagger;
 
-import com.eveningoutpost.dexdrip.webservices.BaseWebService;
-import com.eveningoutpost.dexdrip.webservices.RouteFinder;
-
-import javax.inject.Inject;
-import javax.inject.Named;
-
 import dagger.Lazy;
+
 
 /**
  * Created by jamorham on 18/01/2018.
@@ -30,50 +25,9 @@ import dagger.Lazy;
 
 public class Singleton extends SingletonHotel {
 
-    @Inject
-    @Named("RouteFinder")
-    Lazy<RouteFinder> routeFinder;
-
-    @Inject
-    @Named("WebServicePebble")
-    Lazy<BaseWebService> webServicePebble;
-
-    @Inject
-    @Named("WebServiceTasker")
-    Lazy<BaseWebService> webServiceTasker;
-
-    @Inject
-    @Named("WebServiceSgv")
-    Lazy<BaseWebService> webServiceSgv;
-
-    @Inject
-    @Named("WebServiceTreatments")
-    Lazy<BaseWebService> webServiceTreatments;
-
-    @Inject
-    @Named("WebServiceStatus")
-    Lazy<BaseWebService> webServiceStatus;
-
-    @Inject
-    @Named("WebServiceSteps")
-    Lazy<BaseWebService> webServiceSteps;
-
-    @Inject
-    @Named("WebServiceHeart")
-    Lazy<BaseWebService> webServiceHeart;
-
-    @Inject
-    @Named("WebServiceSync")
-    Lazy<BaseWebService> webServiceSync;
-
-    @Inject
-    @Named("Libre2ConnectCode")
-    Lazy<BaseWebService> libre2ConnectCode;
-
     private Singleton() {
         super(Singleton.class);
         // inject from whatever components we are using
-        Injectors.getWebServiceComponent().inject(this);
     }
 
     // call this method with the name you are looking for
@@ -83,9 +37,6 @@ public class Singleton extends SingletonHotel {
         // if you want to totally avoid reflection just add yourself to this switch statement
         // if you just want an easy life then don't bother and we'll look up and cache the result
         switch (singleton) {
-            case "WebServicePebble":
-                return self.webServicePebble.get();
-
             default:
                 return ((Lazy) self.getObject(singleton)).get();
         }

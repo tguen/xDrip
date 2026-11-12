@@ -6,8 +6,6 @@ import com.activeandroid.annotation.Column;
 import com.activeandroid.annotation.Table;
 import com.activeandroid.query.Delete;
 import com.activeandroid.query.Select;
-import com.eveningoutpost.dexdrip.utilitymodels.Constants;
-import com.eveningoutpost.dexdrip.wearintegration.ExternalStatusService;
 import com.google.gson.annotations.Expose;
 
 import java.util.ArrayList;
@@ -17,6 +15,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
 import lombok.val;
+
 
 /**
  * Created by jamorham on 11/06/2018.
@@ -129,36 +128,6 @@ public class APStatus extends PlusModel {
                     .limit(number)
                     .execute();
 
-            if (extensionRecord) {
-                // extend line to now if we have current data but it is continuation of last record
-                // so not generating a new efficient record.
-                if (results != null && (results.size() > 0)) {
-                    final APStatus last = results.get(results.size() - 1);
-                    final long last_raw_record_timestamp = ExternalStatusService.getLastStatusLineTime();
-                    // check are not already using the latest.
-                    if (last_raw_record_timestamp > last.timestamp) {
-                        Double last_recorded_absolute = ExternalStatusService.getAbsoluteBRDouble();
-                        final Integer last_recorded_tbr;
-                        if (last_recorded_absolute == null) {
-                            last_recorded_tbr = ExternalStatusService.getTBRInt();
-                        } else {
-                            last_recorded_tbr = Profile.getBasalRatePercentFromAbsolute(last_raw_record_timestamp, last_recorded_absolute);
-                        }
-
-                        if (last_recorded_tbr != null) {
-                            if ((last.basal_percent == last_recorded_tbr)
-                                    && (JoH.msSince(last.timestamp) < Constants.HOUR_IN_MS * 3)
-                                    && (JoH.msSince(ExternalStatusService.getLastStatusLineTime()) < Constants.MINUTE_IN_MS * 20)) {
-                                if (last_recorded_absolute == null) {
-                                    last_recorded_absolute = Profile.getBasalRateAbsoluteFromPercent(last_raw_record_timestamp, last_recorded_tbr);
-                                }
-                                results.add(new APStatus(JoH.tsl(), last_recorded_tbr, last_recorded_absolute));
-                                UserError.Log.d(TAG, "Adding extension record");
-                            }
-                        }
-                    }
-                }
-            }
             return results;
         } catch (android.database.sqlite.SQLiteException e) {
             updateDB();
@@ -180,6 +149,3 @@ public class APStatus extends PlusModel {
         patched = fixUpTable(schema, patched);
     }
 }
-
-
-

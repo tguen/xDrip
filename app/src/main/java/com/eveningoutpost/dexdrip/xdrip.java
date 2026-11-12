@@ -4,22 +4,18 @@ import android.annotation.SuppressLint;
 import android.app.Application;
 import android.content.Context;
 import android.content.ContextWrapper;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.res.Configuration;
 import android.os.Build;
 import android.preference.PreferenceManager;
-import androidx.annotation.StringRes;
 import android.util.Log;
 
+import com.eveningoutpost.dexdrip.alert.Poller;
+import com.eveningoutpost.dexdrip.calibrations.PluggableCalibration;
 import com.eveningoutpost.dexdrip.models.AlertType;
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.Reminder;
-import com.eveningoutpost.dexdrip.alert.Poller;
-import com.eveningoutpost.dexdrip.services.ActivityRecognizedService;
-import com.eveningoutpost.dexdrip.services.BluetoothGlucoseMeter;
 import com.eveningoutpost.dexdrip.services.MissedReadingService;
-import com.eveningoutpost.dexdrip.services.PlusSyncService;
+import com.eveningoutpost.dexdrip.services.broadcastservice.BroadcastEntry;
 import com.eveningoutpost.dexdrip.utilitymodels.BgGraphBuilder;
 import com.eveningoutpost.dexdrip.utilitymodels.CollectionServiceStarter;
 import com.eveningoutpost.dexdrip.utilitymodels.ColorCache;
@@ -27,23 +23,15 @@ import com.eveningoutpost.dexdrip.utilitymodels.IdempotentMigrations;
 import com.eveningoutpost.dexdrip.utilitymodels.NotificationChannels;
 import com.eveningoutpost.dexdrip.utilitymodels.PlusAsyncExecutor;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.eveningoutpost.dexdrip.utilitymodels.VersionTracker;
-import com.eveningoutpost.dexdrip.calibrations.PluggableCalibration;
-import com.eveningoutpost.dexdrip.utils.SentryCrashReporting;
 import com.eveningoutpost.dexdrip.utils.jobs.DailyJob;
 import com.eveningoutpost.dexdrip.utils.jobs.XDripJobCreator;
-import com.eveningoutpost.dexdrip.watch.lefun.LeFunEntry;
-import com.eveningoutpost.dexdrip.watch.miband.MiBandEntry;
-import com.eveningoutpost.dexdrip.watch.thinjam.BlueJayEntry;
-import com.eveningoutpost.dexdrip.services.broadcastservice.BroadcastEntry;
-import com.eveningoutpost.dexdrip.wearintegration.ExternalStatusBroadcastReceiver;
-import com.eveningoutpost.dexdrip.webservices.XdripWebService;
 import com.evernote.android.job.JobManager;
 
 import net.danlew.android.joda.JodaTimeAndroid;
 
 import java.util.Locale;
 
+import androidx.annotation.StringRes;
 
 
 /**
@@ -82,13 +70,6 @@ public class xdrip extends Application {
         xdrip.context = getApplicationContext();
         super.onCreate();
         JodaTimeAndroid.init(this);
-        try {
-            if (PreferenceManager.getDefaultSharedPreferences(xdrip.context).getBoolean("enable_crashlytics", true)) {
-                SentryCrashReporting.start(this);
-            }
-        } catch (Exception e) {
-            Log.e(TAG, e.toString());
-        }
         executor = new PlusAsyncExecutor();
 
         IdempotentMigrations.migrateOOP2CalibrationPreferences(); // needs to run before preferences get defaults
@@ -107,50 +88,14 @@ public class xdrip extends Application {
         JoH.ratelimit("policy-never", 3600); // don't on first load
         new IdempotentMigrations(getApplicationContext()).performAll();
 
-        IntentFilter bgFilter = new IntentFilter();
-        bgFilter.addAction("com.eveningoutpost.dexdrip.NS_EMULATOR");
-        bgFilter.addAction("com.eveningoutpost.dexdrip.OOP2_DECODE_FARM_RESULT");
-        bgFilter.addAction("com.eveningoutpost.dexdrip.OOP2_DECODE_BLE_RESULT");
-        bgFilter.addAction("com.eveningoutpost.dexdrip.OOP2_BLUETOOTH_ENABLE_RESULT");
-
-        registerReceiver(new NSEmulatorReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                if (intent.getComponent() != null) return; // Ignore Explicit (Manifest handles it)
-                super.onReceive(context, intent);
-            }
-        }, bgFilter);
-
-        registerReceiver(new ExternalStatusBroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                if (intent.getComponent() != null) return; // Ignore Explicit
-                super.onReceive(context, intent);
-            }
-        }, new IntentFilter("com.eveningoutpost.dexdrip.ExternalStatusline"));
-
         JobManager.create(this).addJobCreator(new XDripJobCreator());
         DailyJob.schedule();
-        //SyncService.startSyncServiceSoon();
 
         if (!isRunningTest()) {
             MissedReadingService.delayedLaunch();
-            NFCReaderX.handleHomeScreenScanPreference(getApplicationContext());
             AlertType.fromSettings(getApplicationContext());
-            //new CollectionServiceStarter(getApplicationContext()).start(getApplicationContext());
             CollectionServiceStarter.restartCollectionServiceBackground();
-            PlusSyncService.startSyncService(context, "xdrip.java");
-            if (Pref.getBoolean("motion_tracking_enabled", false)) {
-                ActivityRecognizedService.startActivityRecogniser(getApplicationContext());
-            }
-            BluetoothGlucoseMeter.startIfEnabled();
-            LeFunEntry.initialStartIfEnabled();
-            MiBandEntry.initialStartIfEnabled();
             BroadcastEntry.initialStartIfEnabled();
-            BlueJayEntry.initialStartIfEnabled();
-            XdripWebService.immortality();
-            VersionTracker.updateDevice();
-
         } else {
             Log.d(TAG, "Detected running test mode, holding back on background processes");
         }

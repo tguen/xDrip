@@ -11,7 +11,6 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Parcelable;
 import android.os.PowerManager;
-import androidx.preference.PreferenceManager;
 
 import com.eveningoutpost.dexdrip.BestGlucose;
 import com.eveningoutpost.dexdrip.models.Accuracy;
@@ -19,37 +18,32 @@ import com.eveningoutpost.dexdrip.models.ActiveBgAlert;
 import com.eveningoutpost.dexdrip.models.AlertType;
 import com.eveningoutpost.dexdrip.models.BgReading;
 import com.eveningoutpost.dexdrip.models.BloodTest;
-import com.eveningoutpost.dexdrip.models.HeartRate;
 import com.eveningoutpost.dexdrip.models.JoH;
-import com.eveningoutpost.dexdrip.models.StepCounter;
 import com.eveningoutpost.dexdrip.models.Treatments;
 import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.models.UserNotification;
 import com.eveningoutpost.dexdrip.services.MissedReadingService;
+import com.eveningoutpost.dexdrip.services.broadcastservice.models.BroadcastModel;
+import com.eveningoutpost.dexdrip.services.broadcastservice.models.GraphLine;
+import com.eveningoutpost.dexdrip.services.broadcastservice.models.Settings;
+import com.eveningoutpost.dexdrip.stats.StatsResult;
+import com.eveningoutpost.dexdrip.store.FastStore;
+import com.eveningoutpost.dexdrip.store.KeyStore;
 import com.eveningoutpost.dexdrip.utilitymodels.AlertPlayer;
 import com.eveningoutpost.dexdrip.utilitymodels.BgGraphBuilder;
 import com.eveningoutpost.dexdrip.utilitymodels.Constants;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.eveningoutpost.dexdrip.utilitymodels.PumpStatus;
-import com.eveningoutpost.dexdrip.stats.StatsResult;
-import com.eveningoutpost.dexdrip.store.FastStore;
-import com.eveningoutpost.dexdrip.store.KeyStore;
 import com.eveningoutpost.dexdrip.utils.PowerStateReceiver;
-import com.eveningoutpost.dexdrip.services.broadcastservice.models.BroadcastModel;
-import com.eveningoutpost.dexdrip.services.broadcastservice.models.GraphLine;
-import com.eveningoutpost.dexdrip.services.broadcastservice.models.Settings;
 import com.eveningoutpost.dexdrip.xdrip;
 
 import java.util.HashMap;
 import java.util.Map;
 
+import androidx.preference.PreferenceManager;
 import lecho.lib.hellocharts.model.Line;
 
 import static com.eveningoutpost.dexdrip.utilitymodels.Constants.DAY_IN_MS;
 
-// External status line from AAPS added
-import static com.eveningoutpost.dexdrip.wearintegration.ExternalStatusService.getLastStatusLine;
-import static com.eveningoutpost.dexdrip.wearintegration.ExternalStatusService.getLastStatusLineTime;
 
 /**
  *  Broadcast API which provides common data like, bg values, graph info, statistic info.
@@ -177,16 +171,6 @@ public class BroadcastService extends Service {
                             }
                             serviceIntent.putExtra(Const.INTENT_ALERT_TYPE, activeAlertType);
                             startService = true;
-                            break;
-                        case Const.CMD_ADD_STEPS:
-                            timeStamp = intent.getLongExtra("timeStamp", JoH.tsl());
-                            int steps = intent.getIntExtra("value", 0);
-                            StepCounter.createEfficientRecord(timeStamp, steps);
-                            break;
-                        case Const.CMD_ADD_HR:
-                            timeStamp = intent.getLongExtra("timeStamp", JoH.tsl());
-                            int hrValue = intent.getIntExtra("value", 0);
-                            HeartRate.create(timeStamp, hrValue, 1);
                             break;
                         case Const.CMD_ADD_TREATMENT: //so it would be possible to add treatment via watch
                             timeStamp = intent.getLongExtra("timeStamp", JoH.tsl());
@@ -496,7 +480,6 @@ public class BroadcastService extends Service {
             bundle.putBoolean("bg.isStale", isStale);
             bundle.putString("bg.plugin", plugin);
             bundle.putDouble("bg.deltaValueMgdl", deltaValue);
-            bundle.putString("pumpJSON", PumpStatus.toJson());
 
             Treatments treatment = Treatments.last();
             if (treatment != null && treatment.hasContent() && !treatment.noteOnly()) {
@@ -556,11 +539,6 @@ public class BroadcastService extends Service {
                 bundle.putString("predict.BWP", last_bwp);
                 bundle.putLong("predict.BWP.timeStamp", keyStore.getL("last_bwp_timestamp"));
             }
-
-            // External status line from AAPS added
-            bundle.putString("external.statusLine", getLastStatusLine());
-            bundle.putLong("external.timeStamp", getLastStatusLineTime());
-
         }
         return bundle;
     }

@@ -7,9 +7,6 @@ import com.eveningoutpost.dexdrip.Home;
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.Treatments;
 import com.eveningoutpost.dexdrip.R;
-import com.eveningoutpost.dexdrip.services.SyncService;
-import com.eveningoutpost.dexdrip.utilitymodels.UploaderQueue;
-import com.eveningoutpost.dexdrip.insulin.MultipleInsulins;
 import com.eveningoutpost.dexdrip.xdrip;
 
 import lombok.val;
@@ -20,7 +17,6 @@ public class DoseAdjustDialog {
 
     public static void show(final Activity activity, final String uuid) {
         if (uuid.equals("")) return;
-        final boolean trackPens = MultipleInsulins.isEnabled();
 
         val t = Treatments.byuuid(uuid);
         val builder = new AlertDialog.Builder(activity)
@@ -32,12 +28,7 @@ public class DoseAdjustDialog {
             dialog.cancel();
         });
 
-        if (trackPens) {
-            builder.setNeutralButton(R.string.choose_type, (dialog, which) -> {
-                dialog.cancel();
-                ChooseInsulinPenDialog.show(activity, t.getPenSerial());
-            });
-        } else {
+        {
             builder.setNeutralButton(R.string.cancel, (dialog, which) -> {
                 dialog.cancel();
             });
@@ -72,11 +63,7 @@ public class DoseAdjustDialog {
             t.insulin = 0;
             t.save();
             Home.staticRefreshBGChartsOnIdle();
-            UploaderQueue.newEntry("update", t);
-            SyncService.startSyncService(3000); // sync in 3 seconds
         }
     }
 
 }
-
-

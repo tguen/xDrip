@@ -1,23 +1,9 @@
 package com.eveningoutpost.dexdrip.utils;
 
-import com.eveningoutpost.dexdrip.cgm.glupro.GluProService;
-import com.eveningoutpost.dexdrip.services.DexCollectionService;
-import com.eveningoutpost.dexdrip.services.DexShareCollectionService;
-import com.eveningoutpost.dexdrip.services.DoNothingService;
-import com.eveningoutpost.dexdrip.services.G5CollectionService;
 import com.eveningoutpost.dexdrip.services.Ob1G5CollectionService;
-import com.eveningoutpost.dexdrip.services.UiBasedCollector;
-import com.eveningoutpost.dexdrip.services.WifiCollectionService;
 import com.eveningoutpost.dexdrip.utilitymodels.Constants;
 import com.eveningoutpost.dexdrip.utilitymodels.MockDataSource;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.eveningoutpost.dexdrip.cgm.medtrum.MedtrumCollectionService;
-import com.eveningoutpost.dexdrip.cgm.nsfollow.NightscoutFollowService;
-import com.eveningoutpost.dexdrip.cgm.sharefollow.ShareFollowService;
-import com.eveningoutpost.dexdrip.cgm.webfollow.WebFollowService;
-import com.eveningoutpost.dexdrip.cgm.carelinkfollow.CareLinkFollowService;
-
-import static com.eveningoutpost.dexdrip.g5model.Ob1G5StateMachine.shortTxId;
 
 import java.lang.reflect.Method;
 import java.util.Collections;
@@ -26,6 +12,9 @@ import java.util.HashSet;
 import java.util.Map;
 
 import lombok.Getter;
+
+import static com.eveningoutpost.dexdrip.g5model.Ob1G5StateMachine.shortTxId;
+
 
 /**
  * Created by andy on 01/06/16.
@@ -216,35 +205,9 @@ public enum DexCollectionType {
     public static Class<?> getCollectorServiceClass(final DexCollectionType type) {
         switch (type) {
             case DexcomG5:
-                if (Pref.getBooleanDefaultFalse(Ob1G5CollectionService.OB1G5_PREFS)) {
                     return Ob1G5CollectionService.class;
-                } else {
-                    return G5CollectionService.class;
-                }
-            case DexcomShare:
-                return DexShareCollectionService.class;
-            case WifiWixel:
-            case Mock:
-                return WifiCollectionService.class;
-            case Medtrum:
-                return MedtrumCollectionService.class;
-            case Follower:
-            case LibreReceiver:
-                return DoNothingService.class;
-            case NSFollow:
-                return NightscoutFollowService.class;
-            case SHFollow:
-                return ShareFollowService.class;
-            case WebFollow:
-                return WebFollowService.class;
-            case UiBased:
-                return UiBasedCollector.class;
-            case CLFollow:
-                return CareLinkFollowService.class;
-            case GluPro:
-                return GluProService.class;
             default:
-                return DexCollectionService.class;
+                return null;
         }
     }
 
@@ -294,36 +257,11 @@ public enum DexCollectionType {
     public static String getBestCollectorHardwareName() {
         final DexCollectionType dct = getDexCollectionType();
         switch (dct) {
-            case NSEmulator:
-            case AidexReceiver:
-            case LibreReceiver:
-                return "Other App";
-            case WifiWixel:
-                return "Network G4";
-            case LimiTTer:
-                return DexCollectionService.getBestLimitterHardwareName();
-            case LimiTTerWifi:
-                return "Network " + DexCollectionService.getBestLimitterHardwareName();
-            case WifiDexBridgeWixel:
-                return "Network G4 and xBridge";
-            case WifiBlueToothWixel:
-                return "Network G4 and Classic xDrip";
             case DexcomG5:
                 if (Ob1G5CollectionService.usingNativeMode()) {
                     return Ob1G5CollectionService.usingG6() ? (shortTxId() ? "G7" : "G6 Native") : "G5 Native";
                 }
                 return dct.name();
-            case LibreWifi:
-                return "Network libre";
-            case NSFollow:
-                return "Nightscout";
-            case SHFollow:
-                return "Share";
-            case UiBased:
-                return "UI Based";
-
-            case CLFollow:
-                return "CareLink";
             default:
                 return dct.name();
         }

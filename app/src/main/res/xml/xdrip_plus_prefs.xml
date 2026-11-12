@@ -378,13 +378,6 @@
                     android:switchTextOff="@string/short_off_text_for_switches"
                     android:switchTextOn="@string/short_on_text_for_switches"
                     android:title="@string/force_english_text" />
-                <ListPreference
-                    android:defaultValue="en"
-                    android:entries="@array/LocaleChoices"
-                    android:entryValues="@array/LocaleChoicesValues"
-                    android:key="forced_language"
-                    android:summary="@string/need_alternate_language"
-                    android:title="@string/chosse_language" />
             </PreferenceScreen>
 
             <SwitchPreference
@@ -764,85 +757,6 @@
         android:summary="@string/insulin_carb_ratios_etc_for_models"
         android:title="@string/xdrip_plus_prediction_settings">
 
-        <PreferenceCategory
-            android:key="xdrip_plus_profile_category"
-            android:title="@string/xdrip_plus_prediction_settings">
-            <SwitchPreference
-                android:defaultValue="true"
-                android:key="simulations_enabled"
-                android:summary="@string/display_mathamatical_simulations"
-                android:switchTextOff="@string/short_off_text_for_switches"
-                android:switchTextOn="@string/short_on_text_for_switches"
-                android:title="@string/predictive_simulations" />
-
-            <PreferenceScreen
-                android:key="xdrip_plus_multiple_insulin_types_settings"
-                android:title="@string/title_multiple_insulin_types_settings"
-                android:summary="@string/summary_multiple_insulin_types_settings">
-                <SwitchPreference
-                    android:defaultValue="false"
-                    android:key="multiple_insulin_types"
-                    android:switchTextOff="@string/short_off_text_for_switches"
-                    android:switchTextOn="@string/short_on_text_for_switches"
-                    android:title="@string/title_multiple_insulin_types" />
-                <Preference
-                    android:key="insulin_profiles"
-                    android:dependency="multiple_insulin_types"
-                    android:summary="@string/desc_enable_dedicated_insulin_profiles"
-                    android:title="@string/enable_dedicated_insulin_profiles">
-                    <intent
-                        android:action="android.intent.action.MAIN"
-                        android:targetClass="com.eveningoutpost.dexdrip.insulin.InsulinProfileEditor"
-                        android:targetPackage="@string/local_target_package" />
-                </Preference>
-                <CheckBoxPreference
-                    android:defaultValue="false"
-                    android:key="multiple_insulin_use_basal_activity"
-                    android:summary="@string/summary_multiple_insulin_use_basal_activity"
-                    android:title="@string/title_multiple_insulin_use_basal_activity"/>
-            </PreferenceScreen>
-
-            <Preference
-                android:key="profile_carb_ratio_default"
-                android:summary="@string/grams_of_carbohydrate_one_unit_covers"
-                android:title="@string/carb_ratio">
-                <intent
-                    android:action="android.intent.action.MAIN"
-                    android:targetClass="com.eveningoutpost.dexdrip.profileeditor.ProfileEditor"
-                    android:targetPackage="@string/local_target_package" />
-            </Preference>
-
-            <Preference
-                android:key="profile_insulin_sensitivity_default"
-                android:summary="@string/glucose_drop_for_one_unit"
-                android:title="@string/insulin_sensitivity">
-                <intent
-                    android:action="android.intent.action.MAIN"
-                    android:targetClass="com.eveningoutpost.dexdrip.profileeditor.ProfileEditor"
-                    android:targetPackage="@string/local_target_package" />
-            </Preference>
-            <EditTextPreference
-                android:defaultValue="35"
-                android:key="profile_carb_absorption_default"
-                android:summary="@string/linear_model_carbs_absorbed_per_hour"
-                android:title="@string/carb_absorption_rate" />
-            <CheckBoxPreference
-                android:defaultValue="true"
-                android:key="predict_use_momentum"
-                android:summary="@string/calculate_including_glucose_trend"
-                android:title="@string/use_trend_momentum" />
-            <Preference
-                android:key="basal_profile_edit_start"
-                android:summary="@string/graphical_editor_for_pump_basal"
-                android:title="@string/basal_profile_editor">
-                <intent
-                    android:action="android.intent.action.MAIN"
-                    android:targetClass="com.eveningoutpost.dexdrip.profileeditor.BasalProfileEditor"
-                    android:targetPackage="@string/local_target_package">
-                </intent>
-            </Preference>
-        </PreferenceCategory>
-
         <PreferenceScreen
             android:dependency="I_understand"
             android:key="xdrip_plus_adv_predict"
@@ -879,20 +793,6 @@
                     android:title="@string/default_liver_maximum_impact" />
             </PreferenceCategory>
         </PreferenceScreen>
-
-        <PreferenceCategory
-            android:key="title_I_understandb"
-            android:title="@string/eula">
-            <Preference
-                android:key="I_understandb"
-                android:summary="@string/not_for_medical_use"
-                android:title="@string/end_user_license_agreement">
-                <intent
-                    android:action="android.intent.action.MAIN"
-                    android:targetClass="com.eveningoutpost.dexdrip.LicenseAgreementActivity"
-                    android:targetPackage="@string/local_target_package" />
-            </Preference>
-        </PreferenceCategory>
     </PreferenceScreen>
 
     <PreferenceScreen
@@ -1129,49 +1029,6 @@
             android:title="@string/repeat_sound" />
     </PreferenceScreen>
 
-    <PreferenceScreen
-        android:icon="@drawable/ic_briefcase_download_grey600_48dp"
-        android:key="xdrip_plus_update_settings"
-        android:summary="@string/automatic_updates_crash_reports_and_feedback"
-        android:title="@string/xdrip_plus_update_settings">
-        <SwitchPreference
-            android:defaultValue="true"
-            android:key="auto_update_download"
-            android:summaryOff="New releases often have bugs fixed. It is recommended to switch on update notifications!"
-            android:summaryOn="@string/get_notified_of_new_apk_releases"
-            android:switchTextOff="@string/short_off_text_for_switches"
-            android:switchTextOn="@string/short_on_text_for_switches"
-            android:title="@string/automatic_update_check" />
-        <ListPreference
-            android:defaultValue="beta"
-            android:entries="@array/UpdateChannelDetail"
-            android:entryValues="@array/UpdateChannel"
-            android:key="update_channel"
-            android:shouldDisableView="true"
-            android:summary="@string/choose_stable_beta_or_alpha_releases"
-            android:title="@string/update_channel" />
-        <CheckBoxPreference
-            android:defaultValue="true"
-            android:key="enable_crashlytics"
-            android:summary="@string/send_crash_errors_to_developer"
-            android:title="@string/automatic_crash_reporting" />
-        <CheckBoxPreference
-            android:defaultValue="true"
-            android:dependency="enable_crashlytics"
-            android:key="enable_telemetry"
-            android:summary="@string/send_data_to_developers"
-            android:title="@string/enable_telemetry" />
-        <Preference
-            android:key="send_feedback"
-            android:summary="@string/web_feedback_form_for_sending_messages"
-            android:title="@string/send_feedback_message">
-            <intent
-                android:action="xdrip_plus_send_developer_feedback"
-                android:targetClass="com.eveningoutpost.dexdrip.utilitymodels.SendFeedBack"
-                android:targetPackage="@string/local_target_package" />
-        </Preference>
-    </PreferenceScreen>
-
     <PreferenceCategory
         android:key="xdrip_plus_move_settings"
         android:title="@string/copying_settings">
@@ -1193,161 +1050,5 @@
                 android:targetClass="com.eveningoutpost.dexdrip.utils.SdcardImportExport"
                 android:targetPackage="@string/local_target_package" />
         </Preference>
-    </PreferenceCategory>
-    <PreferenceCategory
-        android:key="xdrip_plus_experimental"
-        android:title="@string/title_xdrip_plus_experimental">
-        <PreferenceScreen
-            android:icon="@drawable/ic_mode_edit_grey_600_48dp"
-            android:key="pens_screen"
-            android:title="@string/insulin_pens">
-            <PreferenceScreen
-                android:icon="@drawable/ic_mode_edit_grey_600_48dp"
-                android:key="opennov_screen"
-                android:summary="NFC dose downloading of models 6 and Echo Plus"
-                android:title="@string/title_novopen_insulin_pen">
-                <CheckBoxPreference
-                    android:defaultValue="false"
-                    android:key="opennov_enabled"
-                    android:summary="@string/summary_inpen_open_nov_support"
-                    android:title="@string/enable" />
-                <CheckBoxPreference
-                    android:defaultValue="true"
-                    android:dependency="opennov_enabled"
-                    android:key="opennov_play_sounds"
-                    android:summary="@string/summary_inpen_sounds"
-                    android:title="@string/title_inpen_sounds" />
-
-                <CheckBoxPreference
-                    android:defaultValue="false"
-                    android:dependency="opennov_enabled"
-                    android:key="opennov_remove_priming"
-                    android:summary="@string/summary_inpen_remove_priming_doses"
-                    android:title="@string/title_inpen_remove_priming_doses" />
-
-                <CheckBoxPreference
-                    android:defaultValue="false"
-                    android:dependency="opennov_enabled"
-                    android:key="opennov_hide_priming"
-                    android:summary="@string/summary_inpen_hide_priming_doses"
-                    android:title="@string/title_inpen_hide_priming_doses" />
-
-                <EditTextPreference
-                    android:dependency="opennov_enabled"
-                    android:defaultValue="2.0"
-                    android:inputType="numberPassword|textVisiblePassword"
-                    android:key="opennov_prime_units"
-                    android:maxLength="3"
-                    android:summary="@string/summary_inpen_prime_units"
-                    android:title="@string/title_inpen_prime_units" />
-
-                <EditTextPreference
-                    android:dependency="opennov_enabled"
-                    android:defaultValue="2"
-                    android:inputType="numberPassword|textVisiblePassword"
-                    android:key="opennov_prime_minutes"
-                    android:maxLength="3"
-                    android:summary="@string/summary_inpen_prime_minutes"
-                    android:title="@string/title_inpen_prime_minutes" />
-
-                <CheckBoxPreference
-                    android:defaultValue="false"
-                    android:dependency="engineering_mode"
-                    android:key="opennov_debug"
-                    android:summary="@string/summary_inpen_additional_debug_logs"
-                    android:title="@string/title_inpen_additional_debug_logs" />
-            </PreferenceScreen>
-
-            <PreferenceScreen
-            android:icon="@drawable/ic_mode_edit_grey_600_48dp"
-            android:key="inpen_screen"
-            android:summary="@string/summary_inpen_screen"
-            android:title="@string/title_inpen_screen">
-            <SwitchPreference
-                android:defaultValue="false"
-                android:key="inpen_enabled"
-                android:switchTextOff="@string/short_off_text_for_switches"
-                android:switchTextOn="@string/short_on_text_for_switches"
-                android:title="@string/title_inpen_enabled" />
-
-            <CheckBoxPreference
-                android:defaultValue="true"
-                android:key="inpen_detect_priming"
-                android:summary="@string/summary_inpen_detect_priming"
-                android:title="@string/title_inpen_detect_priming" />
-
-            <EditTextPreference
-                android:defaultValue="2.0"
-                android:inputType="numberPassword|textVisiblePassword"
-                android:key="inpen_prime_units"
-                android:maxLength="4"
-                android:title="@string/title_inpen_prime_units" />
-
-            <EditTextPreference
-                android:defaultValue="2"
-                android:inputType="numberPassword|textVisiblePassword"
-                android:key="inpen_prime_minutes"
-                android:maxLength="3"
-                android:title="@string/title_inpen_prime_minutes" />
-
-            <CheckBoxPreference
-                android:defaultValue="true"
-                android:key="inpen_orphan_primes_ignored"
-                android:summary="@string/summary_inpen_orphan_primes_ignored"
-                android:title="@string/title_inpen_orphan_primes_ignored" />
-
-            <CheckBoxPreference
-                android:defaultValue="true"
-                android:key="inpen_sounds"
-                android:summary="@string/summary_inpen_sounds"
-                android:title="@string/title_inpen_sounds" />
-
-            <Preference
-                android:key="inpen_reset"
-                android:summary="@string/summary_inpen_reset"
-                android:title="@string/title_inpen_reset">
-                <intent
-                    android:action="android.intent.action.MAIN"
-                    android:targetClass="com.eveningoutpost.dexdrip.Home"
-                    android:targetPackage="@string/local_target_package">
-                    <extra
-                        android:name="inpen-reset"
-                        android:value="inpen-reset" />
-                </intent>
-            </Preference>
-        </PreferenceScreen>
-
-        <PreferenceScreen
-            android:icon="@drawable/ic_mode_edit_grey_600_48dp"
-            android:key="pendiq_screen"
-            android:summary="@string/summary_pendiq_screen"
-            android:title="@string/title_pendiq_screen">
-            <SwitchPreference
-                android:defaultValue="false"
-                android:key="use_pendiq"
-                android:switchTextOff="@string/short_off_text_for_switches"
-                android:switchTextOn="@string/short_on_text_for_switches"
-                android:title="@string/title_use_pendiq" />
-
-            <SwitchPreference
-                android:defaultValue="false"
-                android:dependency="use_pendiq"
-                android:key="pendiq_send_treatments"
-                android:summary="@string/summary_pendiq_send_treatments"
-                android:switchTextOff="@string/short_off_text_for_switches"
-                android:switchTextOn="@string/short_on_text_for_switches"
-                android:title="@string/title_pendiq_send_treatments" />
-
-            <EditTextPreference
-                android:defaultValue="@string/zero_zero_zero_zero"
-                android:dependency="use_pendiq"
-                android:inputType="numberPassword|textVisiblePassword"
-                android:key="pendiq_pin"
-                android:maxLength="4"
-                android:title="@string/title_pendiq_pin" />
-
-        </PreferenceScreen>
-        </PreferenceScreen>
-
     </PreferenceCategory>
 </PreferenceScreen>

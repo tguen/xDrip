@@ -42,14 +42,12 @@ import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.models.UserError.Log;
 import com.eveningoutpost.dexdrip.models.UserNotification;
 import com.eveningoutpost.dexdrip.R;
-import com.eveningoutpost.dexdrip.services.ActivityRecognizedService;
 import com.eveningoutpost.dexdrip.services.MissedReadingService;
 import com.eveningoutpost.dexdrip.services.SnoozeOnNotificationDismissService;
 import com.eveningoutpost.dexdrip.evaluators.PersistentHigh;
 import com.eveningoutpost.dexdrip.ui.NumberGraphic;
 import com.eveningoutpost.dexdrip.utils.DexCollectionType;
 import com.eveningoutpost.dexdrip.utils.PowerStateReceiver;
-import com.eveningoutpost.dexdrip.wearintegration.Amazfitservice;
 import com.eveningoutpost.dexdrip.services.broadcastservice.BroadcastEntry;
 import com.eveningoutpost.dexdrip.xdrip;
 
@@ -132,18 +130,12 @@ public class Notifications extends IntentService {
 
     @Override
     protected void onHandleIntent(Intent intent) {
-
         final PowerManager.WakeLock wl = JoH.getWakeLock("NotificationsService", 60000);
 
         boolean unclearReading;
         try {
             Log.d(TAG, "Running Notifications Intent Service");
             final Context context = getApplicationContext();
-
-            if (Pref.getBoolean("motion_tracking_enabled", false)) {
-                // TODO move this
-                ActivityRecognizedService.reStartActivityRecogniser(context);
-            }
 
             ReadPerfs(context);
             unclearReading = notificationSetter(context);
@@ -542,35 +534,7 @@ public class Notifications extends IntentService {
         }*/
     }
 
-    private Bitmap createWearBitmap(long start, long end) {
-        return new BgSparklineBuilder(mContext)
-                .setBgGraphBuilder(new BgGraphBuilder(mContext))
-                .setStart(start)
-                .setEnd(end)
-                .showHighLine()
-                .showLowLine()
-                .showAxes()
-                .setWidthPx(400)
-                .setHeightPx(400)
-                .setSmallDots()
-                .build();
-    }
 
-    private Bitmap createWearBitmap(long hours) {
-        return createWearBitmap(System.currentTimeMillis() - 60000 * 60 * hours, System.currentTimeMillis());
-    }
-
-   /* private Notification createExtensionPage(long hours) {
-        return new NotificationCompat.Builder(mContext)
-                .extend(new NotificationCompat.WearableExtender()
-                                .setBackground(createWearBitmap(hours))
-                                .setHintShowBackgroundOnly(true)
-                                .setHintAvoidBackgroundClipping(true)
-                )
-                .build();
-    }*/
-
-    //@TargetApi(Build.VERSION_CODES.O)
     public synchronized Notification createOngoingNotification(BgGraphBuilder bgGraphBuilder, Context context) {
         mContext = context;
         ReadPerfs(mContext);
@@ -943,9 +907,6 @@ public class Notifications extends IntentService {
         if (on) {
             if ((Pref.getLong("alerts_disabled_until", 0) < JoH.tsl()) && (Pref.getLong("low_alerts_disabled_until", 0) < JoH.tsl())) {
                 OtherAlert(context, type, msg, lowPredictAlertNotificationId, NotificationChannels.GENERAL_CHANNEL, true, 20 * 60);
-                if (Pref.getBooleanDefaultFalse("speak_alerts")) {
-                    if (JoH.pratelimit("low-predict-speak", 1800)) SpeechUtil.say(msg, 4000);
-                }
             } else {
                 Log.ueh(TAG, "Not Low predict alerting due to snooze: " + msg);
             }
@@ -969,11 +930,6 @@ public class Notifications extends IntentService {
                 if (snooze_time < 1) snooze_time = 1;       // not less than 1 minute
                 if (snooze_time > 1440) snooze_time = 1440; // not more than 1 day
                 OtherAlert(context, type, msg, persistentHighAlertNotificationId, NotificationChannels.GENERAL_CHANNEL, true, snooze_time * 60);
-                if (Pref.getBooleanDefaultFalse("speak_alerts")) {
-                    if (JoH.pratelimit("persist-high-speak", 1800)) {
-                        SpeechUtil.say(msg, 4000);
-                    }
-                }
             } else {
                 Log.ueh(TAG, "Not persistent high alerting due to snooze: " + msg);
             }
@@ -1060,11 +1016,6 @@ public class Notifications extends IntentService {
             //mNotifyMgr.cancel(notificatioId);
             //Log.d(TAG, "Notify");
             mNotifyMgr.notify(notificatioId, XdripNotificationCompat.build(mBuilder));
-
-            if (Pref.getBooleanDefaultFalse("pref_amazfit_enable_key")
-                    && Pref.getBooleanDefaultFalse("pref_amazfit_other_alert_enable_key")) {
-                Amazfitservice.start("xDrip_Otheralert", message, 30);
-            }
 
             BroadcastEntry.sendAlert(type, message);
         }

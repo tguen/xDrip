@@ -11,7 +11,6 @@ import com.activeandroid.util.SQLiteUtils;
 import com.eveningoutpost.dexdrip.Reminders;
 import com.eveningoutpost.dexdrip.utilitymodels.Constants;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.eveningoutpost.dexdrip.utils.HomeWifi;
 import com.google.gson.annotations.Expose;
 
 import java.util.Calendar;
@@ -346,7 +345,6 @@ public class Reminder extends Model {
 
     public static Reminder getNextActiveReminder() {
         fixUpTable(schema);
-        final boolean onHomeWifi = !HomeWifi.isSet() || HomeWifi.isConnected();
         final long now = JoH.tsl();
         final Reminder reminder = new Select()
                 .from(Reminder.class)
@@ -355,7 +353,6 @@ public class Reminder extends Model {
                 .where("snoozed_till < ?", now)
                 .where("last_fired < (? - (600000 * alerted_times))", now)
                 // if on home wifi or not set then anything otherwise only home only = false
-                .where(onHomeWifi ? "homeonly > -1 " : "homeonly = 0")
                 .orderBy("enabled desc, priority desc, next_due asc")
                 .executeSingle();
         return reminder;

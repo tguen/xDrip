@@ -4,7 +4,6 @@ import android.app.Activity;
 
 import com.eveningoutpost.dexdrip.SystemStatusFragment;
 import com.eveningoutpost.dexdrip.ui.MicroStatusModule;
-import com.eveningoutpost.dexdrip.webservices.WebServicePebble;
 
 import javax.inject.Singleton;
 
@@ -23,7 +22,6 @@ public interface MicroStatusComponent {
 
     void inject(SystemStatusFragment target);
     void inject(Activity target);
-    void inject(WebServicePebble target);
+//    void inject(WebServicePebble target);
 
 }
-

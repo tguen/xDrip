@@ -8,7 +8,6 @@ import android.bluetooth.BluetoothProfile;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 
@@ -19,11 +18,8 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.preference.PreferenceManager;
 
 import android.graphics.Point;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.PowerManager;
-
 import android.view.Display;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -44,18 +40,13 @@ import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.TransmitterData;
 import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.models.UserError.Log;
-import com.eveningoutpost.dexdrip.services.DexCollectionService;
-import com.eveningoutpost.dexdrip.services.G5CollectionService;
 import com.eveningoutpost.dexdrip.services.TransmitterRereadHelper;
 import com.eveningoutpost.dexdrip.utilitymodels.CollectionServiceStarter;
 import com.eveningoutpost.dexdrip.utilitymodels.SensorStatus;
 import com.eveningoutpost.dexdrip.databinding.ActivitySystemStatusBinding;
 import com.eveningoutpost.dexdrip.ui.MicroStatus;
 import com.eveningoutpost.dexdrip.ui.MicroStatusImpl;
-import com.eveningoutpost.dexdrip.utils.DexCollectionType;
 import com.eveningoutpost.dexdrip.utils.LocationHelper;
-import com.eveningoutpost.dexdrip.wearintegration.WatchUpdaterService;
-import com.google.android.gms.wearable.DataMap;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -64,7 +55,6 @@ import java.util.Set;
 import static com.eveningoutpost.dexdrip.Home.startWatchUpdaterService;
 import static com.eveningoutpost.dexdrip.services.Ob1G5CollectionService.getTransmitterID;
 import static com.eveningoutpost.dexdrip.utils.DatabaseUtil.getDataBaseSizeInBytes;
-import static com.eveningoutpost.dexdrip.utils.DexCollectionType.DexcomG5;
 import static com.eveningoutpost.dexdrip.xdrip.gs;
 
 public class SystemStatusFragment extends Fragment {
@@ -102,35 +92,6 @@ public class SystemStatusFragment extends Fragment {
         serviceDataReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context ctx, Intent intent) {
-                final String action = intent.getAction();
-                //final String msg = intent.getStringExtra("data");
-                Bundle bundle = intent.getBundleExtra("data");
-                if (bundle != null) {
-                    DataMap dataMap = DataMap.fromBundle(bundle);
-                    String lastState = dataMap.getString("lastState", "");
-                    long last_timestamp = dataMap.getLong("timestamp", 0);
-                    UserError.Log.d(TAG, "serviceDataReceiver onReceive:" + action + " :: " + lastState + " last_timestamp :: " + last_timestamp);
-                    switch (action) {
-                        case WatchUpdaterService.ACTION_BLUETOOTH_COLLECTION_SERVICE_UPDATE:
-                            switch (DexCollectionType.getDexCollectionType()) {
-                                case DexcomG5:
-                                    G5CollectionService.setWatchStatus(dataMap);//msg, last_timestamp
-                                    break;
-                                case DexcomShare:
-                                    if (lastState != null && !lastState.isEmpty()) {
-                                        setConnectionStatus(lastState);//TODO getLastState() in non-G5 Services
-                                    }
-                                    break;
-                                default:
-                                    DexCollectionService.setWatchStatus(dataMap);//msg, last_timestamp
-                                    if (lastState != null && !lastState.isEmpty()) {
-                                        setConnectionStatus(lastState);
-                                    }
-                                    break;
-                            }
-                            break;
-                    }
-                }
             }
         };
         final ActivitySystemStatusBinding binding = DataBindingUtil.inflate(
@@ -141,16 +102,6 @@ public class SystemStatusFragment extends Fragment {
     }
 
     private void requestWearCollectorStatus() {
-        final PowerManager.WakeLock wl = JoH.getWakeLock("ACTION_STATUS_COLLECTOR",120000);
-        if (Home.get_enable_wear()) {
-            if (DexCollectionType.getDexCollectionType().equals(DexcomG5)) {
-                startWatchUpdaterService(safeGetContext(), WatchUpdaterService.ACTION_STATUS_COLLECTOR, TAG, "getBatteryStatusNow", G5CollectionService.getBatteryStatusNow);
-            }
-            else {
-                startWatchUpdaterService(safeGetContext(), WatchUpdaterService.ACTION_STATUS_COLLECTOR, TAG);
-            }
-        }
-        JoH.releaseWakeLock(wl);
     }
 
     @Override
@@ -163,14 +114,6 @@ public class SystemStatusFragment extends Fragment {
             }
         }
         super.onPause();
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        final IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(WatchUpdaterService.ACTION_BLUETOOTH_COLLECTION_SERVICE_UPDATE);
-        LocalBroadcastManager.getInstance(safeGetContext()).registerReceiver(serviceDataReceiver, intentFilter);
     }
 
     @Override
@@ -225,11 +168,6 @@ public class SystemStatusFragment extends Fragment {
         rereadTransmitterListener();
     }
 
-    //@Override
-    //public String getMenuName() {
-    //   return getString(R.string.system_status);
-    //}
-
     private void set_current_values() {
         notes.setText("");
         activeBluetoothDevice = ActiveBluetoothDevice.first();
@@ -237,13 +175,7 @@ public class SystemStatusFragment extends Fragment {
         setVersionName();
         //setCollectionMethod();
         setCurrentDevice();
-        if (Home.get_follower()) {
-            setConnectionStatusFollower();
-        } else if (prefs.getString("dex_collection_method", "bogus").equals("WifiWixel")) {
-            setConnectionStatusWifiWixel();
-        } else {
             setConnectionStatus();
-        }
         setSensorStatus();
         setTransmitterStatus();
         setNotes();
@@ -266,13 +198,10 @@ public class SystemStatusFragment extends Fragment {
 
         if (td == null || td.sensor_battery_level == 0) {
             transmitter_status_view.setText("not available");
-            GcmActivity.requestSensorBatteryUpdate();
         } else if ((System.currentTimeMillis() - td.timestamp) > 1000 * 60 * 60 * 24) {
             transmitter_status_view.setText("no data in 24 hours");
-            GcmActivity.requestSensorBatteryUpdate();
         } else {
             transmitter_status_view.setText("" + td.sensor_battery_level);
-            GcmActivity.requestSensorBatteryUpdate(); // always ask
             if (td.sensor_battery_level <= Dex_Constants.TRANSMITTER_BATTERY_EMPTY) {
                 transmitter_status_view.append(" - very low");
             } else if (td.sensor_battery_level <= Dex_Constants.TRANSMITTER_BATTERY_LOW) {
@@ -362,22 +291,6 @@ public class SystemStatusFragment extends Fragment {
         }
     }
 
-    private void setConnectionStatusFollower() {
-        if (GcmListenerSvc.lastMessageReceived == 0) {
-            connection_status.setText(safeGetContext().getString(R.string.no_data));
-        } else {
-            connection_status.setText((JoH.qs((JoH.ts() - GcmListenerSvc.lastMessageReceived) / 60000, 0)) + " mins ago");
-        }
-    }
-
-    /**
-     * A wifi uploader is reached over the network, so the bluetooth connection state below says
-     * nothing about it. Report no data rather than claiming the phone is not connected.
-     */
-    private void setConnectionStatusWifiWixel() {
-        connection_status.setText(safeGetContext().getString(R.string.no_data));
-    }
-
     public void setConnectionStatus(String msg) {
         if (msg != null && !msg.isEmpty()) {
             connection_status.setText(msg);
@@ -414,6 +327,7 @@ public class SystemStatusFragment extends Fragment {
             Transmitter defaultTransmitter = new Transmitter(prefs.getString("dex_txid", "ABCDEF"));
             mBluetoothAdapter = mBluetoothManager.getAdapter();
             if (mBluetoothAdapter != null) {
+                /*
                 Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
                 if (pairedDevices.size() > 0) {
                     for (BluetoothDevice device : pairedDevices) {
@@ -431,6 +345,7 @@ public class SystemStatusFragment extends Fragment {
                         }
                     }
                 }
+                */
             } else {
                 connection_status.setText(safeGetContext().getString(R.string.no_bluetooth)); 
             }
@@ -488,7 +403,6 @@ public class SystemStatusFragment extends Fragment {
                 v.setEnabled(false);
                 JoH.static_toast_short(gs(R.string.restarting_collector));
                 v.setAlpha(0.2f);
-                startWatchUpdaterService(safeGetContext(), WatchUpdaterService.ACTION_START_COLLECTOR, TAG);
                 CollectionServiceStarter.restartCollectionService(safeGetContext());
                 set_current_values();
                 JoH.runOnUiThreadDelayed(new Runnable() {

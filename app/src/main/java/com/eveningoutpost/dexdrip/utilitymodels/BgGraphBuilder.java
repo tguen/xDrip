@@ -6,8 +6,6 @@ import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.DashPathEffect;
-import androidx.preference.PreferenceManager;
-import androidx.annotation.NonNull;
 import android.text.format.DateFormat;
 import android.util.Log;
 import android.util.Pair;
@@ -15,29 +13,21 @@ import android.view.View;
 import android.widget.Toast;
 
 import com.eveningoutpost.dexdrip.AddCalibration;
-import com.eveningoutpost.dexdrip.GcmActivity;
 import com.eveningoutpost.dexdrip.Home;
-import com.eveningoutpost.dexdrip.models.APStatus;
+import com.eveningoutpost.dexdrip.R;
+import com.eveningoutpost.dexdrip.calibrations.CalibrationAbstract;
+import com.eveningoutpost.dexdrip.calibrations.PluggableCalibration;
 import com.eveningoutpost.dexdrip.models.BgReading;
 import com.eveningoutpost.dexdrip.models.BloodTest;
 import com.eveningoutpost.dexdrip.models.Calibration;
 import com.eveningoutpost.dexdrip.models.Forecast;
 import com.eveningoutpost.dexdrip.models.Forecast.PolyTrendLine;
 import com.eveningoutpost.dexdrip.models.Forecast.TrendLine;
-import com.eveningoutpost.dexdrip.models.HeartRate;
-import com.eveningoutpost.dexdrip.models.Iob;
 import com.eveningoutpost.dexdrip.models.JoH;
-import com.eveningoutpost.dexdrip.models.Libre2RawValue;
 import com.eveningoutpost.dexdrip.models.Prediction;
 import com.eveningoutpost.dexdrip.models.Profile;
-import com.eveningoutpost.dexdrip.models.StepCounter;
 import com.eveningoutpost.dexdrip.models.Treatments;
 import com.eveningoutpost.dexdrip.models.UserError;
-import com.eveningoutpost.dexdrip.R;
-import com.eveningoutpost.dexdrip.services.ActivityRecognizedService;
-import com.eveningoutpost.dexdrip.calibrations.CalibrationAbstract;
-import com.eveningoutpost.dexdrip.calibrations.PluggableCalibration;
-import com.eveningoutpost.dexdrip.insulin.opennov.Options;
 import com.eveningoutpost.dexdrip.processing.SmootherFactory;
 import com.eveningoutpost.dexdrip.store.FastStore;
 import com.eveningoutpost.dexdrip.store.KeyStore;
@@ -46,10 +36,8 @@ import com.eveningoutpost.dexdrip.ui.dialog.DoseAdjustDialog;
 import com.eveningoutpost.dexdrip.ui.helpers.BitmapLoader;
 import com.eveningoutpost.dexdrip.ui.helpers.ColorUtil;
 import com.eveningoutpost.dexdrip.utils.DexCollectionType;
-import com.eveningoutpost.dexdrip.utils.LibreTrendGraph;
 import com.eveningoutpost.dexdrip.utils.math.RollingAverage;
 import com.eveningoutpost.dexdrip.xdrip;
-import com.google.android.gms.location.DetectedActivity;
 import com.rits.cloning.Cloner;
 
 import java.text.DecimalFormat;
@@ -67,6 +55,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import androidx.annotation.NonNull;
+import androidx.preference.PreferenceManager;
 import lecho.lib.hellocharts.ILog;
 import lecho.lib.hellocharts.formatter.LineChartValueFormatter;
 import lecho.lib.hellocharts.formatter.SimpleLineChartValueFormatter;
@@ -79,9 +69,7 @@ import lecho.lib.hellocharts.model.PointValue;
 import lecho.lib.hellocharts.model.ValueShape;
 import lecho.lib.hellocharts.model.Viewport;
 import lecho.lib.hellocharts.util.ChartUtils;
-
 import lombok.Getter;
-
 import lombok.val;
 
 import static com.eveningoutpost.dexdrip.models.JoH.tolerantParseDouble;
@@ -91,6 +79,7 @@ import static com.eveningoutpost.dexdrip.utilitymodels.Constants.HOUR_IN_MS;
 import static com.eveningoutpost.dexdrip.utilitymodels.Constants.MAX_READINGS_PER_HOUR;
 import static com.eveningoutpost.dexdrip.utils.DexCollectionType.getDexCollectionType;
 import static lecho.lib.hellocharts.Log.setLogger;
+
 
 public class BgGraphBuilder {
     public static final int FUZZER = (int) (30 * Constants.SECOND_IN_MS);
@@ -169,7 +158,6 @@ public class BgGraphBuilder {
     private final int loaded_numValues;
     private final long loaded_start, loaded_end;
     private final List<BgReading> bgReadings;
-    private List<Libre2RawValue> Libre2RawValues;
     private final List<Calibration> calibrations;
     private final List<BloodTest> bloodtests;
     private final List<PointValue> inRangeValues = new ArrayList<>();
@@ -194,7 +182,6 @@ public class BgGraphBuilder {
     private final List<PointValue> activityValues = new ArrayList<PointValue>();
     private final List<PointValue> annotationValues = new ArrayList<>();
     private final Pattern posPattern = Pattern.compile(".*?pos:([0-9.]+).*");
-    private final boolean hidePriming = Options.hidePrimingDoses();
     private static TrendLine noisePoly;
     public static double last_noise = -99999;
     public static double original_value = -99999;
@@ -244,8 +231,6 @@ public class BgGraphBuilder {
             loaded_start = start;
             loaded_end = end;
             bgReadings = BgReading.latestForGraph(numValues, start, end);
-            if (DexCollectionType.getDexCollectionType() == DexCollectionType.LibreReceiver)
-                Libre2RawValues = Libre2RawValue.latestForGraph(numValues, start, end);
             plugin_adjusted = false;
             smoother_adjusted = false;
         } finally {
@@ -392,14 +377,6 @@ public class BgGraphBuilder {
         return "Low";
     }
 
-    private void extend_line(List<PointValue> points, double x, float y) {
-        if (points.size() > 1) {
-            points.remove(1); // replace last
-        }
-        points.add(new HPointValue(x, y));
-        Log.d(TAG, "Extend line size: " + points.size());
-    }
-
     private List<Line> predictiveLines() {
         final List<Line> lines = new LinkedList<>();
 
@@ -436,261 +413,6 @@ public class BgGraphBuilder {
         }
 
         return lines;
-    }
-
-
-    private List<Line> basalLines() {
-        final List<Line> basalLines = new ArrayList<>();
-        if (prefs.getBoolean("show_basal_line", false)) {
-
-            final float yscale = doMgdl ? (float) Constants.MMOLL_TO_MGDL : 1f;
-
-            final List<APStatus> aplist = APStatus.latestForGraph(2000, loaded_start, loaded_end);
-
-            if (!aplist.isEmpty()) {
-
-                // divider line
-
-                final Line dividerLine = new Line();
-                dividerLine.setTag("tbr"); // not quite true
-                dividerLine.setHasPoints(false);
-                dividerLine.setHasLines(true);
-                dividerLine.setStrokeWidth(1);
-                dividerLine.setColor(getCol(X.color_basal_tbr));
-                dividerLine.setPathEffect(new DashPathEffect(new float[]{10.0f, 10.0f}, 0));
-                dividerLine.setReverseYAxis(true);
-                dividerLine.setHasPoints(false);
-
-                final float one_hundred_percent = (100 * yscale) / 100f;
-                final List<PointValue> divider_points = new ArrayList<>(2);
-                divider_points.add(new HPointValue((double) loaded_start / FUZZER, one_hundred_percent));
-                dividerLine.setPointRadius(0);
-                divider_points.add(new HPointValue((double) loaded_end / FUZZER, one_hundred_percent));
-                dividerLine.setValues(divider_points);
-                basalLines.add(dividerLine);
-
-                final List<PointValue> points = new ArrayList<>(aplist.size());
-
-                int last_percent = -1;
-                double last_timestamp = Double.MIN_VALUE;
-
-                int count = aplist.size();
-                for (APStatus item : aplist) {
-                    val sanitized_percent = Math.min(BgReading.BG_READING_MAXIMUM_VALUE, Math.max(0, item.basal_percent)); // percent value plotted on glucose axis; capped to prevent Y-axis growth
-                    if (--count == 0 || (sanitized_percent != last_percent)) {
-                        float this_ypos = (sanitized_percent * yscale) / 100f;
-                        this_ypos = clampNonGlucoseY(this_ypos + panCompensationOffset);
-                        final double fuzzedT = (double) item.timestamp / FUZZER;
-                        if (fuzzedT != last_timestamp) {
-                            points.add(new HPointValue(fuzzedT, this_ypos));
-                            last_timestamp = fuzzedT;
-                            last_percent = sanitized_percent;
-                        } else {
-                            UserError.Log.d(TAG, "EXCLUDING APSTAT: " + fuzzedT + " " + this_ypos);
-                        }
-                    }
-                }
-
-                final Line line = new Line(points);
-                line.setFilled(true);
-                line.setFillFlipped(true);
-                line.setHasGradientToTransparent(true);
-                line.setHasPoints(false);
-                line.setStrokeWidth(1);
-                line.setHasLines(true);
-                line.setSquare(true);
-                line.setPointRadius(1);
-                line.setReverseYAxis(true);
-                line.setBackgroundUnclipped(true);
-                line.setGradientDivider(10f);
-                line.setColor(getCol(X.color_basal_tbr));
-                basalLines.add(line);
-            }
-        }
-
-        return basalLines;
-    }
-
-    // line illustrating result from step counter
-    private List<Line> stepsLines() {
-        final List<Line> stepsLines = new ArrayList<>();
-        if ((prefs.getBoolean("use_pebble_health", true)
-                && prefs.getBoolean("show_pebble_movement_line", true))) {
-            final List<StepCounter> pmlist = StepCounter.deltaListFromMovementList(StepCounter.latestForGraph(2000, loaded_start, loaded_end));
-            PointValue last_point = null;
-            final boolean d = false;
-            if (d) Log.d(TAG, "Delta: pmlist size: " + pmlist.size());
-            final float yscale = doMgdl ? (float) Constants.MMOLL_TO_MGDL : 1f;
-            float ypos = 6 * yscale; // TODO Configurable
-            ypos = clampNonGlucoseY(ypos + panCompensationOffset);
-            //final long last_timestamp = pmlist.get(pmlist.size() - 1).timestamp;
-            final float MAX_SIZE = 50;
-            int flipper = 0;
-            int accumulator = 0;
-
-            for (StepCounter pm : pmlist) {
-                if (last_point == null) {
-                    last_point = new HPointValue((double) pm.timestamp / FUZZER, ypos);
-                } else {
-                    final PointValue this_point = new HPointValue((double) pm.timestamp / FUZZER, ypos);
-                    final double time_delta = this_point.getX() - last_point.getX();
-                    if (time_delta > 1) {
-
-                        final List<PointValue> new_points = new ArrayList<>();
-                        new_points.add(last_point);
-                        new_points.add(this_point);
-
-                        last_point = this_point; // update pointer
-                        final Line this_line = new Line(new_points);
-                        flipper ^= 1;
-                        this_line.setColor((flipper == 0) ? getCol(X.color_step_counter1) : getCol(X.color_step_counter2));
-
-                        float stroke_size = Math.min(MAX_SIZE, (float) Math.log1p(((double) (pm.metric + accumulator)) / time_delta) * 4);
-                        if (d) Log.d(TAG, "Delta stroke: " + stroke_size);
-                        this_line.setStrokeWidth((int) stroke_size);
-
-                        if (d)
-                            Log.d(TAG, "Delta-Line: " + JoH.dateTimeText(pm.timestamp) + " time delta: " + time_delta + "  total: " + (pm.metric + accumulator) + " lsize: " + stroke_size + " / " + (int) stroke_size);
-                        accumulator = 0;
-
-                        if (this_line.getStrokeWidth() > 0) {
-                            stepsLines.add(this_line);
-                            this_line.setHasPoints(false);
-                            this_line.setHasLines(true);
-                        } else {
-                            if (d) Log.d(TAG, "Delta skip: " + JoH.dateTimeText(pm.timestamp));
-                        }
-                        if (d)
-                            Log.d(TAG, "Delta-List: " + JoH.dateTimeText(pm.timestamp) + " time delta: " + time_delta + "  val: " + pm.metric);
-                    } else {
-                        accumulator += pm.metric;
-                        if (d)
-                            Log.d(TAG, "Delta: added: " + JoH.dateTimeText(pm.timestamp) + " metric: " + pm.metric + " to accumulator: " + accumulator);
-                    }
-                }
-            }
-            if (d)
-                Log.d(TAG, "Delta returning stepsLines: " + stepsLines.size() + " final accumulator remaining: " + accumulator);
-        }
-        return stepsLines;
-    }
-
-    // line illustrating result from heartrate monitor
-    private List<Line> heartLines() {
-        final boolean d = false;
-        final List<Line> heartLines = new ArrayList<>();
-        if ((prefs.getBoolean("use_pebble_health", true)
-                && prefs.getBoolean("show_pebble_movement_line", true))) {
-
-            final List<HeartRate> heartRates = HeartRate.latestForGraph(2000, loaded_start, loaded_end);
-
-//            final long condenseCutoffMs = Pref.getBooleanDefaultFalse("smooth_heartrate") ? (10 * Constants.MINUTE_IN_MS) : FUZZER;
-            final long condenseCutoffMs = Pref.getBooleanDefaultFalse("smooth_heartrate") ? (10 * Constants.MINUTE_IN_MS) : 1000 * 30 * 5;
-            final List<HeartRate> condensedHeartRateList = new ArrayList<>();
-            for (HeartRate thisHeartRateRecord : heartRates) {
-                final int condensedListSize = condensedHeartRateList.size();
-                if (condensedListSize > 0) {
-                    final HeartRate tailOfList = condensedHeartRateList.get(condensedListSize - 1);
-                    // if its close enough to merge then average with previous
-                    if ((thisHeartRateRecord.timestamp - tailOfList.timestamp) < condenseCutoffMs) {
-                        tailOfList.bpm = (tailOfList.bpm += thisHeartRateRecord.bpm) / 2;
-                    } else {
-                        // not close enough to merge
-                        condensedHeartRateList.add(thisHeartRateRecord);
-                    }
-                } else {
-                    condensedHeartRateList.add(thisHeartRateRecord); // first record
-                }
-            }
-
-            if (d) Log.d(TAG, "heartrate before size: " + heartRates.size());
-            if (d) Log.d(TAG, "heartrate after c size: " + condensedHeartRateList.size());
-            //final float yscale = doMgdl ? (float) Constants.MMOLL_TO_MGDL : 1f;
-            final float yscale = doMgdl ? 10f : 1f;
-            float ypos; //
-
-            final List<PointValue> new_points = new ArrayList<>();
-            if (d) UserError.Log.d("HEARTRATE", "Size " + condensedHeartRateList.size());
-
-            for (HeartRate pm : condensedHeartRateList) {
-                if (d)
-                    UserError.Log.d("HEARTRATE: ", JoH.dateTimeText(pm.timestamp) + " \tHR: " + pm.bpm);
-
-                ypos = (pm.bpm * yscale) / 10;
-                ypos = clampNonGlucoseY(ypos + panCompensationOffset);
-                final PointValue this_point = new HPointValue((double) pm.timestamp / FUZZER, ypos);
-                new_points.add(this_point);
-            }
-            final Line macroHeartRateLine = new Line(new_points);
-            for (Line this_line : autoSplitLine(macroHeartRateLine, 30)) {
-                this_line.setColor(getCol(X.color_heart_rate1));
-                this_line.setStrokeWidth(6);
-                this_line.setHasPoints(false);
-                this_line.setHasLines(true);
-                this_line.setCubic(true);
-                heartLines.add(this_line);
-            }
-        }
-        return heartLines;
-    }
-
-
-    private List<Line> motionLine() {
-
-        final ArrayList<ActivityRecognizedService.motionData> motion_datas = ActivityRecognizedService.getForGraph((long) start_time * FUZZER, (long) end_time * FUZZER);
-        List<PointValue> linePoints = new ArrayList<>();
-
-        final float ypos = (float) highMark;
-        int last_type = -9999;
-
-
-        final ArrayList<Line> line_array = new ArrayList<>();
-
-        Log.d(TAG, "Motion datas size: " + motion_datas.size());
-        if (motion_datas.size() > 0) {
-            motion_datas.add(new ActivityRecognizedService.motionData((long) end_time * FUZZER, DetectedActivity.UNKNOWN)); // terminator
-
-            for (ActivityRecognizedService.motionData item : motion_datas) {
-
-                Log.d(TAG, "Motion detail: " + JoH.dateTimeText(item.timestamp) + " activity: " + item.activity);
-                if ((last_type != -9999) && (last_type != item.activity)) {
-                    extend_line(linePoints, (double)item.timestamp / FUZZER, ypos);
-                    Line new_line = new Line(linePoints);
-                    new_line.setHasLines(true);
-                    new_line.setPointRadius(0);
-                    new_line.setStrokeWidth(1);
-                    new_line.setAreaTransparency(40);
-                    new_line.setHasPoints(false);
-                    new_line.setFilled(true);
-
-                    switch (last_type) {
-                        case DetectedActivity.IN_VEHICLE:
-                            new_line.setColor(Color.parseColor("#70445599"));
-                            break;
-                        case DetectedActivity.ON_FOOT:
-                            new_line.setColor(Color.parseColor("#70995599"));
-                            break;
-                    }
-                    line_array.add(new_line);
-                    linePoints = new ArrayList<>();
-                }
-                //current
-                switch (item.activity) {
-                    case DetectedActivity.ON_FOOT:
-                    case DetectedActivity.IN_VEHICLE:
-                        extend_line(linePoints, (double)(item.timestamp / FUZZER), ypos);
-                        last_type = item.activity;
-                        break;
-
-                    default:
-                        // do nothing?
-                        break;
-                }
-            }
-
-        }
-        Log.d(TAG, "Motion array size: " + line_array.size());
-        return line_array;
     }
 
 
@@ -773,13 +495,6 @@ public class BgGraphBuilder {
             addBgReadingValues(simple);
 
             if (!simple) {
-                // motion lines
-                if (Pref.getBoolean("motion_tracking_enabled", false) && Pref.getBoolean("plot_motion", false)) {
-                    lines.addAll(motionLine());
-                }
-                lines.addAll(basalLines());
-                lines.addAll(heartLines());
-                lines.addAll(stepsLines());
                 lines.addAll(predictiveLines());
             }
 
@@ -804,17 +519,10 @@ public class BgGraphBuilder {
                 lines.add(idealLine());
             }
 
-            lines.add(treatments[3]); // activity
+//            lines.add(treatments[3]); // activity
             lines.add(treatments[5]); // predictive
-            lines.add(treatments[6]); // cob
+//            lines.add(treatments[6]); // cob
             lines.add(treatments[7]); // poly predict
-
-
-            if (prefs.getBoolean("show_libre_trend_line", false)) {
-                if (DexCollectionType.hasLibre()) {
-                    lines.add(libreTrendLine());
-                }
-            }
 
             lines.add(minShowLine());
             lines.add(maxShowLine());
@@ -923,12 +631,6 @@ public class BgGraphBuilder {
         line.setPointRadius(pointSize + 4);
         line.setHasPoints(true);
         return line;
-    }
-
-    public void debugPrintPoints(List<PointValue> mypoints) {
-        for (PointValue thispoint : mypoints) {
-            UserError.Log.i(TAG, "Debug Points: " + thispoint.toString());
-        }
     }
 
     // auto split a line - jump thresh in minutes
@@ -1157,10 +859,6 @@ public class BgGraphBuilder {
         return lines;
     }
 
-    private void addBgReadingValues() {
-        addBgReadingValues(true);
-    }
-
     private synchronized void addBgReadingValues(final boolean simple) {
         if (readings_lock.isLocked()) {
             Log.d(TAG, "BgReadings lock is currently held");
@@ -1322,10 +1020,6 @@ public class BgGraphBuilder {
             final boolean illustrate_backfilled_data = prefs.getBoolean("illustrate_backfilled_data", false);
             final boolean illustrate_remote_data = prefs.getBoolean("illustrate_remote_data", false);
 
-            if ((Home.get_follower()) && (bgReadings.size() < 3)) {
-                GcmActivity.requestBGsync();
-            }
-
             final CalibrationAbstract plugin = (show_plugin) ? PluggableCalibration.getCalibrationPluginFromPreferences() : null;
             CalibrationAbstract.CalibrationData cd = (plugin != null) ? plugin.getCalibrationData() : null;
             int cdposition = 0;
@@ -1459,17 +1153,6 @@ public class BgGraphBuilder {
 
             }
 
-            try {
-                if (DexCollectionType.getDexCollectionType() == DexCollectionType.LibreReceiver && prefs.getBoolean("Libre2_showRawGraph", false)) {
-                    for (final Libre2RawValue bgLibre : Libre2RawValues) {
-                        if (bgLibre.glucose > 0) {
-                            rawInterpretedValues.add(new HPointValue((double) (bgLibre.timestamp / FUZZER), (float) unitized(bgLibre.glucose)));
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                Log.wtf(TAG, "Exception to generate Raw-Graph Libre2");
-            }
             if (avg1counter > 0) {
                 avg1value = avg1value / avg1counter;
             }
@@ -1572,7 +1255,7 @@ public class BgGraphBuilder {
                 low_occurs_at = -1;
                 try {
                     if ((predict_lows) && (prediction_enabled) && (poly != null)) {
-                        final double offset = ActivityRecognizedService.raise_limit_due_to_vehicle_mode() ? unitized(ActivityRecognizedService.getVehicle_mode_adjust_mgdl()) : 0;
+                        final double offset = 0;
                         final double plow_now = JoH.ts();
                         double plow_timestamp = plow_now + (1000 * 60 * 99); // max look-ahead
                         double polyPredicty = poly.predict(plow_timestamp);
@@ -1671,9 +1354,6 @@ public class BgGraphBuilder {
                         }
 
                         if (treatment.noteOnly()) {
-                            if (hidePriming && treatment.isPrimingDose()) {
-                                continue;
-                            }
                             final HPointValue pv = NoteClassifier.noteToPointValue(treatment.notes);
                             if (pv != null) {
                                 final boolean tooClose = Math.abs(treatment.timestamp - lastIconTimestamp) < Constants.MINUTE_IN_MS * 6;
@@ -1811,7 +1491,6 @@ public class BgGraphBuilder {
                     final double relaxed_predicted_bg_limit = initial_predicted_bg * 1.20;
                     final double cob_insulin_max_draw_value = highMark * 1.20;
                     // final List<Iob> iobinfo_old = Treatments.ioBForGraph(numValues, (start_time * FUZZER));
-                    final List<Iob> iobinfo = (simulation_enabled) ? Treatments.ioBForGraph_new(start_time * FUZZER) : null; // for test
 
                     long fuzzed_timestamp = (long) end_time; // initial value in case there are no iob records
                     if (d)
@@ -1822,124 +1501,6 @@ public class BgGraphBuilder {
                         Log.d(TAG, "initial Fuzzed end timestamp: " + android.text.format.DateFormat.format("yyyy-MM-dd HH:mm:ss", fuzzed_timestamp * FUZZER));
                     if (d)
                         Log.d(TAG, "initial Fuzzed start timestamp: " + android.text.format.DateFormat.format("yyyy-MM-dd HH:mm:ss", (long) start_time * FUZZER));
-                    if ((iobinfo != null) && (prediction_enabled) && (simulation_enabled)) {
-
-                        double predict_weight = 0.1;
-                        boolean iob_shown_already = false;
-                        for (Iob iob : iobinfo) {
-
-                            //double activity = iob.activity;
-                            if ((iob.iob > 0) || (iob.cob > 0) || (iob.jActivity > 0) || (iob.jCarbImpact > 0)) {
-                                fuzzed_timestamp = iob.timestamp / FUZZER;
-                                if (d) Log.d(TAG, "iob timestamp: " + iob.timestamp);
-                                if (iob.iob > Profile.minimum_shown_iob) {
-                                    double height = iob.iob * iobscale;
-                                    if (height > cob_insulin_max_draw_value)
-                                        height = cob_insulin_max_draw_value;
-                                    float yPosition = (float) height;
-                                    yPosition = clampNonGlucoseY(yPosition + windowBottomOffset);
-                                    PointValue pv = new HPointValue((double) fuzzed_timestamp, yPosition);
-                                    iobValues.add(pv);
-                                    double activityheight = iob.jActivity * 3; // currently scaled by profile
-                                    if (activityheight > cob_insulin_max_draw_value)
-                                        activityheight = cob_insulin_max_draw_value;
-                                    yPosition = (float) activityheight;
-                                    yPosition = clampNonGlucoseY(yPosition + windowBottomOffset);
-                                    PointValue av = new HPointValue((double) fuzzed_timestamp, yPosition);
-                                    activityValues.add(av);
-                                }
-
-                                if (iob.cob > 0) {
-                                    double height = iob.cob * cobscale;
-                                    if (height > cob_insulin_max_draw_value)
-                                        height = cob_insulin_max_draw_value;
-                                    float yPosition = (float) height;
-                                    yPosition = clampNonGlucoseY(yPosition + windowBottomOffset);
-                                    PointValue pv = new HPointValue((double) fuzzed_timestamp, yPosition);
-                                    if (d)
-                                        Log.d(TAG, "Cob total record: " + JoH.qs(height) + " " + JoH.qs(iob.cob) + " " + Double.toString(pv.getY()) + " @ timestamp: " + Long.toString(iob.timestamp));
-                                    cobValues.add(pv); // warning should not be hardcoded
-                                }
-
-                                // momentum curve
-                                // do we actually need to calculate this within the loop - can we use only the last datum?
-                                if (fuzzed_timestamp > (lasttimestamp)) {
-                                    double polyPredict = 0;
-                                    if (poly != null) {
-                                        try {
-                                            polyPredict = poly.predict(iob.timestamp);
-                                            if (d)
-                                                Log.d(TAG, "Poly predict: " + JoH.qs(polyPredict) + " @ " + JoH.dateTimeText(iob.timestamp));
-                                            if (show_moment_working_line) {
-                                                if (((polyPredict < highMark) || (polyPredict < initial_predicted_bg)) && (polyPredict > 0)) {
-                                                    PointValue zv = new HPointValue((double) fuzzed_timestamp, (float) polyPredict);
-                                                    polyBgValues.add(zv);
-                                                }
-                                            }
-                                        } catch (Exception e) {
-                                            Log.e(TAG, "Got exception with poly predict: " + e.toString());
-                                        }
-                                    }
-                                    if (d)
-                                        Log.d(TAG, "Processing prediction: before: " + JoH.qs(predictedbg) + " activity: " + JoH.qs(iob.jActivity) + " jcarbimpact: " + JoH.qs(iob.jCarbImpact));
-                                    predictedbg -= iob.jActivity; // lower bg by current insulin activity
-                                    predictedbg += iob.jCarbImpact;
-
-                                    double predictedbg_final = predictedbg;
-                                    // add momentum characteristics if we have them
-                                    final boolean momentum_smoothing = true;
-                                    if ((predict_use_momentum) && (polyPredict > 0)) {
-                                        predictedbg_final = ((predictedbg * predict_weight) + polyPredict) / (predict_weight + 1);
-                                        if (momentum_smoothing) predictedbg = predictedbg_final;
-
-                                        if (d)
-                                            Log.d(TAG, "forecast predict_weight: " + JoH.qs(predict_weight));
-                                    }
-                                    predict_weight = predict_weight * 2.5; // from 0-infinity - // TODO account for step!!!
-                                    // we should pull in actual graph upper and lower limits here
-                                    if (((predictedbg_final < cob_insulin_max_draw_value) || (predictedbg_final < relaxed_predicted_bg_limit)) && (predictedbg_final > 0)) {
-                                        PointValue zv = new HPointValue((double) fuzzed_timestamp, (float) predictedbg_final);
-                                        predictedBgValues.add(zv);
-                                    }
-                                }
-                                if (fuzzed_timestamp > end_time) {
-                                    predictivehours = (int) (((fuzzed_timestamp - end_time) * FUZZER) / (1000 * 60 * 60)) + 1; // round up to nearest future hour - timestamps in minutes here
-                                    if (d)
-                                        Log.d(TAG, "Predictive hours updated to: " + predictivehours);
-                                } else {
-                                    //KS Log.d(TAG, "IOB DEBUG: " + (fuzzed_timestamp - end_time) + " " + iob.iob);
-                                    if (!iob_shown_already && (Math.abs(fuzzed_timestamp - end_time) < ((Constants.MINUTE_IN_MS * 5) / FUZZER)) && (iob.iob > 0)) {
-                                        iob_shown_already = true;
-                                        // show current iob
-                                        //  double position = 12.4 * bgScale; // this is for mmol - needs generic for mg/dl
-                                        //  if (Math.abs(predictedbg - position) < (2 * bgScale)) {
-                                        //      position = 7.0 * bgScale;
-                                        //  }
-
-                                        // PointValue iv = new HPointValue((double) fuzzed_timestamp, (float) position);
-                                        DecimalFormat df = new DecimalFormat("#");
-                                        df.setMaximumFractionDigits(2);
-                                        df.setMinimumIntegerDigits(1);
-                                        //  iv.setLabel("IoB: " + df.format(iob.iob));
-                                        val iobformatted = df.format(iob.iob);
-                                        keyStore.putS("last_iob", iobformatted);
-                                        keyStore.putL("last_iob_timestamp", JoH.tsl());
-                                        Home.updateStatusLine("iob", iobformatted);
-                                        //  annotationValues.add(iv); // needs to be different value list so we can make annotation nicer
-
-                                    }
-                                }
-
-                            }
-                        }
-                        if (d)
-                            Log.i(TAG, "Size of iob: " + Integer.toString(iobinfo.size()) + " Predictive hours: " + Integer.toString(predictivehours)
-                                    + " Predicted end game change: " + JoH.qs(predictedbg - mylastbg.calculated_value_mmol())
-                                    + " Start bg: " + JoH.qs(mylastbg.calculated_value_mmol()) + " Predicted: " + JoH.qs(predictedbg));
-                        // calculate bolus or carb adjustment - these should have granularity for injection / pump and thresholds
-                    } else {
-                        if (d) Log.i(TAG, "iobinfo was null");
-                    }
 
                     double[] evaluation;
                     if (prediction_enabled && simulation_enabled) {
@@ -2121,18 +1682,6 @@ public class BgGraphBuilder {
         minShowLine.setHasPoints(false);
         minShowLine.setHasLines(false);
         return minShowLine;
-    }
-
-    private Line libreTrendLine() {
-        final List<PointValue> libreTrendValues = LibreTrendGraph.getTrendDataPoints(doMgdl, (long) (start_time * FUZZER), (long) (end_time * FUZZER));
-        final Line line = new Line(libreTrendValues);
-        line.setHasPoints(true);
-        line.setHasLines(false);
-        line.setCubic(false);
-        line.setStrokeWidth(2);
-        line.setPointRadius(1);
-        line.setColor(Color.argb(240, 25, 206, 244)); // temporary pending preference
-        return line;
     }
 
     private List<Line> smbLines() {

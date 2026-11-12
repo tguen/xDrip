@@ -3,9 +3,6 @@ package com.eveningoutpost.dexdrip.utils;
 import android.content.Context;
 import android.content.res.Configuration;
 
-import androidx.annotation.StringRes;
-
-import com.eveningoutpost.dexdrip.R;
 import com.eveningoutpost.dexdrip.models.UserError.Log;
 import com.eveningoutpost.dexdrip.xdrip;
 
@@ -17,7 +14,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import androidx.annotation.StringRes;
 import lombok.val;
+
 
 /**
  * JamOrHam
@@ -89,9 +88,6 @@ public class Localized {
         locales.add(ours);
         locales.add(Locale.ROOT); // resolves to the untranslated string
         val resources = xdrip.getAppContext().getResources();
-        for (val language : resources.getStringArray(R.array.LocaleChoicesValues)) {
-            locales.add(Locale.forLanguageTag(language));
-        }
         val assetLocales = resources.getAssets().getLocales();
         if (assetLocales != null) {
             for (val locale : assetLocales) {

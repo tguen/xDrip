@@ -10,14 +10,11 @@ import com.activeandroid.query.Delete;
 import com.activeandroid.query.Select;
 import com.activeandroid.util.SQLiteUtils;
 import com.eveningoutpost.dexdrip.AddCalibration;
-import com.eveningoutpost.dexdrip.glucosemeter.GlucoseReadingRx;
 import com.eveningoutpost.dexdrip.Home;
-import com.eveningoutpost.dexdrip.services.SyncService;
 import com.eveningoutpost.dexdrip.utilitymodels.BgGraphBuilder;
 import com.eveningoutpost.dexdrip.utilitymodels.Constants;
 import com.eveningoutpost.dexdrip.utilitymodels.PersistentStore;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.eveningoutpost.dexdrip.utilitymodels.UploaderQueue;
 import com.eveningoutpost.dexdrip.calibrations.CalibrationAbstract;
 import com.eveningoutpost.dexdrip.calibrations.NativeCalibrationPipe;
 import com.eveningoutpost.dexdrip.calibrations.PluggableCalibration;
@@ -79,8 +76,6 @@ public class BloodTest extends Model {
     @Column(name = "uuid", unique = true, onUniqueConflicts = Column.ConflictAction.IGNORE)
     public String uuid;
 
-
-    public GlucoseReadingRx glucoseReadingRx;
 
     // patches and saves
     public Long saveit() {
@@ -161,9 +156,6 @@ public class BloodTest extends Model {
             bt.state = STATE_VALID;
             bt.source = source;
             bt.saveit();
-            if (UploaderQueue.newEntry("insert", bt) != null) {
-                SyncService.startSyncService(3000); // sync in 3 seconds
-            }
 
             if (Pref.getBooleanDefaultFalse("bluetooth_meter_for_calibrations_auto")) {
                 if ((JoH.msSince(bt.timestamp) < Constants.MINUTE_IN_MS * 5) && (JoH.msSince(bt.timestamp) > 0)) {
@@ -201,12 +193,6 @@ public class BloodTest extends Model {
     }
 
     public static void pushBloodTestSyncToWatch(BloodTest bt, boolean is_new) {
-        Log.d(TAG, "pushTreatmentSyncToWatch Add treatment to UploaderQueue.");
-        if (Pref.getBooleanDefaultFalse("wear_sync")) {
-            if (UploaderQueue.newEntryForWatch(is_new ? "insert" : "update", bt) != null) {
-                SyncService.startSyncService(3000); // sync in 3 seconds
-            }
-        }
     }
 
     public static BloodTest last() {
@@ -327,13 +313,6 @@ public class BloodTest extends Model {
             bt.source = Wire.get(btm.source, BloodTestMessage.DEFAULT_SOURCE);
             bt.uuid = btm.uuid;
             bt.saveit(); // de-dupe by uuid
-            if (is_new) { // cannot handle updates yet
-                if (UploaderQueue.newEntry(is_new ? "insert" : "update", bt) != null) {
-                    if (JoH.quietratelimit("start-sync-service", 5)) {
-                        SyncService.startSyncService(3000); // sync in 3 seconds
-                    }
-                }
-            }
         } else {
             UserError.Log.wtf(TAG, "processFromMessage uuid is null or invalid");
         }
@@ -574,4 +553,3 @@ public class BloodTest extends Model {
         patched = true;
     }
 }
-

@@ -2,7 +2,6 @@ package com.eveningoutpost.dexdrip.g5model;
 
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.UserError;
-import com.eveningoutpost.dexdrip.services.G5CollectionService;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -19,8 +18,6 @@ import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
 public class GlucoseRxMessage extends BaseGlucoseRxMessage {
-
-    private final static String TAG = G5CollectionService.TAG; // meh
 
     public static final byte opcode = 0x31;
 

@@ -14,12 +14,9 @@ import com.eveningoutpost.dexdrip.models.UserError;
 import com.eveningoutpost.dexdrip.R;
 import com.eveningoutpost.dexdrip.utilitymodels.Inevitable;
 import com.eveningoutpost.dexdrip.utilitymodels.PersistentStore;
-import com.eveningoutpost.dexdrip.utilitymodels.SpeechUtil;
-import com.eveningoutpost.dexdrip.utilitymodels.VehicleMode;
 import com.eveningoutpost.dexdrip.ui.activities.SelectAudioDevice;
 import com.eveningoutpost.dexdrip.xdrip;
 
-import static com.eveningoutpost.dexdrip.utilitymodels.SpeechUtil.TWICE_DELIMITER;
 
 /**
  * jamorham
@@ -71,24 +68,6 @@ public class HeadsetStateReceiver extends BroadcastReceiver {
     private static final long NOISE_DELAY = 10000; // allow time for bt volume control
 
     private static void processDevice(final String mac, final boolean connected) {
-        if (VehicleMode.isEnabled() && VehicleMode.viaCarAudio() && SelectAudioDevice.getAudioMac().equals(mac)) {
-            VehicleMode.setVehicleModeActive(connected);
-            UserError.Log.ueh(TAG, "Vehicle mode: " + (connected ? "Enabled" : "Disabled"));
-            if (connected) {
-                Inevitable.task("xdrip-vehicle-mode", NOISE_DELAY, HeadsetStateReceiver::audioNotification);
-            }
-            Home.staticRefreshBGChartsOnIdle();
-        }
-    }
-
-    private static void audioNotification() {
-        if (VehicleMode.isVehicleModeActive()) {
-            if (VehicleMode.shouldUseSpeech()) {
-                SpeechUtil.say(" X Drip " + TWICE_DELIMITER, 500);
-            } else if (VehicleMode.shouldPlaySound()) {
-                JoH.playResourceAudio(R.raw.labbed_musical_chime);
-            }
-        }
     }
 
 
@@ -103,7 +82,6 @@ public class HeadsetStateReceiver extends BroadcastReceiver {
 
 
     public static void reprocessConnectionIfAlreadyConnected(final String mac) {
-        VehicleMode.setVehicleModeActive(false);
         areWeConnectedToMac(mac, () -> processDevice(mac, true));
     }
 
@@ -141,4 +119,3 @@ public class HeadsetStateReceiver extends BroadcastReceiver {
         BluetoothAdapter.getDefaultAdapter().getProfileProxy(xdrip.getAppContext(), serviceListener, BluetoothProfile.HEADSET);
     }
 }
-

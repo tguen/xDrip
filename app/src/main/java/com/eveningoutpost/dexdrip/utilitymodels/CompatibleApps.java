@@ -10,21 +10,20 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Build;
 
+import com.eveningoutpost.dexdrip.BuildConfig;
+import com.eveningoutpost.dexdrip.Home;
+import com.eveningoutpost.dexdrip.R;
+import com.eveningoutpost.dexdrip.models.JoH;
+import com.eveningoutpost.dexdrip.models.UserError;
+import com.eveningoutpost.dexdrip.services.G5BaseService;
+import com.eveningoutpost.dexdrip.utils.DexCollectionType;
+import com.eveningoutpost.dexdrip.xdrip;
+
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.NotificationCompat;
 
-
-import com.eveningoutpost.dexdrip.BuildConfig;
-import com.eveningoutpost.dexdrip.Home;
-import com.eveningoutpost.dexdrip.models.JoH;
-import com.eveningoutpost.dexdrip.models.UserError;
-import com.eveningoutpost.dexdrip.R;
-import com.eveningoutpost.dexdrip.services.G5BaseService;
-import com.eveningoutpost.dexdrip.utils.DexCollectionType;
-import com.eveningoutpost.dexdrip.webservices.XdripWebService;
-import com.eveningoutpost.dexdrip.xdrip;
-
 import static com.eveningoutpost.dexdrip.utilitymodels.Constants.COMPATIBLE_BASE_ID;
+
 
 /**
  * Created by jamorham on 01/11/2017.
@@ -285,12 +284,6 @@ public class CompatibleApps extends BroadcastReceiver {
 
                     case CANCEL:
                         cancelSourceNotification(intent);
-                        break;
-
-                    case ENABLE_GARMIN_FEATURES:
-                    case ENABLE_FITBIT_FEATURES:
-                        enableBoolean("xdrip_webservice", "xDrip Web Service Enabled!", intent);
-                        XdripWebService.immortality();
                         break;
 
                     case ENABLE_ANDROIDAPS_FEATURE1:

@@ -2,17 +2,6 @@ package com.eveningoutpost.dexdrip;
 
 // TODO Pagenate for upcoming
 // TODO stop alert notification for swiped alerts
-
-
-import static android.app.PendingIntent.FLAG_UPDATE_CURRENT;
-import static com.eveningoutpost.dexdrip.Home.SHOWCASE_REMINDER3;
-import static com.eveningoutpost.dexdrip.models.JoH.dateTimeText;
-import static com.eveningoutpost.dexdrip.models.JoH.hourMinuteString;
-import static com.eveningoutpost.dexdrip.models.JoH.msSince;
-import static com.eveningoutpost.dexdrip.models.JoH.niceTimeScalarNatural;
-import static com.eveningoutpost.dexdrip.models.JoH.tsl;
-import static lecho.lib.hellocharts.animation.ChartDataAnimator.DEFAULT_ANIMATION_DURATION;
-
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -32,13 +21,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.PowerManager;
-import androidx.annotation.NonNull;
-import androidx.cardview.widget.CardView;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import androidx.recyclerview.widget.ItemTouchHelper;
-import androidx.recyclerview.widget.RecyclerView;
-
 import android.text.Editable;
 import android.text.InputType;
 import android.text.TextWatcher;
@@ -47,7 +29,6 @@ import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -70,21 +51,14 @@ import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.Reminder;
 import com.eveningoutpost.dexdrip.models.Treatments;
 import com.eveningoutpost.dexdrip.models.UserError;
-import com.eveningoutpost.dexdrip.utilitymodels.Constants;
-import com.eveningoutpost.dexdrip.utilitymodels.JamorhamShowcaseDrawer;
-import com.eveningoutpost.dexdrip.utilitymodels.NotificationChannels;
-import com.eveningoutpost.dexdrip.utilitymodels.PersistentStore;
-import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.eveningoutpost.dexdrip.utilitymodels.ShotStateStore;
-import com.eveningoutpost.dexdrip.utilitymodels.SpeechUtil;
 import com.eveningoutpost.dexdrip.profileeditor.DatePickerFragment;
 import com.eveningoutpost.dexdrip.profileeditor.ProfileAdapter;
 import com.eveningoutpost.dexdrip.profileeditor.TimePickerFragment;
 import com.eveningoutpost.dexdrip.receiver.ReminderReceiver;
-import com.eveningoutpost.dexdrip.utils.HomeWifi;
-import com.github.amlcurran.showcaseview.OnShowcaseEventListener;
-import com.github.amlcurran.showcaseview.ShowcaseView;
-import com.github.amlcurran.showcaseview.targets.ViewTarget;
+import com.eveningoutpost.dexdrip.utilitymodels.Constants;
+import com.eveningoutpost.dexdrip.utilitymodels.NotificationChannels;
+import com.eveningoutpost.dexdrip.utilitymodels.PersistentStore;
+import com.eveningoutpost.dexdrip.utilitymodels.Pref;
 import com.rits.cloning.Cloner;
 
 import java.util.ArrayList;
@@ -94,7 +68,22 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import androidx.annotation.NonNull;
+import androidx.cardview.widget.CardView;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.ItemTouchHelper;
+import androidx.recyclerview.widget.RecyclerView;
 import lombok.val;
+
+import static android.app.PendingIntent.FLAG_UPDATE_CURRENT;
+import static com.eveningoutpost.dexdrip.Home.SHOWCASE_REMINDER3;
+import static com.eveningoutpost.dexdrip.models.JoH.dateTimeText;
+import static com.eveningoutpost.dexdrip.models.JoH.hourMinuteString;
+import static com.eveningoutpost.dexdrip.models.JoH.msSince;
+import static com.eveningoutpost.dexdrip.models.JoH.niceTimeScalarNatural;
+import static com.eveningoutpost.dexdrip.models.JoH.tsl;
+import static lecho.lib.hellocharts.animation.ChartDataAnimator.DEFAULT_ANIMATION_DURATION;
 
 // TODO swipe right reschedule options
 // TODO wake up option
@@ -185,7 +174,8 @@ public class Reminders extends ActivityWithRecycler implements SensorEventListen
 
     @Override
     public void onNewIntent(Intent intent) {
-        final Bundle bundle = intent.getExtras();
+	    super.onNewIntent(intent);
+	    final Bundle bundle = intent.getExtras();
 
         processIncomingBundle(bundle);
     }
@@ -216,7 +206,6 @@ public class Reminders extends ActivityWithRecycler implements SensorEventListen
     }
 
     public void onRemindersHomeNetworkClick(MenuItem item) {
-        HomeWifi.ask(this);
     }
 
 
@@ -657,7 +646,8 @@ public class Reminders extends ActivityWithRecycler implements SensorEventListen
     }
 
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (resultCode == RESULT_OK) {
+	    super.onActivityResult(requestCode, resultCode, data);
+	    if (resultCode == RESULT_OK) {
             if (requestCode == REQUEST_CODE_CHOOSE_RINGTONE) {
                 final Uri uri = data.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI);
                 if (uri != null) {
@@ -1202,9 +1192,6 @@ public class Reminders extends ActivityWithRecycler implements SensorEventListen
 
                 //    JoH.showNotification(reminder.getTitle(), "Reminder due " + JoH.hourMinuteString(reminder.next_due), pendingIntent, NOTIFICATION_ID, true, true, deleteIntent, JoH.isOngoingCall() ? null : (reminder.sound_uri != null) ? Uri.parse(reminder.sound_uri) : Uri.parse(JoH.getResourceURI(R.raw.reminder_default_notification)));
                 UserError.Log.ueh("Reminder Alert", reminder.getTitle() + " due: " + dateTimeText(reminder.next_due) + ((reminder.snoozed_till > reminder.next_due) ? " snoozed till: " + dateTimeText(reminder.snoozed_till) : ""));
-                if (reminder.speak) {
-                    SpeechUtil.say(reminder.getTitle(), 1000, 3);
-                }
                 reminder.notified();
             }
         }, 10000);
@@ -1444,137 +1431,5 @@ public class Reminders extends ActivityWithRecycler implements SensorEventListen
     }
 
     private static void showcase(final Activity activity, final int which) {
-
-        final ViewTarget target;
-        final String title;
-        final String message;
-        int size1 = 200;
-        int size2 = 70;
-        long delay = 1000;
-
-        final boolean oneshot = true;
-        final int option = which;
-        if ((oneshot) && (ShotStateStore.hasShot(option))) return;
-
-
-        switch (which) {
-            case Home.SHOWCASE_REMINDER1:
-                target = new ViewTarget(R.id.fab, activity);
-                title = xdrip.getAppContext().getString(R.string.title_You_have_no_reminders_yet);
-                message = xdrip.getAppContext().getString(R.string.message_reminders_explanation);
-                delay = 200;
-                break;
-
-            case Home.SHOWCASE_REMINDER2:
-                target = null;
-                title = xdrip.getAppContext().getString(R.string.title_swipe_reminder);
-                message = xdrip.getAppContext().getString(R.string.message_swipe_explanation);
-                break;
-
-            case Home.SHOWCASE_REMINDER3:
-                target = new ViewTarget(R.id.imageButton5, activity);
-                title = xdrip.getAppContext().getString(R.string.title_reminder_snooze_undo);
-                message = xdrip.getAppContext().getString(R.string.message_snooze_explanaition_undo);
-                break;
-
-            case Home.SHOWCASE_REMINDER4:
-                target = new ViewTarget(R.id.reminderTrashButton, activity);
-                title = xdrip.getAppContext().getString(R.string.title_snooze_trash);
-                message = xdrip.getAppContext().getString(R.string.message_snooze_trash);
-                delay = 10;
-                break;
-
-            case Home.SHOWCASE_REMINDER5:
-                target = new ViewTarget(R.id.imageButton7, activity);
-                title = xdrip.getAppContext().getString(R.string.title_snooze_hide);
-                message = xdrip.getAppContext().getString(R.string.message_snooze_hide);
-                delay = 10;
-                break;
-
-            case Home.SHOWCASE_REMINDER6:
-                target = new ViewTarget(R.id.button5, activity);
-                title = xdrip.getAppContext().getString(R.string.title_snooze_times);
-                message = xdrip.getAppContext().getString(R.string.message_snooze_times);
-                delay = 10;
-                break;
-
-            default:
-                return;
-        }
-
-        final int f_size1 = size1;
-        final int f_size2 = size2;
-
-        JoH.runOnUiThreadDelayed(new Runnable() {
-            @Override
-            public void run() {
-                final ShowcaseView myShowcase;
-                if (target != null) {
-
-                    myShowcase = new ShowcaseView.Builder(activity)
-                            .setStyle(R.style.CustomShowcaseTheme2)
-                            .setContentTitle(title)
-                            .setTarget(target)
-                            .blockAllTouches()
-                            .setContentText("\n" + message)
-                            .setShowcaseDrawer(new JamorhamShowcaseDrawer(activity.getResources(), activity.getTheme(), f_size1, f_size2, 255))
-                            .singleShot(oneshot ? option : -1)
-                            .build();
-
-                } else {
-                    myShowcase = new ShowcaseView.Builder(activity)
-                            .setStyle(R.style.CustomShowcaseTheme2)
-                            .setContentTitle(title)
-                            .blockAllTouches()
-                            .setContentText("\n" + message)
-                            .setShowcaseDrawer(new JamorhamShowcaseDrawer(activity.getResources(), activity.getTheme(), f_size1, f_size2, 255))
-                            .singleShot(oneshot ? option : -1)
-                            .build();
-                }
-                myShowcase.setTag(which);
-                myShowcase.setBackgroundColor(Color.TRANSPARENT);
-                myShowcase.setShouldCentreText(false);
-                myShowcase.setOnShowcaseEventListener(new OnShowcaseEventListener() {
-                                                          @Override
-                                                          public void onShowcaseViewHide(ShowcaseView showcaseView) {
-
-                                                          }
-
-                                                          @Override
-                                                          public void onShowcaseViewDidHide(ShowcaseView showcaseView) {
-                                                              switch ((int) showcaseView.getTag()) {
-                                                                  case Home.SHOWCASE_REMINDER3:
-                                                                      showcase(activity, Home.SHOWCASE_REMINDER4);
-                                                                      break;
-                                                                  case Home.SHOWCASE_REMINDER4:
-                                                                      showcase(activity, Home.SHOWCASE_REMINDER5);
-                                                                      break;
-                                                                  case Home.SHOWCASE_REMINDER5:
-                                                                      showcase(activity, Home.SHOWCASE_REMINDER6);
-                                                                      break;
-                                                              }
-                                                          }
-
-                                                          @Override
-                                                          public void onShowcaseViewShow(ShowcaseView showcaseView) {
-
-                                                          }
-
-                                                          @Override
-                                                          public void onShowcaseViewTouchBlocked(MotionEvent motionEvent) {
-                                                          }
-                                                      }
-                );
-
-
-                RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
-                int margin = (int) activity.getResources().getDimension(R.dimen.button_margin);
-                params.setMargins(margin, margin, margin, margin);
-                params.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
-                params.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
-                myShowcase.setButtonPosition(params);
-                myShowcase.show();
-            }
-        }, delay);
     }
 }

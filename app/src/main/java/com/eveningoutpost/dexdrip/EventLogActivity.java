@@ -1,19 +1,8 @@
 package com.eveningoutpost.dexdrip;
 
 import android.content.Intent;
-
-import androidx.appcompat.widget.SearchView;
-import androidx.databinding.ObservableArrayList;
-import androidx.databinding.ObservableBoolean;
-import androidx.databinding.ObservableList;
-import androidx.databinding.ViewDataBinding;
 import android.graphics.Color;
 import android.os.Bundle;
-import androidx.annotation.LayoutRes;
-import androidx.core.view.MenuItemCompat;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-
 import android.util.SparseBooleanArray;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
@@ -28,21 +17,27 @@ import android.view.animation.AnimationUtils;
 import android.widget.CompoundButton;
 import android.widget.TextView;
 
+import com.eveningoutpost.dexdrip.databinding.ActivityEventLogBinding;
 import com.eveningoutpost.dexdrip.models.JoH;
 import com.eveningoutpost.dexdrip.models.UserError;
+import com.eveningoutpost.dexdrip.ui.helpers.BitmapUtil;
 import com.eveningoutpost.dexdrip.utilitymodels.Inevitable;
 import com.eveningoutpost.dexdrip.utilitymodels.PersistentStore;
 import com.eveningoutpost.dexdrip.utilitymodels.Pref;
-import com.eveningoutpost.dexdrip.utilitymodels.SaveLogs;
-import com.eveningoutpost.dexdrip.utilitymodels.SendFeedBack;
-import com.eveningoutpost.dexdrip.databinding.ActivityEventLogBinding;
-import com.eveningoutpost.dexdrip.ui.helpers.BitmapUtil;
 import com.eveningoutpost.dexdrip.utils.ExtensionMethods;
-import com.eveningoutpost.dexdrip.wearintegration.WatchUpdaterService;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import androidx.annotation.LayoutRes;
+import androidx.appcompat.widget.SearchView;
+import androidx.core.view.MenuItemCompat;
+import androidx.databinding.ObservableArrayList;
+import androidx.databinding.ObservableBoolean;
+import androidx.databinding.ObservableList;
+import androidx.databinding.ViewDataBinding;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.ExtensionMethod;
@@ -50,8 +45,8 @@ import me.tatarka.bindingcollectionadapter2.BindingRecyclerViewAdapter;
 import me.tatarka.bindingcollectionadapter2.ItemBinding;
 import me.tatarka.bindingcollectionadapter2.collections.MergeObservableList;
 
-import static com.eveningoutpost.dexdrip.Home.startWatchUpdaterService;
 import static com.eveningoutpost.dexdrip.utils.DexCollectionType.getBestCollectorHardwareName;
+
 
 /*
  * New style event log viewer
@@ -119,11 +114,6 @@ public class EventLogActivity extends BaseAppCompatActivity {
         return Pref.getBooleanDefaultFalse("wear_sync") && Pref.getBooleanDefaultFalse("sync_wear_logs");
     }
 
-    // ask for wear updated logs
-    private void getWearData() {
-        startWatchUpdaterService(this, WatchUpdaterService.ACTION_SYNC_LOGS, TAG);
-    }
-
     // load in bulk of remaining data
     private void getOlderData() {
 
@@ -184,9 +174,6 @@ public class EventLogActivity extends BaseAppCompatActivity {
                     JoH.threadSleep(100);
                     turbo--;
                 } else {
-                    if (streamWearLogs && JoH.quietratelimit("stream-wear-logs", 2)) {
-                        getWearData();
-                    }
                     // long sleep
                     c = 0;
                     while (c < 2 && runRefresh) {
@@ -292,14 +279,6 @@ public class EventLogActivity extends BaseAppCompatActivity {
             model.showScrollToTop.set(top_button_visible);
             // }
         }
-    }
-
-    public synchronized void uploadEventLogs(View v) { // Send events log to JamOrHam
-        startActivity(new Intent(getApplicationContext(), SendFeedBack.class).putExtra("generic_text", packLogs()));
-    }
-
-    public synchronized void saveEventLog(View v) { // Save events log in mobile storage
-        startActivity(new Intent(getApplicationContext(), SaveLogs.class).putExtra("generic_text", packLogs()));
     }
 
     private String packLogs() { // Prepare current visible logs for upload or local save
@@ -650,4 +629,3 @@ public class EventLogActivity extends BaseAppCompatActivity {
 
     }
 }
-
