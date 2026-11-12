@@ -26,7 +26,7 @@ repositories {
         url "https://jitpack.io"
     }
     flatDir {
-        dirs  project(':app').file('libs'), project(':wear').file('libs')
+        dirs  project(':app').file('libs')
     }
 }
 
@@ -209,8 +209,6 @@ android {
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
-    wearApp project(':wear')
-    //weapApp files('../wear/build/outputs/apk/wear_release.apk')
     implementation('com.github.nightscout:android-uploader:CORE_FOR_XDRIP') {
         transitive = false
     }
